@@ -17,7 +17,7 @@ Read the following articles to familiarize yourself with Gitlab and how you will
 
 # Time Tracking
 
-Time tracking is required.  It's very simple.  There are other useful actions like /done, /assign, /approve and /wip to name a few.
+Time tracking is NOT required.  It's very simple though.  There are other useful actions like /done, /assign, /approve and /wip to name a few.
 
 | cmd | purpose |
 | ------ | ------ |
