@@ -1,4 +1,5 @@
 import React, { Component } from 'react';
+// test commit
 
 class ExampleComponent extends Component {
     componentDidMount() {
