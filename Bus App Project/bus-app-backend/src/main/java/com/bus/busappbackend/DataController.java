@@ -14,7 +14,7 @@ public class DataController {
     @GetMapping("/data")
     public Map<String, String> getData() {
         Map<String, String> responseData = new HashMap<>();
-        responseData.put("message", "Hello, this is your JSON data.");
+        responseData.put("message", "Hello, this is your JSON data. Jaden was here");
         return responseData;
     }
 }

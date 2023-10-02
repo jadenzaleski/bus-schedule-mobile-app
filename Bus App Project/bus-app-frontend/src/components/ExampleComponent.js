@@ -10,7 +10,10 @@ class ExampleComponent extends Component {
     }
 
     render() {
-        return <div>Hello World! <br /> Check console to see backend JSON file... <br /> USERNAME: user, PASSWORD: password</div>;
+        return <div>Hello World! <br/>
+            Check console to see backend JSON file... <br/>
+            Jaden was here. <br/>
+            USERNAME: user, PASSWORD: password</div>;
     }
 }
 
