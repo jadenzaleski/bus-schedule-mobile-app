@@ -13,6 +13,7 @@ class ExampleComponent extends Component {
         return <div>Hello World! <br/>
             Check console to see backend JSON file... <br/>
             Jaden was here. <br/>
+            Neal was also here. <br/>
             USERNAME: user, PASSWORD: password</div>;
     }
 }
