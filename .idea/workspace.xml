@@ -5,9 +5,19 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="f75c826a-94a5-4d3e-85fe-8e6f88aae6b9" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/.idea/bus-schedule-mobile-app.iml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.gitattributes" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Bus App Project/bus-app-frontend/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/Bus App Project/bus-app-frontend/.idea/misc.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Bus App Project/bus-app-frontend/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/Bus App Project/bus-app-frontend/package-lock.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Attachments/.gitkeep" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Bus App Project/.idea/encodings.xml" beforeDir="false" afterPath="$PROJECT_DIR$/Bus App Project/.idea/encodings.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Bus App Project/bus-app-frontend/package-lock.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Images/.gitkeep" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Images/Basic_Sequence_Diagram_Example.pdf" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Images/carl.jpg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Images/sitemap.pdf" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -35,28 +45,37 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;WebServerToolWindowFactoryState&quot;: &quot;false&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;startup&quot;,
-    &quot;last_opened_file_path&quot;: &quot;/Users/jaden/Desktop/Capstone/bus-schedule-mobile-app&quot;,
-    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
-    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
-    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
-    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;project.structure.last.edited&quot;: &quot;Project&quot;,
-    &quot;project.structure.proportion&quot;: &quot;0.0&quot;,
-    &quot;project.structure.side.proportion&quot;: &quot;0.2&quot;,
-    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "RunOnceActivity.OpenProjectViewOnStart": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "WebServerToolWindowFactoryState": "false",
+    "git-widget-placeholder": "develop",
+    "last_opened_file_path": "/Users/jaden/Desktop/Capstone/bus-schedule-mobile-app",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "project.structure.last.edited": "Project",
+    "project.structure.proportion": "0.0",
+    "project.structure.side.proportion": "0.2",
+    "vue.rearranger.settings.migration": "true"
   }
-}</component>
+}]]></component>
   <component name="RecentsManager">
     <key name="CreateClassDialog.RecentsKey">
       <recent name="com.bus.backend" />
     </key>
+  </component>
+  <component name="RunManager">
+    <configuration name="start" type="js.build_tools.npm" nameIsGenerated="true">
+      <package-json value="$PROJECT_DIR$/Bus App Project/bus-app-frontend/package.json" />
+      <command value="start" />
+      <node-interpreter value="project" />
+      <envs />
+      <method v="2" />
+    </configuration>
   </component>
   <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
   <component name="TaskManager">
@@ -71,6 +90,7 @@
       <workItem from="1696213728865" duration="42000" />
       <workItem from="1696257787599" duration="362000" />
       <workItem from="1696258386819" duration="17000" />
+      <workItem from="1696603135040" duration="406000" />
     </task>
     <servers />
   </component>

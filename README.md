@@ -1,39 +1,20 @@
-# CSE Capstone Project Template
+# Charter
+## Vision 
+A fully comprehensive, accessible bus scheduling application (available on both mobile and web-based platforms) that allows students and educators in Calabria to acquire accurate bus route information, view their location while traveling, while ultimately delivering them from one designated location to another in a safe and timely manner. 
 
+## Mission
+Our mission is to enhance and transform the way people experience public transportation. We aim to develop a bus scheduling application that provides real-time, accurate information on bus routes in Calabria. This application will allow users to access bus routes near them and will provide them with reliable, efficient, and usable data to assist them in travel around the city.
 
-This begins your capstone development effort.  You will use GitLab as your primary repository for code and documentation.  In these early phases, you may not be delivering 'working software' but you will be delivering just enough documentation to show an understanding of the product in order to communicate a high-level understanding of the product, objectives, scope and quality requirements.  The issues and boards can also be used to collaborate on research.  For those of you on an R&D project, issues are a great way to track each research question.  The comments and team collaboration build a large body of knowledge during your efforts. 
+## Success Criteria
+- The user is satisfied with the overall appearance and functionality of the application. They are also pleased with the application's dependability and its ability to run across multiple platforms.
+- All information presented to the user regarding routes, stops, and schedules within the application is consistent and reliable.
+- Once the application is finished, the assigned maintainer will have the capability to easily make updates, incorporate new features, and enhance functionality. Additionally, they will be able to promptly adapt the application to platform updates.
 
-Regarding this readme.md file, ultimately you will update this page to reflect your project and assist anyone who has access to your repository.
+## Additional Information
+Our main objectives are for our project to include the following functional capabilities:
+- **Cross-Platform Compatibility** - Users can access the bus scheduling application from either an internet browser or through a downloadable mobile application.
+- **Route Generation** - Users will be able to pick a starting and end location, and a corresponding itinerary will be planned to get their chosen end location.
+- **Visual Map Interface** - A geographical visual aid will be provided for users to track their location and progress while traveling on a provided route
+- **Real-Time Updates** -  While using the app, students will be able to view live updates regarding various factors, such as bus status, potential delays, and steps needed to complete a chosen route.
 
-
-# Read these articles
-Read the following articles to familiarize yourself with Gitlab and how you will be expected to use it during your project.
-
-* [How to use GitLab for Agile Software Development](https://about.gitlab.com/blog/2018/03/05/gitlab-for-agile-software-development/). 
-* [How to Write a Beautiful and Meaningful README.md*](https://blog.bitsrc.io/how-to-write-beautiful-and-meaningful-readme-md-for-your-next-project-897045e3f991#:~:text=It's%20a%20set%20of%20useful,github%20below%20the%20project%20directory.) - buidling your ReadMe file 
-* [Always start with an issue](https://about.gitlab.com/blog/2016/03/03/start-with-an-issue/) - This article discusses issues and how to use them to collaborate.  Several issue and merge templates are provided in the .gitlab/issue_templates and .gitlab/merge_request_templates.  These should facilitate collaboration and quality. Feel free to edit them to fit the needs of this project.
-* [Template Samples](https://gitlab.com/gitlab-org/gitlab/-/tree/master/.gitlab/issue_templates)
-
-
-# Time Tracking
-
-Time tracking is NOT required.  It's very simple though.  There are other useful actions like /done, /assign, /approve and /wip to name a few.
-
-| cmd | purpose |
-| ------ | ------ |
-| /estimate | in the issue description, document the initial work estimate in days, hours, or minutes |
-| /spend | in the comments for the issue, indicate how much time you spend working at that time | 
-
-Here's the link to [Quick Actions](https://docs.gitlab.com/ee/user/project/quick_actions.html).  
-
-# Branches
-
-This project templates includes 2 branches to start with.  
-
-| **Name**   | **Description** |
-| ------ | ------ |
-| Master         | Protected branch.  You cannot push directly to master.  This branch should be what you push to your test server (ceclnx for example) or other devices for your client to review. |
-| . . .          | Thereafter, you should follow the code management strategy defined and agreed upon by the team.  I recommend a branch from master for each sprint or interval.  From the sprint-branch, I recommend branching by issue.  Throughout the sprint, rebase your issue branch regularly especially begore a commit.  If an issue is incomplete during the prescribed sprint, commit it to the next spring branch.  This approach gives the master branch an additional degree of protection. |
-
- 
-
+The application’s scope will be limited to Calabria, a region in southern Italy. This is where Miami University’s computer science study-abroad program is located. The application should be able to perform all aforementioned functionality for this region of the country specifically.
