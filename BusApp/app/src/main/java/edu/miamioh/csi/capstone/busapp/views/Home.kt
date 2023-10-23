@@ -17,7 +17,7 @@ fun HomeView() {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.DarkGray),
+            .background(Color.Black),
         contentAlignment = Alignment.Center
     ) {
         Text(
