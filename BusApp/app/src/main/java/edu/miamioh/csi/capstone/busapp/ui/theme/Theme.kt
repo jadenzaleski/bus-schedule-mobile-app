@@ -13,10 +13,12 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.colorspace.ColorSpaces
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.content.ContextCompat
+import androidx.core.graphics.alpha
 import androidx.core.view.WindowCompat
 
 private val DarkColorScheme = darkColorScheme(
@@ -63,7 +65,11 @@ fun BusAppTheme(
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
-            window.statusBarColor = Color.Transparent.toArgb()
+
+            // could set this to Color.Transparent.toArgb() however its nice to be able to
+            // change the alpha value in order to separate what is behind the status bar from itself,
+            // should look into blurring what is behind it
+            window.statusBarColor = Color.hsv(0.0f, 0.0f, 0.0f, 0.0f).toArgb()
             window.navigationBarColor = if (darkTheme) Dark.toArgb() else Light.toArgb()
             //WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = darkTheme
         }

@@ -3,14 +3,17 @@ package edu.miamioh.csi.capstone.busapp.views
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import edu.miamioh.csi.capstone.busapp.CSVHandler
+import edu.miamioh.csi.capstone.busapp.Trip
 
 @Composable
 fun HomeView() {
@@ -20,13 +23,29 @@ fun HomeView() {
             .background(Color.Black),
         contentAlignment = Alignment.Center
     ) {
-        Text(
-            text = "HOME",
-            fontSize = MaterialTheme.typography.headlineLarge.fontSize,
-            fontWeight = FontWeight.Bold,
-            color = Color.White
-        )
+        LazyColumn(
+            modifier = Modifier.fillMaxSize()
+        ) {
+            items(CSVHandler.getTrips().size) { item ->
+                // Inside this lambda create a composable for each item in the list
+                ObjectListItem(item)
+            }
+        }
     }
+}
+
+/**
+ * Displays the text of the desired item from a list.
+ * @property item is the current index of the list.
+ */
+@Composable
+fun ObjectListItem(item: Int) {
+    val t: Trip = CSVHandler.getTrips()[item]
+    Text(
+        text = t.toString(),
+        color = Color.White,
+        modifier = Modifier.padding(10.dp)
+    )
 }
 
 @Composable

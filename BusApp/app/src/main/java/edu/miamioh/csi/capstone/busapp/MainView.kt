@@ -2,7 +2,10 @@ package edu.miamioh.csi.capstone.busapp
 
 import android.annotation.SuppressLint
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.*
 import androidx.compose.runtime.Composable
@@ -27,9 +30,12 @@ fun MainView() {
     // Create a Scaffold with a bottom bar
     Scaffold(
         bottomBar = { BottomBar(navController = navController) }
-    ) {
-        // Inside the Scaffold, display the content of the selected view
-        BottomBarNavGraph(navController = navController)
+    ) { innerPadding ->
+        // make sure nothing is drawn behind the tabs
+        Box(modifier = Modifier.padding(innerPadding)) {
+            // Inside the Scaffold, display the content of the selected view
+            BottomBarNavGraph(navController = navController)
+        }
     }
 }
 
