@@ -1,10 +1,18 @@
 package edu.miamioh.csi.capstone.busapp
 
 import android.annotation.SuppressLint
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -12,19 +20,22 @@ import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import edu.miamioh.csi.capstone.busapp.ui.theme.*
 
 @SuppressLint("UnusedMaterialScaffoldPaddingParameter")
 @Composable
 fun MainView() {
     // Create a NavController for navigating between different views
     val navController = rememberNavController()
-
     // Create a Scaffold with a bottom bar
     Scaffold(
         bottomBar = { BottomBar(navController = navController) }
-    ) {
-        // Inside the Scaffold, display the content of the selected view
-        BottomBarNavGraph(navController = navController)
+    ) { innerPadding ->
+        // make sure nothing is drawn behind the tabs
+        Box(modifier = Modifier.padding(innerPadding)) {
+            // Inside the Scaffold, display the content of the selected view
+            BottomBarNavGraph(navController = navController)
+        }
     }
 }
 
@@ -45,7 +56,7 @@ fun BottomBar(navController: NavHostController) {
     val currentDestination = navBackStackEntry?.destination
 
     // Create a BottomNavigation composable to display the bottom navigation bar
-    BottomNavigation {
+    BottomNavigation(backgroundColor = if (isSystemInDarkTheme()) Dark else Light) {
         // Loop through the list of views and add them to the bottom navigation
         views.forEach { view ->
             AddItem(
@@ -82,8 +93,10 @@ fun RowScope.AddItem(
         selected = currentDestination?.hierarchy?.any {
             it.route == view.route
         } == true,
+        // set the selected content color
+        selectedContentColor = Primary,
         // Set unselected content color with reduced alpha
-        unselectedContentColor = LocalContentColor.current.copy(alpha = ContentAlpha.disabled),
+        unselectedContentColor = Secondary,
         onClick = {
             // When clicked, navigate to the selected view
             navController.navigate(view.route) {
@@ -91,6 +104,7 @@ fun RowScope.AddItem(
                 popUpTo(navController.graph.findStartDestination().id)
                 launchSingleTop = true
             }
-        }
+        },
+        modifier = Modifier.padding(bottom = 18.dp, top = 3.dp)
     )
 }

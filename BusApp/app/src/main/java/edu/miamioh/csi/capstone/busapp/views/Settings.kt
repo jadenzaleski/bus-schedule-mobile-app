@@ -11,6 +11,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
+import edu.miamioh.csi.capstone.busapp.CSVHandler
 
 @Composable
 fun SettingsView() {
@@ -21,8 +22,7 @@ fun SettingsView() {
         contentAlignment = Alignment.Center
     ) {
         Text(
-            text = "SETTINGS",
-            fontSize = MaterialTheme.typography.headlineLarge.fontSize,
+            text = CSVHandler.getInfo().toString(),
             fontWeight = FontWeight.Bold,
             color = Color.White
         )
