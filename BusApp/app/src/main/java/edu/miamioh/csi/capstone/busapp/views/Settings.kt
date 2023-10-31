@@ -1,5 +1,3 @@
-// Here's a new comment
-
 package edu.miamioh.csi.capstone.busapp.views
 
 import androidx.compose.foundation.background
@@ -20,7 +18,7 @@ fun SettingsView() {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Green),
+            .background(Color.Red),
         contentAlignment = Alignment.Center
     ) {
         Text(
