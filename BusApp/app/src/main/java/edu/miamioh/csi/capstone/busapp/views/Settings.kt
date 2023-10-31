@@ -1,5 +1,5 @@
-// Here's a new comment
-// Confirmed Pull Works
+// Here's a new comment mergeconflictcreation
+// Confirmed Pull Works mergeconflictcreation
 
 package edu.miamioh.csi.capstone.busapp.views
 
