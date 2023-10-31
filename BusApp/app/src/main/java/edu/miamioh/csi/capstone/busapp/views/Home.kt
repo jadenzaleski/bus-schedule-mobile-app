@@ -42,7 +42,7 @@ fun HomeView() {
 fun ObjectListItem(item: Int) {
     val t: Trip = CSVHandler.getTrips()[item]
     Text(
-        text = t.toString(),
+        text = t.tripID.toString(),
         color = Color.White,
         modifier = Modifier.padding(10.dp)
     )

@@ -28,9 +28,8 @@ fun MainView() {
     // Create a NavController for navigating between different views
     val navController = rememberNavController()
     // Create a Scaffold with a bottom bar
-    Scaffold(
-        bottomBar = { BottomBar(navController = navController) }
-    ) { innerPadding ->
+    Scaffold( bottomBar = { BottomBar(navController = navController) })
+    { innerPadding ->
         // make sure nothing is drawn behind the tabs
         Box(modifier = Modifier.padding(innerPadding)) {
             // Inside the Scaffold, display the content of the selected view
