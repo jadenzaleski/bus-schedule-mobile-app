@@ -5,8 +5,10 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.material.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -25,18 +27,38 @@ import edu.miamioh.csi.capstone.busapp.ui.theme.*
 @SuppressLint("UnusedMaterialScaffoldPaddingParameter")
 @Composable
 fun MainView() {
-    // Create a NavController for navigating between different views
     val navController = rememberNavController()
-    // Create a Scaffold with a bottom bar
-    Scaffold( bottomBar = { BottomBar(navController = navController) })
-    { innerPadding ->
-        // make sure nothing is drawn behind the tabs
-        Box(modifier = Modifier.padding(innerPadding)) {
-            // Inside the Scaffold, display the content of the selected view
-            BottomBarNavGraph(navController = navController)
+
+    // Handle system bar insets to prevent content cut-off
+    Box(
+        modifier = Modifier.fillMaxSize()
+            .systemBarsPadding()
+    ) {
+        Scaffold(
+            bottomBar = { BottomBar(navController = navController) }
+        ) { innerPadding ->
+            Box(
+                modifier = Modifier.fillMaxSize().padding(innerPadding)
+            ) {
+                // Inside the Scaffold, display the content of the selected view
+                BottomBarNavGraph(navController = navController)
+            }
         }
     }
 }
+//fun MainView() {
+//    // Create a NavController for navigating between different views
+//    val navController = rememberNavController()
+//    // Create a Scaffold with a bottom bar
+//    Scaffold( bottomBar = { BottomBar(navController = navController) })
+//    { innerPadding ->
+//        // make sure nothing is drawn behind the tabs
+//        Box(modifier = Modifier.padding(innerPadding)) {
+//            // Inside the Scaffold, display the content of the selected view
+//            BottomBarNavGraph(navController = navController)
+//        }
+//    }
+//}
 
 @Composable
 fun BottomBar(navController: NavHostController) {
