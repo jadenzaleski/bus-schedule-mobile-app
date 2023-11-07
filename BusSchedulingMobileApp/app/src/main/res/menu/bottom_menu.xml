@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item
+        android:id="@+id/home"
+        android:title="Home"
+        android:icon="@drawable/bottom_navbar_home" />
+
+    <item
+        android:id="@+id/lines"
+        android:title="Lines"
+        android:icon="@drawable/bottom_navbar_lines" />
+
+    <item
+        android:id="@+id/map"
+        android:title=""
+        android:enabled="false" />
+
+    <item
+        android:id="@+id/stops"
+        android:title="Stops"
+        android:icon="@drawable/bottom_navbar_stops" />
+
+    <item
+        android:id="@+id/settings"
+        android:title="Settings"
+        android:icon="@drawable/bottom_navbar_settings" />
+
+</menu>
