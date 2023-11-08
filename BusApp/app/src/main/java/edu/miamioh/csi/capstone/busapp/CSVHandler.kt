@@ -719,5 +719,4 @@ object CSVHandler {
     fun getTrips(): List<Trip> {
         return trips
     }
-
 }

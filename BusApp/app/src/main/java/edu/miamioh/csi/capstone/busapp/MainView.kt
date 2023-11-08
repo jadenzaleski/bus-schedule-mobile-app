@@ -1,10 +1,12 @@
 package edu.miamioh.csi.capstone.busapp
 
 import android.annotation.SuppressLint
+import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
@@ -77,13 +79,14 @@ fun BottomBar(navController: NavHostController) {
     val currentDestination = navBackStackEntry?.destination
 
     // Create a BottomNavigation composable to display the bottom navigation bar
-    BottomNavigation(backgroundColor = if (isSystemInDarkTheme()) Dark else Light) {
+    BottomNavigation(
+        backgroundColor = if (isSystemInDarkTheme()) Dark else Light) {
         // Loop through the list of views and add them to the bottom navigation
         views.forEach { view ->
             AddItem(
                 view = view,
                 currentDestination = currentDestination,
-                navController = navController
+                navController = navController,
             )
         }
     }

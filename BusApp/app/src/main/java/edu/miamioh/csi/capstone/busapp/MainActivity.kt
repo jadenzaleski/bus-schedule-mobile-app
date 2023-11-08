@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import edu.miamioh.csi.capstone.busapp.ui.theme.BusAppTheme
 
 class MainActivity : ComponentActivity() {
@@ -11,6 +12,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         // toggle below to draw behind status and nav bar.
         WindowCompat.setDecorFitsSystemWindows(window, false)
+
         CSVHandler.initialize(
             assets.open("agency.csv"),
             assets.open("calendar.csv"),
