@@ -39,7 +39,7 @@ fun MainView() {
         Scaffold(
             bottomBar = { BottomBar(navController = navController) }
         ) { innerPadding ->
-            Box(
+            Box(    
                 modifier = Modifier.fillMaxSize().padding(innerPadding)
             ) {
                 // Inside the Scaffold, display the content of the selected view
