@@ -1,15 +1,15 @@
 package edu.miamioh.csi.capstone.busapp
 
 import android.util.Log
-import com.opencsv.CSVReaderBuilder
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.BufferedReader
 import java.io.File
 import java.io.FileNotFoundException
-import java.io.FileReader
+import java.io.FileOutputStream
 import java.io.InputStream
 import java.io.InputStreamReader
-import java.time.LocalTime
-import java.time.format.DateTimeFormatter
+import java.net.URL
 
 /**
  * Represents each agency in agency.csv, which is imported from
@@ -197,14 +197,14 @@ object CSVHandler {
                 // array of parts of the line
                 val parts = parseCSVLine(line)
                 // make sure the line is valid
-                if (parts.size == 5) {
+                if (parts.size == 7) {
                     // make object
                     val agency = Agency(
                         agencyID = parts[0].toInt(),
                         agencyName = parts[1],
                         agencyUrl = parts[2],
                         agencyTimeZone = parts[3],
-                        agencyPhone = parts[4]
+                        agencyPhone = parts[5]
                     )
                     // add to main list
                     agencies.add(agency)
@@ -377,7 +377,7 @@ object CSVHandler {
                 // array of parts of the line
                 val parts = parseCSVLine(line)
                 // make sure the line is valid
-                if (parts.size == 5) {
+                if (parts.size == 12) {
                     // make object
                     val r = Route(
                         agencyID = parts[0].toInt(),
@@ -422,18 +422,18 @@ object CSVHandler {
                 // array of parts of the line
                 val parts = parseCSVLine(line)
                 // make sure the line is valid
-                if (parts.size == 9) {
+                if (parts.size == 11) {
                     // make object
                     val st = StopTime(
                         tripID = parts[0].toInt(),
                         stopID = parts[1].toInt(),
                         arrivalTime = parts[2],
                         departureTime = parts[3],
-                        stopSequence = parts[4].toInt(),
-                        stopHeadsign = parts[5],
-                        routeShortName = parts[6],
-                        pickup = parts[7] == "1",
-                        dropoff = parts[8] == "1",
+                        stopSequence = parts[5].toInt(),
+                        stopHeadsign = parts[6],
+                        routeShortName = parts[7],
+                        pickup = parts[8] == "1",
+                        dropoff = parts[9] == "1",
                     )
                     // add to main list
                     stopTimes.add(st)
@@ -471,14 +471,14 @@ object CSVHandler {
                 // array of parts of the line
                 val parts = parseCSVLine(line)
                 // make sure the line is valid
-                if (parts.size == 5) {
+                if (parts.size == 15) {
                     // make object
                     val s = Stop(
                         stopId = parts[0].toInt(),
                         stopName = parts[1],
                         stopLat = parts[2].toDouble(),
                         stopLon = parts[3].toDouble(),
-                        stopTimezone = parts[4]
+                        stopTimezone = parts[12]
                     )
                     // add to main list
                     stops.add(s)
@@ -516,14 +516,14 @@ object CSVHandler {
                 // array of parts of the line
                 val parts = parseCSVLine(line)
                 // make sure the line is valid
-                if (parts.size == 5) {
+                if (parts.size == 12) {
                     // make object
                     val t = Trip(
                         routeID = parts[0].toInt(),
                         tripID = parts[1].toInt(),
                         serviceID = parts[2].toInt(),
                         tripShortName = parts[3],
-                        routeShortName = parts[4]
+                        routeShortName = parts[5]
                     )
                     // add to main list
                     trips.add(t)
@@ -638,6 +638,55 @@ object CSVHandler {
         }
 
         return result
+    }
+
+    /**
+     * Downloads a file/folder from a provided URL.
+     */
+    fun downloadFile(url: String, destinationFile: File) {
+        try {
+            val connection = URL(url).openConnection()
+            connection.connect()
+            val inputStream = connection.getInputStream()
+            val outputStream = FileOutputStream(destinationFile)
+            val buffer = ByteArray(4 * 1024) // 4KB buffer size
+            var bytesRead: Int
+
+            while (inputStream.read(buffer).also { bytesRead = it } != -1) {
+                outputStream.write(buffer, 0, bytesRead)
+            }
+
+            outputStream.flush()
+            outputStream.close()
+            inputStream.close()
+
+            //Log.i("DOWNLOAD", destinationFile.path)
+        } catch (e: Exception) {
+            Log.e("DOWNLOAD", e.message.toString())
+        }
+    }
+
+    fun renameToCSV(folderPath: String) {
+        val folder = File(folderPath)
+
+        if (folder.exists() && folder.isDirectory) {
+            val files = folder.listFiles()
+
+            for (file in files!!) {
+                if (file.isFile && file.name.endsWith(".txt")) {
+                    val newName = file.name.replace(".txt", ".csv")
+                    val newFile = File(file.parent, newName)
+
+                    if (file.renameTo(newFile)) {
+                        println("Renamed ${file.name} to ${newName}")
+                    } else {
+                        println("Failed to rename ${file.name}")
+                    }
+                }
+            }
+        } else {
+            println("The specified folder doesn't exist or is not a directory.")
+        }
     }
 
     /**

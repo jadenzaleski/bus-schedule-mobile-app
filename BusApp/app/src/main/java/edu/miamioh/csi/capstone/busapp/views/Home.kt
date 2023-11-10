@@ -13,7 +13,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import edu.miamioh.csi.capstone.busapp.CSVHandler
-import edu.miamioh.csi.capstone.busapp.Trip
+import edu.miamioh.csi.capstone.busapp.*
 
 @Composable
 fun HomeView() {
@@ -26,7 +26,7 @@ fun HomeView() {
         LazyColumn(
             modifier = Modifier.fillMaxSize()
         ) {
-            items(CSVHandler.getTrips().size) { item ->
+            items(CSVHandler.getAgencies().size) { item ->
                 // Inside this lambda create a composable for each item in the list
                 ObjectListItem(item)
             }
@@ -40,9 +40,9 @@ fun HomeView() {
  */
 @Composable
 fun ObjectListItem(item: Int) {
-    val t: Trip = CSVHandler.getTrips()[item]
+    val a: Agency = CSVHandler.getAgencies()[item]
     Text(
-        text = t.toString(),
+        text = a.toString(),
         color = Color.White,
         modifier = Modifier.padding(10.dp)
     )

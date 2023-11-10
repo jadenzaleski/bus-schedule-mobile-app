@@ -3,6 +3,55 @@
   <component name="CsvFileAttributes">
     <option name="attributeMap">
       <map>
+        <entry key="$USER_HOME$/Library/Caches/Google/AndroidStudio2022.3/device-explorer/Pixel 7 Pro API UpsideDownCakePrivacySandbox/storage/emulated/0/Android/data/edu.miamioh.csi.capstone.busapp/files/core/agency.csv">
+          <value>
+            <Attribute>
+              <option name="separator" value="," />
+            </Attribute>
+          </value>
+        </entry>
+        <entry key="$USER_HOME$/Library/Caches/Google/AndroidStudio2022.3/device-explorer/Pixel 7 Pro API UpsideDownCakePrivacySandbox/storage/emulated/0/Android/data/edu.miamioh.csi.capstone.busapp/files/core/calendar.csv">
+          <value>
+            <Attribute>
+              <option name="separator" value="," />
+            </Attribute>
+          </value>
+        </entry>
+        <entry key="$USER_HOME$/Library/Caches/Google/AndroidStudio2022.3/device-explorer/Pixel 7 Pro API UpsideDownCakePrivacySandbox/storage/emulated/0/Android/data/edu.miamioh.csi.capstone.busapp/files/core/calendar_dates.csv">
+          <value>
+            <Attribute>
+              <option name="separator" value="," />
+            </Attribute>
+          </value>
+        </entry>
+        <entry key="$USER_HOME$/Library/Caches/Google/AndroidStudio2022.3/device-explorer/Pixel 7 Pro API UpsideDownCakePrivacySandbox/storage/emulated/0/Android/data/edu.miamioh.csi.capstone.busapp/files/core/routes.csv">
+          <value>
+            <Attribute>
+              <option name="separator" value="," />
+            </Attribute>
+          </value>
+        </entry>
+        <entry key="$USER_HOME$/Library/Caches/Google/AndroidStudio2022.3/device-explorer/Pixel 7 Pro API UpsideDownCakePrivacySandbox/storage/emulated/0/Android/data/edu.miamioh.csi.capstone.busapp/files/core/stop_times.csv">
+          <value>
+            <Attribute>
+              <option name="separator" value="," />
+            </Attribute>
+          </value>
+        </entry>
+        <entry key="$USER_HOME$/Library/Caches/Google/AndroidStudio2022.3/device-explorer/Pixel 7 Pro API UpsideDownCakePrivacySandbox/storage/emulated/0/Android/data/edu.miamioh.csi.capstone.busapp/files/core/stops.csv">
+          <value>
+            <Attribute>
+              <option name="separator" value="," />
+            </Attribute>
+          </value>
+        </entry>
+        <entry key="$USER_HOME$/Library/Caches/Google/AndroidStudio2022.3/device-explorer/Pixel 7 Pro API UpsideDownCakePrivacySandbox/storage/emulated/0/Android/data/edu.miamioh.csi.capstone.busapp/files/core/trips.csv">
+          <value>
+            <Attribute>
+              <option name="separator" value="," />
+            </Attribute>
+          </value>
+        </entry>
         <entry key="/app/src/main/assets/agency.csv">
           <value>
             <Attribute>

@@ -1,6 +1,7 @@
 package edu.miamioh.csi.capstone.busapp
 
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Column
@@ -31,7 +32,13 @@ import com.mapbox.maps.plugin.animation.MapAnimationOptions
 import dev.shreyaspatil.permissionflow.compose.rememberPermissionFlowRequestLauncher
 import dev.shreyaspatil.permissionflow.compose.rememberPermissionState
 import edu.miamioh.csi.capstone.busapp.ui.theme.BusAppTheme
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.File
+import java.io.FileInputStream
 
 class MainActivity : ComponentActivity() {
     @OptIn(MapboxExperimental::class)
@@ -39,17 +46,41 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         // toggle below to draw behind status and nav bar.
         WindowCompat.setDecorFitsSystemWindows(window, false)
-        CSVHandler.initialize(
-            assets.open("agency.csv"),
-            assets.open("calendar.csv"),
-            assets.open("calendar_dates.csv"),
-            assets.open("feed_info.csv"),
-            assets.open("routes.csv"),
-            assets.open("stop_times.csv"),
-            assets.open("stops.csv"),
-            assets.open("trips.csv")
-        )
 
+        val url = "https://mobilita.regione.calabria.it/gtfs/otp_gtfs.zip"
+        val destinationFile = File(applicationContext.getExternalFilesDir(null), "otp_gtfs.zip")
+        // The below three must MUST be completed in proper order for the app to
+        // use the updated data properly.
+        CoroutineScope(Dispatchers.Default).launch {
+            val downloadJob = async {
+                CSVHandler.downloadFile(url, destinationFile)
+                Log.i("DOWNLOAD", "Download job is complete (Stage 1).")
+            }.await()
+            val unzipJob = async {
+                UnzipUtils.unzip(destinationFile, "/storage/emulated/0/Android/data/edu.miamioh.csi.capstone.busapp/files/core/")
+                Log.i("UNZIP", "Unzip job is complete (Stage 2).")
+            }.await()
+            val renameJob = async {
+                CSVHandler.renameToCSV("/storage/emulated/0/Android/data/edu.miamioh.csi.capstone.busapp/files/core")
+                Log.i("RENAME", "Rename Job is complete (Stage 3).")
+            }.await()
+
+            // after all operations are complete initialize CSVHandler
+            withContext(Dispatchers.IO) {
+                CSVHandler.initialize(
+                    FileInputStream("/storage/emulated/0/Android/data/edu.miamioh.csi.capstone.busapp/files/core/agency.csv"),
+                    FileInputStream("/storage/emulated/0/Android/data/edu.miamioh.csi.capstone.busapp/files/core/calendar.csv"),
+                    FileInputStream("/storage/emulated/0/Android/data/edu.miamioh.csi.capstone.busapp/files/core/calendar_dates.csv"),
+                    FileInputStream("/storage/emulated/0/Android/data/edu.miamioh.csi.capstone.busapp/files/core/feed_info.csv"),
+                    FileInputStream("/storage/emulated/0/Android/data/edu.miamioh.csi.capstone.busapp/files/core/routes.csv"),
+                    FileInputStream("/storage/emulated/0/Android/data/edu.miamioh.csi.capstone.busapp/files/core/stop_times.csv"),
+                    FileInputStream("/storage/emulated/0/Android/data/edu.miamioh.csi.capstone.busapp/files/core/stops.csv"),
+                    FileInputStream("/storage/emulated/0/Android/data/edu.miamioh.csi.capstone.busapp/files/core/trips.csv"),
+                )
+            }
+        }
+
+        // MAPBOX
         MapboxOptions.accessToken = "sk.eyJ1IjoiamFkZW56YWxlc2tpIiwiYSI6ImNsb3A5a2pmdzA3N3gyaW5xMWlhdXpkankifQ.0wzY9kVrxyI3zuoBy_SxMA"
         val permissionList = listOf(android.Manifest.permission.ACCESS_FINE_LOCATION)
 
@@ -86,7 +117,7 @@ class MainActivity : ComponentActivity() {
 
             Column {
                 if (state.isGranted) {
-                    //TODO: adding search section
+                    // adding search section ?
                 } else {
                     Button(onClick = { permissionLauncher.launch(permissionList.toTypedArray()) }) {
                         Text("Request Permissions")
