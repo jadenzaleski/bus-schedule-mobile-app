@@ -51,6 +51,7 @@ class MainActivity : ComponentActivity() {
         val destinationFile = File(applicationContext.getExternalFilesDir(null), "otp_gtfs.zip")
         // The below three must MUST be completed in proper order for the app to
         // use the updated data properly.
+
         CoroutineScope(Dispatchers.Default).launch {
             val downloadJob = async {
                 CSVHandler.downloadFile(url, destinationFile)
@@ -66,18 +67,18 @@ class MainActivity : ComponentActivity() {
             }.await()
 
             // after all operations are complete initialize CSVHandler
-            withContext(Dispatchers.IO) {
-                CSVHandler.initialize(
-                    FileInputStream("/storage/emulated/0/Android/data/edu.miamioh.csi.capstone.busapp/files/core/agency.csv"),
-                    FileInputStream("/storage/emulated/0/Android/data/edu.miamioh.csi.capstone.busapp/files/core/calendar.csv"),
-                    FileInputStream("/storage/emulated/0/Android/data/edu.miamioh.csi.capstone.busapp/files/core/calendar_dates.csv"),
-                    FileInputStream("/storage/emulated/0/Android/data/edu.miamioh.csi.capstone.busapp/files/core/feed_info.csv"),
-                    FileInputStream("/storage/emulated/0/Android/data/edu.miamioh.csi.capstone.busapp/files/core/routes.csv"),
-                    FileInputStream("/storage/emulated/0/Android/data/edu.miamioh.csi.capstone.busapp/files/core/stop_times.csv"),
-                    FileInputStream("/storage/emulated/0/Android/data/edu.miamioh.csi.capstone.busapp/files/core/stops.csv"),
-                    FileInputStream("/storage/emulated/0/Android/data/edu.miamioh.csi.capstone.busapp/files/core/trips.csv"),
-                )
-            }
+                withContext(Dispatchers.IO) {
+                    CSVHandler.initialize(
+                        FileInputStream("/storage/emulated/0/Android/data/edu.miamioh.csi.capstone.busapp/files/core/agency.csv"),
+                        FileInputStream("/storage/emulated/0/Android/data/edu.miamioh.csi.capstone.busapp/files/core/calendar.csv"),
+                        FileInputStream("/storage/emulated/0/Android/data/edu.miamioh.csi.capstone.busapp/files/core/calendar_dates.csv"),
+                        FileInputStream("/storage/emulated/0/Android/data/edu.miamioh.csi.capstone.busapp/files/core/feed_info.csv"),
+                        FileInputStream("/storage/emulated/0/Android/data/edu.miamioh.csi.capstone.busapp/files/core/routes.csv"),
+                        FileInputStream("/storage/emulated/0/Android/data/edu.miamioh.csi.capstone.busapp/files/core/stop_times.csv"),
+                        FileInputStream("/storage/emulated/0/Android/data/edu.miamioh.csi.capstone.busapp/files/core/stops.csv"),
+                        FileInputStream("/storage/emulated/0/Android/data/edu.miamioh.csi.capstone.busapp/files/core/trips.csv"),
+                    )
+                }
         }
 
         // MAPBOX
@@ -126,7 +127,7 @@ class MainActivity : ComponentActivity() {
                 MainMapViewComposable(mapViewportState, currentLocation)
             }
 
-            BusAppTheme() {
+            BusAppTheme {
                 // Main view of the app
                 MainView()
 

@@ -11,7 +11,7 @@ fun BottomBarNavGraph(navController: NavHostController) {
     // Create a navigation host for handling different views within the app
     NavHost(
         navController = navController,
-        startDestination = BottomBarObject.Home.route
+        startDestination = BottomBarObject.Stops.route
     ) {
         // Define composable functions for each view/screen
         composable(route = BottomBarObject.Home.route) {
