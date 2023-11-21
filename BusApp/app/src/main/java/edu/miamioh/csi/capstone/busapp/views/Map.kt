@@ -5,16 +5,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
 import com.mapbox.maps.MapboxExperimental
 
+// ***** INACTIVE *****
 @OptIn(MapboxExperimental::class)
 @Composable
 fun MapView() {
     Text(text = "Hello world")
 }
-
-
-
-
-
 
 @Composable
 @Preview

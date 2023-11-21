@@ -15,6 +15,9 @@ import androidx.compose.ui.unit.dp
 import edu.miamioh.csi.capstone.busapp.CSVHandler
 import edu.miamioh.csi.capstone.busapp.*
 
+
+
+// ***** INACTIVE *****
 @Composable
 fun HomeView() {
     Box(
