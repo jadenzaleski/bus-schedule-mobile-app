@@ -41,11 +41,8 @@ fun MainView() {
 fun BottomBar(navController: NavHostController) {
     // Define a list of views for the bottom navigation
     val views = listOf(
-        //BottomBarObject.Home,
         BottomBarObject.Stops,
-        //BottomBarObject.Map,
         BottomBarObject.Route,
-        //BottomBarObject.Lines,
         BottomBarObject.Settings
     )
 

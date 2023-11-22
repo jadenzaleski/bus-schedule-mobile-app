@@ -39,6 +39,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileInputStream
+import java.util.Properties
 
 class MainActivity : ComponentActivity() {
     @OptIn(MapboxExperimental::class)
@@ -80,7 +81,6 @@ class MainActivity : ComponentActivity() {
                     )
                 }
         }
-
         // MAPBOX
         MapboxOptions.accessToken = "sk.eyJ1IjoiamFkZW56YWxlc2tpIiwiYSI6ImNsb3A5a2pmdzA3N3gyaW5xMWlhdXpkankifQ.0wzY9kVrxyI3zuoBy_SxMA"
         val permissionList = listOf(android.Manifest.permission.ACCESS_FINE_LOCATION)

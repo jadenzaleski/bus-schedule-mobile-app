@@ -19,26 +19,23 @@ import edu.miamioh.csi.capstone.busapp.CSVHandler
 @OptIn(MapboxExperimental::class)
 @Composable
 fun StopsView() {
-    MapboxOptions.accessToken = "sk.eyJ1IjoiamFkZW56YWxlc2tpIiwiYSI6ImNsb3A5a2pmdzA3N3gyaW5xMWlhdXpkankifQ.0wzY9kVrxyI3zuoBy_SxMA"
-
     MapboxMap(
         modifier = Modifier.fillMaxSize(),
-        mapInitOptionsFactory = { context -> MapInitOptions(
-            context = context,
+        mapInitOptionsFactory = { context ->
+            MapInitOptions(
+                context = context,
 
-            styleUri = Style.LIGHT,
-            cameraOptions = CameraOptions.Builder()
-                .center(Point.fromLngLat(16.5952, 38.9048))
-                .zoom(9.0)
-                .build()
-
-        )
-
+                styleUri = Style.LIGHT,
+                cameraOptions = CameraOptions.Builder()
+                    .center(Point.fromLngLat(16.5952, 38.9048))
+                    .zoom(9.0)
+                    .build()
+            )
         }
-    ){
+    ) {
         val stops = CSVHandler.getStops()
-        if (stops.size > 400) {
-            for (i in 1..400) {
+        if (stops.size > 100) {
+            for (i in 1..100) {
                 AddPointer(Point.fromLngLat(stops[i].stopLon, stops[i].stopLat))
             }
         }
