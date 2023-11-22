@@ -4,15 +4,13 @@ import android.annotation.SuppressLint
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.RowScope
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -43,11 +41,8 @@ fun MainView() {
 fun BottomBar(navController: NavHostController) {
     // Define a list of views for the bottom navigation
     val views = listOf(
-        BottomBarObject.Home,
-        BottomBarObject.Map,
-        BottomBarObject.Route,
-        BottomBarObject.Lines,
         BottomBarObject.Stops,
+        BottomBarObject.Route,
         BottomBarObject.Settings
     )
 
@@ -80,13 +75,13 @@ fun RowScope.AddItem(
             // Display the view's title with a font size of 10sp
             Text(
                 text = view.title,
-                fontSize = 10.sp,
+                fontSize = 12.sp,
             )
         },
         icon = {
             // Display an icon for the view with a content description
             Icon(
-                imageVector = view.icon,
+                painterResource(id = view.icon),
                 contentDescription = "Navigation Icon"
             )
         },
@@ -105,6 +100,6 @@ fun RowScope.AddItem(
                 launchSingleTop = true
             }
         },
-        modifier = Modifier.padding(bottom = 18.dp, top = 3.dp)
+        modifier = Modifier.navigationBarsPadding()
     )
 }
