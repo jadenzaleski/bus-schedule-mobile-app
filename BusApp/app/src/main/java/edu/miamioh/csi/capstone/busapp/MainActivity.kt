@@ -31,6 +31,7 @@ import com.mapbox.maps.extension.compose.animation.viewport.rememberMapViewportS
 import com.mapbox.maps.plugin.animation.MapAnimationOptions
 import dev.shreyaspatil.permissionflow.compose.rememberPermissionFlowRequestLauncher
 import dev.shreyaspatil.permissionflow.compose.rememberPermissionState
+import edu.miamioh.csi.capstone.busapp.navigation.AppNavigation
 import edu.miamioh.csi.capstone.busapp.ui.theme.BusAppTheme
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -127,11 +128,8 @@ class MainActivity : ComponentActivity() {
                 MainMapViewComposable(mapViewportState, currentLocation)
             }
 
-            BusAppTheme {
-                // Main view of the app
-                MainView()
-
-            }
+            // Function call to display NavBar at bottom of screen
+            AppNavigation()
         }
 
     }
