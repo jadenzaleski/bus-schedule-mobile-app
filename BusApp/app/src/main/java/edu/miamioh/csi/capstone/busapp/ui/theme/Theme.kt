@@ -38,6 +38,7 @@ private val LightColorScheme = lightColorScheme(
     */
 )
 
+var isDark = false;
 @Composable
 fun BusAppTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
@@ -45,6 +46,9 @@ fun BusAppTheme(
     dynamicColor: Boolean = true,
     content: @Composable () -> Unit
 ) {
+
+    isDark = isSystemInDarkTheme();
+
 
     val colorScheme = when {
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
