@@ -1,6 +1,7 @@
 package edu.miamioh.csi.capstone.busapp.views
 
 import android.content.res.Resources.Theme
+import android.widget.Toast
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -17,6 +18,8 @@ import com.mapbox.maps.MapboxExperimental
 import com.mapbox.maps.Style
 import com.mapbox.maps.extension.compose.MapboxMap
 import com.mapbox.maps.extension.compose.annotation.generated.CircleAnnotation
+import com.mapbox.maps.extension.compose.annotation.generated.CircleAnnotationGroup
+import com.mapbox.maps.plugin.annotation.generated.CircleAnnotationOptions
 import edu.miamioh.csi.capstone.busapp.CSVHandler
 import edu.miamioh.csi.capstone.busapp.ui.theme.isDark
 
@@ -38,12 +41,7 @@ fun StopsView() {
             )
         }
     ) {
-        val stops = CSVHandler.getStops()
-        if (stops.size > 100) {
-            for (i in 1..100) {
-                AddPointer(Point.fromLngLat(stops[i].stopLon, stops[i].stopLat))
-            }
-        }
+
     }
 }
 
