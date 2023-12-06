@@ -128,6 +128,7 @@ class MainActivity : ComponentActivity() {
                 MainMapViewComposable(mapViewportState, currentLocation)
             }
 
+            // Function call to display NavBar at bottom of screen
             AppNavigation()
         }
 

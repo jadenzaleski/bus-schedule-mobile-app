@@ -21,7 +21,11 @@ import edu.miamioh.csi.capstone.busapp.views.RouteView
 import edu.miamioh.csi.capstone.busapp.views.SettingsView
 import edu.miamioh.csi.capstone.busapp.views.StopsView
 
-
+/**
+ * @author Daniel Tai
+ *
+ * A function to populate the NavBar and direct navigational activity based on user input
+ */
 @Composable
 fun AppNavigation() {
     val navController : NavHostController = rememberNavController()
@@ -32,6 +36,7 @@ fun AppNavigation() {
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
                 val currentDestination = navBackStackEntry?.destination
 
+                // Goes through each navItem in the list and adds it to the NavBar
                 listOfNavItems.forEach {navItem ->
                     NavigationBarItem(
                         selected = currentDestination?.hierarchy?.any { it.route == navItem.route } == true,
@@ -64,13 +69,13 @@ fun AppNavigation() {
                 .padding(paddingValues)
         ){
             composable(route = Screens.RouteScreen.name){
-                RouteView()
+                RouteView()     // Calls RouteView(), which can be found in Route.kt
             }
             composable(route = Screens.StopsScreen.name){
-                StopsView()
+                StopsView()     // Calls StopsView(), which can be found in Stops.kt
             }
             composable(route = Screens.SettingsScreen.name){
-                SettingsView()
+                SettingsView()  // Calls SettingsView(), which can be found in Settings.kt
             }
         }
     }
