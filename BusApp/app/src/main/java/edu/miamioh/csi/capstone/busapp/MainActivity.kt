@@ -161,6 +161,7 @@ private fun MainMapViewComposable(
         }
     ) {
         //currentLocation?.let { AddSingleMarkerComposable(it, resources) }
+
     }
 }
 
