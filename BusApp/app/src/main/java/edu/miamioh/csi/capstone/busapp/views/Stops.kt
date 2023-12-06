@@ -24,8 +24,7 @@ fun StopsView() {
         mapInitOptionsFactory = { context ->
             MapInitOptions(
                 context = context,
-
-                styleUri = Style.LIGHT,
+                styleUri = Style.TRAFFIC_DAY,
                 cameraOptions = CameraOptions.Builder()
                     .center(Point.fromLngLat(16.5952, 38.9048))
                     .zoom(9.0)
