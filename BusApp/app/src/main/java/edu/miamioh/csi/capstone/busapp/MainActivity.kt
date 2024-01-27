@@ -157,8 +157,10 @@ private fun MainMapViewComposable(
                     .center(Point.fromLngLat(24.9384, 60.1699))
                     .zoom(12.0)
                     .build()
+
             )
         }
+
     ) {
         //currentLocation?.let { AddSingleMarkerComposable(it, resources) }
 
