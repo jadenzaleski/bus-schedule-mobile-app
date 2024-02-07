@@ -53,37 +53,34 @@ class MainActivity : ComponentActivity() {
         val destinationFile = File(applicationContext.getExternalFilesDir(null), "otp_gtfs.zip")
         // The below three must MUST be completed in proper order for the app to
         // use the updated data properly.
-
-        CoroutineScope(Dispatchers.Default).launch {
-            val downloadJob = async {
-                CSVHandler.downloadFile(url, destinationFile)
-                Log.i("DOWNLOAD", "Download job is complete (Stage 1).")
-            }.await()
-            val unzipJob = async {
-                UnzipUtils.unzip(destinationFile, "/storage/emulated/0/Android/data/edu.miamioh.csi.capstone.busapp/files/core/")
-                Log.i("UNZIP", "Unzip job is complete (Stage 2).")
-            }.await()
-            val renameJob = async {
-                CSVHandler.renameToCSV("/storage/emulated/0/Android/data/edu.miamioh.csi.capstone.busapp/files/core")
-                Log.i("RENAME", "Rename Job is complete (Stage 3).")
-            }.await()
-
-            // after all operations are complete initialize CSVHandler
-                withContext(Dispatchers.IO) {
-                    CSVHandler.initialize(
-                        FileInputStream("/storage/emulated/0/Android/data/edu.miamioh.csi.capstone.busapp/files/core/agency.csv"),
-                        FileInputStream("/storage/emulated/0/Android/data/edu.miamioh.csi.capstone.busapp/files/core/calendar.csv"),
-                        FileInputStream("/storage/emulated/0/Android/data/edu.miamioh.csi.capstone.busapp/files/core/calendar_dates.csv"),
-                        FileInputStream("/storage/emulated/0/Android/data/edu.miamioh.csi.capstone.busapp/files/core/feed_info.csv"),
-                        FileInputStream("/storage/emulated/0/Android/data/edu.miamioh.csi.capstone.busapp/files/core/routes.csv"),
-                        FileInputStream("/storage/emulated/0/Android/data/edu.miamioh.csi.capstone.busapp/files/core/stop_times.csv"),
-                        FileInputStream("/storage/emulated/0/Android/data/edu.miamioh.csi.capstone.busapp/files/core/stops.csv"),
-                        FileInputStream("/storage/emulated/0/Android/data/edu.miamioh.csi.capstone.busapp/files/core/trips.csv"),
-                    )
-                }
-        }
+        Log.i("CSV", "Starting CSV initialization...")
+        CSVHandler.downloadFile(url, destinationFile)
+        Log.i("DOWNLOAD", "Download job is complete (Stage 1).")
+        // unzip all the files that were just downloaded
+        UnzipUtils.unzip(
+            destinationFile,
+            "/storage/emulated/0/Android/data/edu.miamioh.csi.capstone.busapp/files/core/"
+        )
+        Log.i("UNZIP", "Unzip job is complete (Stage 2).")
+        // reame all the files
+        CSVHandler.renameToCSV("/storage/emulated/0/Android/data/edu.miamioh.csi.capstone.busapp/files/core")
+        Log.i("RENAME", "Rename Job is complete (Stage 3).")
+        // create the objects
+        CSVHandler.initialize(
+            FileInputStream("/storage/emulated/0/Android/data/edu.miamioh.csi.capstone.busapp/files/core/agency.csv"),
+            FileInputStream("/storage/emulated/0/Android/data/edu.miamioh.csi.capstone.busapp/files/core/calendar.csv"),
+            FileInputStream("/storage/emulated/0/Android/data/edu.miamioh.csi.capstone.busapp/files/core/calendar_dates.csv"),
+            FileInputStream("/storage/emulated/0/Android/data/edu.miamioh.csi.capstone.busapp/files/core/feed_info.csv"),
+            FileInputStream("/storage/emulated/0/Android/data/edu.miamioh.csi.capstone.busapp/files/core/routes.csv"),
+            FileInputStream("/storage/emulated/0/Android/data/edu.miamioh.csi.capstone.busapp/files/core/stop_times.csv"),
+            FileInputStream("/storage/emulated/0/Android/data/edu.miamioh.csi.capstone.busapp/files/core/stops.csv"),
+            FileInputStream("/storage/emulated/0/Android/data/edu.miamioh.csi.capstone.busapp/files/core/trips.csv"),
+        )
+        Log.i("CSV", "CSV initialization complete!")
+        // End of CSV initialization.
         // MAPBOX
-        MapboxOptions.accessToken = "sk.eyJ1IjoiamFkZW56YWxlc2tpIiwiYSI6ImNsb3A5a2pmdzA3N3gyaW5xMWlhdXpkankifQ.0wzY9kVrxyI3zuoBy_SxMA"
+        MapboxOptions.accessToken =
+            "sk.eyJ1IjoiamFkZW56YWxlc2tpIiwiYSI6ImNsb3A5a2pmdzA3N3gyaW5xMWlhdXpkankifQ.0wzY9kVrxyI3zuoBy_SxMA"
         val permissionList = listOf(android.Manifest.permission.ACCESS_FINE_LOCATION)
 
         setContent {
@@ -100,9 +97,9 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            LaunchedEffect(state){
+            LaunchedEffect(state) {
                 coroutineScope.launch {
-                    if(state.isGranted) {
+                    if (state.isGranted) {
                         currentLocation = LocationService.getCurrentLocation(context)
                         val mapAnimationOptions =
                             MapAnimationOptions.Builder().duration(1500L).build()
