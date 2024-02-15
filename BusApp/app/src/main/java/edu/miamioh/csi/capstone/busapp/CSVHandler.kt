@@ -1,8 +1,14 @@
 package edu.miamioh.csi.capstone.busapp
 
 import android.util.Log
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import edu.miamioh.csi.capstone.busapp.CSVHandler.agencies
+import edu.miamioh.csi.capstone.busapp.CSVHandler.calendar
+import edu.miamioh.csi.capstone.busapp.CSVHandler.info
+import edu.miamioh.csi.capstone.busapp.CSVHandler.routes
+import edu.miamioh.csi.capstone.busapp.CSVHandler.serviceDates
+import edu.miamioh.csi.capstone.busapp.CSVHandler.stopTimes
+import edu.miamioh.csi.capstone.busapp.CSVHandler.stops
+import edu.miamioh.csi.capstone.busapp.CSVHandler.trips
 import java.io.BufferedReader
 import java.io.File
 import java.io.FileNotFoundException
@@ -566,7 +572,7 @@ object CSVHandler {
         stopsFilePath: InputStream,
         tripsFilePath: InputStream
     ): Boolean {
-        var result: Boolean = true
+        var result = true
         if (!agenciesInit(agenciesFilePath)) {
             Log.e("CSVHandler", "Agencies failed to load properly from $agenciesFilePath")
             result = false
@@ -574,7 +580,7 @@ object CSVHandler {
             Log.i(
                 "CSVHandler",
                 "${getAgencies().size} Agencies successfully imported from $agenciesFilePath"
-            );
+            )
         }
         if (!calendarInit(calendarFilePath)) {
             Log.e("CSVHandler", "Calendar failed to load properly from $calendarFilePath")
@@ -583,7 +589,7 @@ object CSVHandler {
             Log.i(
                 "CSVHandler",
                 "${getCalendar().size} Calendar items successfully imported from $calendarFilePath"
-            );
+            )
         }
         if (!serviceDatesInit(calendarDatesFilePath)) {
             Log.e("CSVHandler", "Service dates failed to load properly from $calendarDatesFilePath")
@@ -592,13 +598,13 @@ object CSVHandler {
             Log.i(
                 "CSVHandler",
                 "${getServiceDates().size} Service dates successfully imported from $calendarDatesFilePath"
-            );
+            )
         }
         if (!infoInit(feedInfoFilePath)) {
             Log.e("CSVHandler", "Feed info failed to load properly from $feedInfoFilePath")
             result = false
         } else {
-            Log.i("CSVHandler", "Feed info successfully imported from $feedInfoFilePath");
+            Log.i("CSVHandler", "Feed info successfully imported from $feedInfoFilePath")
         }
         if (!routesInit(routesFilePath)) {
             Log.e("CSVHandler", "Routes failed to load properly from $routesFilePath")
@@ -607,7 +613,7 @@ object CSVHandler {
             Log.i(
                 "CSVHandler",
                 "${getRoutes().size} Routes successfully imported from $routesFilePath"
-            );
+            )
         }
         if (!stopTimesInit(stopTimesFilePath)) {
             Log.e("CSVHandler", "Stop times failed to load properly from $stopTimesFilePath")
@@ -616,7 +622,7 @@ object CSVHandler {
             Log.i(
                 "CSVHandler",
                 "${getStopTimes().size} Stop times successfully imported from $stopTimesFilePath"
-            );
+            )
         }
         if (!stopsInit(stopsFilePath)) {
             Log.e("CSVHandler", "Stops failed to load properly from $stopsFilePath")
@@ -625,7 +631,7 @@ object CSVHandler {
             Log.i(
                 "CSVHandler",
                 "${getStops().size} Stops successfully imported from $stopsFilePath"
-            );
+            )
         }
         if (!tripsInit(tripsFilePath)) {
             Log.e("CSVHandler", "Trips failed to load properly from $tripsFilePath")
@@ -634,7 +640,7 @@ object CSVHandler {
             Log.i(
                 "CSVHandler",
                 "${getTrips().size} Trips successfully imported from $tripsFilePath"
-            );
+            )
         }
 
         return result
@@ -696,7 +702,7 @@ object CSVHandler {
      * @return A list of Agency objects.
      */
     fun getAgencies(): List<Agency> {
-        return agencies;
+        return agencies
     }
 
     /**
@@ -706,7 +712,7 @@ object CSVHandler {
      * @return A list of ServiceSchedule objects.
      */
     fun getCalendar(): List<ServiceSchedule> {
-        return calendar;
+        return calendar
     }
 
     /**
@@ -716,7 +722,7 @@ object CSVHandler {
      * @return A list of ServiceDate objects.
      */
     fun getServiceDates(): List<ServiceDate> {
-        return serviceDates;
+        return serviceDates
     }
 
     /**
