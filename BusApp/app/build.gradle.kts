@@ -1,6 +1,7 @@
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
+//    id("com.google.android.libraries.mapsplatform.secrets-gradle-plugin" version("2.0.1") apply false)
 }
 
 android {
@@ -63,6 +64,12 @@ dependencies {
     implementation("dev.shreyaspatil.permission-flow:permission-flow-compose:1.2.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.8.0")
     implementation("com.google.android.gms:play-services-location:21.1.0")
+
+    implementation("com.google.maps.android:maps-compose:4.3.0")
+    implementation("com.google.android.gms:play-services-maps:18.0.2")
+//    implementation("com.google.maps.android:maps-ktx:5.0.0")
+//    implementation("com.google.maps.android:maps-compose:4.3.0")
+
     implementation("com.exyte:animated-navigation-bar:1.0.0")
     implementation("androidx.startup:startup-runtime:1.1.1")
     testImplementation("junit:junit:4.13.2")
