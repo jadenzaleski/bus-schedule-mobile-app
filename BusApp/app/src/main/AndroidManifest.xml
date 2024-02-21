@@ -15,6 +15,9 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.BusApp"
         tools:targetApi="31">
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="AIzaSyArxmzr9k53luII5xTXHT98rCV2dWEZU_E" />
         <activity
             android:name=".MainActivity"
             android:exported="true"

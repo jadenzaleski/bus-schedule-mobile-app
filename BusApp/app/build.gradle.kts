@@ -63,10 +63,17 @@ dependencies {
     implementation ("com.opencsv:opencsv:5.9")
     implementation("dev.shreyaspatil.permission-flow:permission-flow-compose:1.2.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.8.0")
+
+
+    // maps compose
+    implementation("com.google.maps.android:maps-compose:4.3.0")
+
+    // google maps services
+    implementation("com.google.android.gms:play-services-maps:18.0.2")
     implementation("com.google.android.gms:play-services-location:21.1.0")
 
-    implementation("com.google.maps.android:maps-compose:4.3.0")
-    implementation("com.google.android.gms:play-services-maps:18.0.2")
+    // google maps util
+    implementation("com.google.maps.android:android-maps-utils:3.4.0")
 //    implementation("com.google.maps.android:maps-ktx:5.0.0")
 //    implementation("com.google.maps.android:maps-compose:4.3.0")
 
