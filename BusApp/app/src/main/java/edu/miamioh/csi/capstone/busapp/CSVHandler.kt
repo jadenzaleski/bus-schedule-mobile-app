@@ -652,7 +652,7 @@ object CSVHandler {
     fun downloadFile(url: String, destinationFile: File) {
         try {
             val connection = URL(url).openConnection()
-            connection.connect()
+            connection.connect() // getting error null here
             val inputStream = connection.getInputStream()
             val outputStream = FileOutputStream(destinationFile)
             val buffer = ByteArray(4 * 1024) // 4KB buffer size
