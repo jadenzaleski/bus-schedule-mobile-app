@@ -13,8 +13,10 @@ import java.io.BufferedReader
 import java.io.File
 import java.io.FileNotFoundException
 import java.io.FileOutputStream
+import java.io.IOException
 import java.io.InputStream
 import java.io.InputStreamReader
+import java.net.MalformedURLException
 import java.net.URL
 
 /**
@@ -652,7 +654,10 @@ object CSVHandler {
     fun downloadFile(url: String, destinationFile: File) {
         try {
             val connection = URL(url).openConnection()
+            connection.connectTimeout = 15000 // 15 seconds
+            connection.readTimeout = 15000 // 15 seconds
             connection.connect()
+
             val inputStream = connection.getInputStream()
             val outputStream = FileOutputStream(destinationFile)
             val buffer = ByteArray(4 * 1024) // 4KB buffer size
@@ -667,8 +672,15 @@ object CSVHandler {
             inputStream.close()
 
             //Log.i("DOWNLOAD", destinationFile.path)
+        } catch (e: MalformedURLException) {
+            Log.e("DOWNLOAD", "Malformed URL Exception in downloadFile(): ${e.message}")
+        } catch (e: IOException) {
+            Log.e("DOWNLOAD", "IO Exception in downloadFile(): ${e.message}")
+        } catch (e: SecurityException) {
+            Log.e("DOWNLOAD", "Security Exception in downloadFile(): ${e.message}")
         } catch (e: Exception) {
-            Log.e("DOWNLOAD", e.message.toString())
+            // Catching any other exceptions that were not anticipated
+            Log.e("DOWNLOAD", "General Exception in downloadFile(): ${e.message}")
         }
     }
 
