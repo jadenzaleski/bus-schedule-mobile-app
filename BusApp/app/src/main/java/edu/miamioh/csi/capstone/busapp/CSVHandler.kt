@@ -16,8 +16,11 @@ import java.io.FileOutputStream
 import java.io.IOException
 import java.io.InputStream
 import java.io.InputStreamReader
+import java.net.HttpURLConnection
 import java.net.MalformedURLException
+import java.net.SocketTimeoutException
 import java.net.URL
+
 
 /**
  * Represents each agency in agency.csv, which is imported from
@@ -653,12 +656,13 @@ object CSVHandler {
      */
     fun downloadFile(url: String, destinationFile: File) {
         try {
-            val connection = URL(url).openConnection()
-            connection.connectTimeout = 15000 // 15 seconds
-            connection.readTimeout = 15000 // 15 seconds
-            connection.connect()
+            val urlConnection = URL(url).openConnection() as HttpURLConnection
+            urlConnection.connectTimeout = 15000 // 15 seconds
+            urlConnection.readTimeout = 15000 // 15 seconds
+            urlConnection.connect()
+            Log.i("TEST", "" + urlConnection)
 
-            val inputStream = connection.getInputStream()
+            val inputStream = urlConnection.getInputStream()
             val outputStream = FileOutputStream(destinationFile)
             val buffer = ByteArray(4 * 1024) // 4KB buffer size
             var bytesRead: Int
@@ -673,14 +677,16 @@ object CSVHandler {
 
             //Log.i("DOWNLOAD", destinationFile.path)
         } catch (e: MalformedURLException) {
-            Log.e("DOWNLOAD", "Malformed URL Exception in downloadFile(): ${e.message}")
+            Log.e("Error downloadFile()", "Malformed URL Exception in downloadFile(): ${e.message}")
         } catch (e: IOException) {
-            Log.e("DOWNLOAD", "IO Exception in downloadFile(): ${e.message}")
+            Log.e("Error downloadFile()", "IO Exception in downloadFile(): ${e.message}")
         } catch (e: SecurityException) {
-            Log.e("DOWNLOAD", "Security Exception in downloadFile(): ${e.message}")
+            Log.e("Error downloadFile()", "Security Exception in downloadFile(): ${e.message}")
+        } catch (e: SocketTimeoutException) {
+            Log.e("Error downloadFile()", "Socket Exception in downloadFile(): ${e.message}")
         } catch (e: Exception) {
             // Catching any other exceptions that were not anticipated
-            Log.e("DOWNLOAD", "General Exception in downloadFile(): ${e.message}")
+            Log.e("Error downloadFile()", "General Exception in downloadFile(): ${Log.getStackTraceString(e)}")
         }
     }
 
