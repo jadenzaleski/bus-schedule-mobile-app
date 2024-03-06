@@ -793,4 +793,33 @@ object CSVHandler {
         return trips
     }
 
+    fun getAgencyIdToStopsMap(
+        stops: List<Stop>,
+        routes: List<Route>,
+        trips: List<Trip>,
+        stopTimes: List<StopTime>
+    ): Map<Int, List<Stop>> {
+        val agencyIdToRouteIds = this.routes.groupBy { it.agencyID }.mapValues { it.value.map(Route::routeID) }
+        val routeIdToTripIds = this.trips.groupBy { it.routeID }.mapValues { it.value.map(Trip::tripID) }
+        val tripIdToStopIds = this.stopTimes.groupBy { it.tripID }.mapValues { it.value.map(StopTime::stopID).distinct() }
+        val stopIdToStop = this.stops.associateBy { it.stopId }
+
+        val agencyIdToStops = mutableMapOf<Int, MutableList<Stop>>()
+
+        agencyIdToRouteIds.forEach { (agencyId, routeIds) ->
+            routeIds.forEach { routeId ->
+                routeIdToTripIds[routeId]?.forEach { tripId ->
+                    tripIdToStopIds[tripId]?.forEach { stopId ->
+                        stopIdToStop[stopId]?.let { stop ->
+                            agencyIdToStops.getOrPut(agencyId) { mutableListOf() }.add(stop)
+                        }
+                    }
+                }
+            }
+        }
+
+        return agencyIdToStops
+    }
+
+
 }
