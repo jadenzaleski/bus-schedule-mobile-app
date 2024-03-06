@@ -72,8 +72,10 @@ fun StopsView() {
             val lat = String.format("%.4f", stop.stopLat)
             val lon = String.format("%.4f", stop.stopLon)
 
+            // custom marker info window
             MarkerInfoWindowContent(
                 state = MarkerState(position = LatLng(stop.stopLat, stop.stopLon)),
+                // on click does these actions
                 onInfoWindowClick = {
                     // for some reason this is crashing. copied from AppNavigation.kt
                     navController.navigate(Screens.RouteScreen.name){
@@ -85,9 +87,10 @@ fun StopsView() {
                     }
                 }
             ) {
+                // create the view
                 Column(horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier.fillMaxWidth(0.8f)) {
-
+                    // header
                     Text(text = stop.stopName,
                         modifier = Modifier.padding(top = 5.dp),
                         style = TextStyle(
@@ -97,13 +100,14 @@ fun StopsView() {
                     HorizontalDivider( modifier = Modifier
                         .fillMaxWidth()
                         .padding(vertical = 5.dp))
-
+                    // lat | lon
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(text = "Lat: $lat")
                         VerticalDivider( modifier = Modifier.height(14.dp).padding(horizontal = 5.dp))
                         Text(text = "Lon: $lon")
                     }
                     Text(text = "Stop ID: ${stop.stopId}")
+                    // dummy button/text to remind the user they can tap to plan a route here
                     Text(text = "Tap to plan",
                         modifier = Modifier.padding(top = 10.dp, bottom = 5.dp),
                         style = TextStyle(
