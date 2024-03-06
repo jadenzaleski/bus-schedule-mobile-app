@@ -4,12 +4,18 @@ import android.Manifest
 import android.content.pm.PackageManager
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -17,12 +23,15 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.GoogleMap
@@ -35,53 +44,85 @@ import edu.miamioh.csi.capstone.busapp.CSVHandler
 
 //@Composable
 //fun StopsView() {
-//    val stops = CSVHandler.getStops() // Assuming this fetches stops correctly
-//    val agencies = CSVHandler.getAgencies() // Fetch all the listed agencies, List<Agency>
+//    // Assuming these fetches are correctly implemented in CSVHandler
+//    val stops = CSVHandler.getStops()
+//    val routes = CSVHandler.getRoutes()
+//    val trips = CSVHandler.getTrips()
+//    val stopTimes = CSVHandler.getStopTimes()
+//    val agencies = CSVHandler.getAgencies()
 //    val context = LocalContext.current
-//    var isLocationPermissionGranted by remember { mutableStateOf(false) }
 //
-//    // Permissions
+//    // Call getAgencyIdToStopsMap from CSVHandler
+//    val agencyIdToStopsMap = remember { CSVHandler.getAgencyIdToStopsMap(stops, routes, trips, stopTimes) }
+//
+//    var isLocationPermissionGranted by remember { mutableStateOf(false) }
 //    LaunchedEffect(key1 = context) {
 //        isLocationPermissionGranted = ContextCompat.checkSelfPermission(
-//            context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+//            context, Manifest.permission.ACCESS_FINE_LOCATION
+//        ) == PackageManager.PERMISSION_GRANTED
 //    }
 //
-//    // Initial camera position
 //    val initialPosition = LatLng(38.9048, -77.0342) // A central location
 //    val cameraPositionState = rememberCameraPositionState {
 //        position = CameraPosition.fromLatLngZoom(initialPosition, 9f)
 //    }
 //
-//    // Dropdown menu states for agency names
-//    val selectedAgencyNames = remember { mutableStateListOf<String>() }
+//    // Default agency selected
+//    val defaultAgencyName = agencies.firstOrNull()?.agencyName ?: ""
+//    val selectedAgencyNames = remember { mutableStateListOf(defaultAgencyName) }
 //    var expanded by remember { mutableStateOf(false) }
 //
+//    // State for user-specified max stops
+//    var maxStopsInput by remember { mutableStateOf("") }
+//    var maxStops by remember { mutableStateOf(50) }
+//
 //    Column {
-//        // Dropdown menu for selecting agencies
-//        Text(
-//            text = "Select Agencies",
-//            modifier = Modifier
-//                .clickable { expanded = true }
-//                .padding(16.dp),
-//            fontSize = 18.sp
-//        )
+//        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(8.dp)) {
+//            Text(
+//                text = "Select Agencies",
+//                modifier = Modifier
+//                    .clickable { expanded = true }
+//                    .padding(end = 8.dp),
+//                fontSize = 18.sp
+//            )
+//
+//            TextField(
+//                value = maxStopsInput,
+//                onValueChange = { maxStopsInput = it.filter { char -> char.isDigit() } },
+//                label = { Text("Max Stops") },
+//                singleLine = true,
+//                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+//                modifier = Modifier.width(100.dp)
+//            )
+//
+//            Button(
+//                onClick = {
+//                    maxStopsInput.toIntOrNull()?.let {
+//                        if (it >= 1) maxStops = it
+//                    }
+//                },
+//                modifier = Modifier.padding(start = 8.dp)
+//            ) {
+//                Text("Set")
+//            }
+//        }
+//
 //        DropdownMenu(
 //            expanded = expanded,
-//            onDismissRequest = { expanded = false }
+//            onDismissRequest = { expanded = false },
+//            modifier = Modifier.fillMaxWidth()
 //        ) {
 //            agencies.forEach { agency ->
 //                val isSelected = agency.agencyName in selectedAgencyNames
 //                DropdownMenuItem(
 //                    text = { Text(agency.agencyName) },
 //                    onClick = {
-//                        // Toggle selection state of this agency name
 //                        if (isSelected) {
 //                            selectedAgencyNames.remove(agency.agencyName)
 //                        } else {
 //                            selectedAgencyNames.add(agency.agencyName)
 //                        }
-//                        // Optionally keep the menu open for multiple selections
-//                        expanded = !isSelected // or set to true for keeping the menu always open
+//                        expanded = false
 //                    },
 //                    leadingIcon = {
 //                        Checkbox(
@@ -93,19 +134,31 @@ import edu.miamioh.csi.capstone.busapp.CSVHandler
 //            }
 //        }
 //
+//        // We need a state to keep track of the first stop's position to move the camera to.
+//        val firstStopLatLng = remember { mutableStateOf<LatLng?>(null) }
+//
 //        GoogleMap(
 //            modifier = Modifier.fillMaxSize(),
 //            cameraPositionState = cameraPositionState,
 //            uiSettings = MapUiSettings(myLocationButtonEnabled = isLocationPermissionGranted, compassEnabled = true),
 //            properties = MapProperties(isMyLocationEnabled = isLocationPermissionGranted)
 //        ) {
-//            // Display markers based on selected agencies or other criteria
-//            stops.take(300).forEach { stop ->
-//                Marker(
-//                    state = MarkerState(position = LatLng(stop.stopLat, stop.stopLon)),
-//                    title = "Stop",
-//                    snippet = "Latitude: ${stop.stopLat}, Longitude: ${stop.stopLon}"
-//                )
+//            var stopsDisplayed = 0
+//            agencies.filter { it.agencyName in selectedAgencyNames }.forEachIndexed { index, agency ->
+//                agencyIdToStopsMap[agency.agencyID]?.take(maxStops)?.forEachIndexed { stopIndex, stop ->
+//                    if (stopsDisplayed < maxStops) {
+//                        if (index == 0 && stopIndex == 0) {
+//                            // This is the first stop of the first selected agency, capture its position.
+//                            firstStopLatLng.value = LatLng(stop.stopLat, stop.stopLon)
+//                        }
+//                        Marker(
+//                            state = MarkerState(position = LatLng(stop.stopLat, stop.stopLon)),
+//                            title = "Stop",
+//                            snippet = "Agency: ${agency.agencyName}, Stop ID: ${stop.stopId}"
+//                        )
+//                        stopsDisplayed++
+//                    }
+//                }
 //            }
 //        }
 //    }
@@ -121,50 +174,78 @@ fun StopsView() {
     val agencies = CSVHandler.getAgencies()
     val context = LocalContext.current
 
-    // Call getAgencyIdToStopsMap from CSVHandler
-    val agencyIdToStopsMap = remember { CSVHandler.getAgencyIdToStopsMap(stops, routes, trips, stopTimes) }
-
     var isLocationPermissionGranted by remember { mutableStateOf(false) }
 
-    // Permission check simplified for brevity
     LaunchedEffect(key1 = context) {
-        isLocationPermissionGranted = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        isLocationPermissionGranted = ContextCompat.checkSelfPermission(
+            context, Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
     }
 
-    val initialPosition = LatLng(38.9048, -77.0342) // A central location
+    val initialPosition = LatLng(41.9028, 12.4964) // Rome, Italy as fallback
     val cameraPositionState = rememberCameraPositionState {
-        position = CameraPosition.fromLatLngZoom(initialPosition, 9f)
+        position = CameraPosition.fromLatLngZoom(initialPosition, 5f)
     }
 
-    val selectedAgencyNames = remember { mutableStateListOf<String>() }
+    val defaultAgencyName = agencies.firstOrNull()?.agencyName ?: ""
+    val selectedAgencyNames = remember { mutableStateListOf(defaultAgencyName) }
     var expanded by remember { mutableStateOf(false) }
 
+    var maxStopsInput by remember { mutableStateOf("") }
+    var maxStops by remember { mutableStateOf(50) }
+
+    // Prepare the mapping of stop IDs to agency IDs
+    val stopIdToAgencyIdMap = remember {
+        CSVHandler.getStopIdToAgencyIdMap(stops, routes, trips, stopTimes)
+    }
+
     Column {
-        // Dropdown menu for selecting agencies
-        Text(
-            text = "Select Agencies",
-            modifier = Modifier
-                .clickable { expanded = true }
-                .padding(16.dp),
-            fontSize = 18.sp
-        )
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(8.dp)) {
+            Text(
+                text = "Select Agencies",
+                modifier = Modifier
+                    .clickable { expanded = true }
+                    .padding(end = 8.dp),
+                fontSize = 18.sp
+            )
+
+            TextField(
+                value = maxStopsInput,
+                onValueChange = { maxStopsInput = it.filter { char -> char.isDigit() } },
+                label = { Text("Max Stops") },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                modifier = Modifier.width(100.dp)
+            )
+
+            Button(
+                onClick = {
+                    maxStopsInput.toIntOrNull()?.let {
+                        if (it >= 1) maxStops = it
+                    }
+                },
+                modifier = Modifier.padding(start = 8.dp)
+            ) {
+                Text("Set")
+            }
+        }
+
         DropdownMenu(
             expanded = expanded,
-            onDismissRequest = { expanded = false }
+            onDismissRequest = { expanded = false },
+            modifier = Modifier.fillMaxWidth()
         ) {
             agencies.forEach { agency ->
                 val isSelected = agency.agencyName in selectedAgencyNames
                 DropdownMenuItem(
                     text = { Text(agency.agencyName) },
                     onClick = {
-                        // Toggle selection state of this agency name
                         if (isSelected) {
                             selectedAgencyNames.remove(agency.agencyName)
                         } else {
                             selectedAgencyNames.add(agency.agencyName)
                         }
-                        // Optionally keep the menu open for multiple selections
-                        expanded = !isSelected // or set to true for keeping the menu always open
+                        expanded = false
                     },
                     leadingIcon = {
                         Checkbox(
@@ -182,39 +263,29 @@ fun StopsView() {
             uiSettings = MapUiSettings(myLocationButtonEnabled = isLocationPermissionGranted, compassEnabled = true),
             properties = MapProperties(isMyLocationEnabled = isLocationPermissionGranted)
         ) {
-            // Initialize a counter to track the number of stops displayed
-            var stopsDisplayed = 0
-            val maxStops = 50 // Maximum number of stops to display
+            val selectedAgencyIds = agencies.filter { it.agencyName in selectedAgencyNames }.map { it.agencyID }.toSet()
 
-            // Filter and display stops for selected agencies, up to 50
-            agencies.filter { it.agencyName in selectedAgencyNames }.forEach { agency ->
-                agencyIdToStopsMap[agency.agencyID]?.let { stopsForAgency ->
-                    stopsForAgency.takeWhile {
-                        // Only process stops until the maximum count is reached
-                        stopsDisplayed < maxStops
-                    }.forEach { stop ->
-                        if (stopsDisplayed >= maxStops) {
-                            // If the maximum number of stops has been reached, stop processing further
-                            return@forEach
-                        }
-                        // Add a marker for the current stop
-                        Marker(
-                            state = MarkerState(position = LatLng(stop.stopLat, stop.stopLon)),
-                            title = "Stop",
-                            snippet = "Agency: ${agency.agencyName}, Stop ID: ${stop.stopId}"
-                        )
-                        // Increment the counter after adding each stop
-                        stopsDisplayed++
-                    }
-                }
-                if (stopsDisplayed >= maxStops) {
-                    // Once the limit is reached, no need to process further agencies
-                    return@GoogleMap
+            // Filter stops based on the selected agency IDs and limit to maxStops
+            val filteredStops = stops.filter { stop ->
+                stopIdToAgencyIdMap[stop.stopId] in selectedAgencyIds
+            }.take(maxStops)
+
+            filteredStops.forEachIndexed { index, stop ->
+                Marker(
+                    state = MarkerState(position = LatLng(stop.stopLat, stop.stopLon)),
+                    title = "Stop",
+                    snippet = "Stop ID: ${stop.stopId}, Agency ID: ${stopIdToAgencyIdMap[stop.stopId]}"
+                )
+                // Move the camera to the first stop
+                if (index == 0) {
+                    cameraPositionState.move(CameraUpdateFactory.newLatLng(LatLng(stop.stopLat, stop.stopLon)))
                 }
             }
         }
     }
 }
+
+
 
 
 
