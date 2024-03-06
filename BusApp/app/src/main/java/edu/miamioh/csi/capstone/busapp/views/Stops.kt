@@ -42,128 +42,6 @@ import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
 import edu.miamioh.csi.capstone.busapp.CSVHandler
 
-//@Composable
-//fun StopsView() {
-//    // Assuming these fetches are correctly implemented in CSVHandler
-//    val stops = CSVHandler.getStops()
-//    val routes = CSVHandler.getRoutes()
-//    val trips = CSVHandler.getTrips()
-//    val stopTimes = CSVHandler.getStopTimes()
-//    val agencies = CSVHandler.getAgencies()
-//    val context = LocalContext.current
-//
-//    // Call getAgencyIdToStopsMap from CSVHandler
-//    val agencyIdToStopsMap = remember { CSVHandler.getAgencyIdToStopsMap(stops, routes, trips, stopTimes) }
-//
-//    var isLocationPermissionGranted by remember { mutableStateOf(false) }
-//    LaunchedEffect(key1 = context) {
-//        isLocationPermissionGranted = ContextCompat.checkSelfPermission(
-//            context, Manifest.permission.ACCESS_FINE_LOCATION
-//        ) == PackageManager.PERMISSION_GRANTED
-//    }
-//
-//    val initialPosition = LatLng(38.9048, -77.0342) // A central location
-//    val cameraPositionState = rememberCameraPositionState {
-//        position = CameraPosition.fromLatLngZoom(initialPosition, 9f)
-//    }
-//
-//    // Default agency selected
-//    val defaultAgencyName = agencies.firstOrNull()?.agencyName ?: ""
-//    val selectedAgencyNames = remember { mutableStateListOf(defaultAgencyName) }
-//    var expanded by remember { mutableStateOf(false) }
-//
-//    // State for user-specified max stops
-//    var maxStopsInput by remember { mutableStateOf("") }
-//    var maxStops by remember { mutableStateOf(50) }
-//
-//    Column {
-//        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(8.dp)) {
-//            Text(
-//                text = "Select Agencies",
-//                modifier = Modifier
-//                    .clickable { expanded = true }
-//                    .padding(end = 8.dp),
-//                fontSize = 18.sp
-//            )
-//
-//            TextField(
-//                value = maxStopsInput,
-//                onValueChange = { maxStopsInput = it.filter { char -> char.isDigit() } },
-//                label = { Text("Max Stops") },
-//                singleLine = true,
-//                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-//                modifier = Modifier.width(100.dp)
-//            )
-//
-//            Button(
-//                onClick = {
-//                    maxStopsInput.toIntOrNull()?.let {
-//                        if (it >= 1) maxStops = it
-//                    }
-//                },
-//                modifier = Modifier.padding(start = 8.dp)
-//            ) {
-//                Text("Set")
-//            }
-//        }
-//
-//        DropdownMenu(
-//            expanded = expanded,
-//            onDismissRequest = { expanded = false },
-//            modifier = Modifier.fillMaxWidth()
-//        ) {
-//            agencies.forEach { agency ->
-//                val isSelected = agency.agencyName in selectedAgencyNames
-//                DropdownMenuItem(
-//                    text = { Text(agency.agencyName) },
-//                    onClick = {
-//                        if (isSelected) {
-//                            selectedAgencyNames.remove(agency.agencyName)
-//                        } else {
-//                            selectedAgencyNames.add(agency.agencyName)
-//                        }
-//                        expanded = false
-//                    },
-//                    leadingIcon = {
-//                        Checkbox(
-//                            checked = isSelected,
-//                            onCheckedChange = null // Interaction handled by the item's onClick
-//                        )
-//                    }
-//                )
-//            }
-//        }
-//
-//        // We need a state to keep track of the first stop's position to move the camera to.
-//        val firstStopLatLng = remember { mutableStateOf<LatLng?>(null) }
-//
-//        GoogleMap(
-//            modifier = Modifier.fillMaxSize(),
-//            cameraPositionState = cameraPositionState,
-//            uiSettings = MapUiSettings(myLocationButtonEnabled = isLocationPermissionGranted, compassEnabled = true),
-//            properties = MapProperties(isMyLocationEnabled = isLocationPermissionGranted)
-//        ) {
-//            var stopsDisplayed = 0
-//            agencies.filter { it.agencyName in selectedAgencyNames }.forEachIndexed { index, agency ->
-//                agencyIdToStopsMap[agency.agencyID]?.take(maxStops)?.forEachIndexed { stopIndex, stop ->
-//                    if (stopsDisplayed < maxStops) {
-//                        if (index == 0 && stopIndex == 0) {
-//                            // This is the first stop of the first selected agency, capture its position.
-//                            firstStopLatLng.value = LatLng(stop.stopLat, stop.stopLon)
-//                        }
-//                        Marker(
-//                            state = MarkerState(position = LatLng(stop.stopLat, stop.stopLon)),
-//                            title = "Stop",
-//                            snippet = "Agency: ${agency.agencyName}, Stop ID: ${stop.stopId}"
-//                        )
-//                        stopsDisplayed++
-//                    }
-//                }
-//            }
-//        }
-//    }
-//}
-
 @Composable
 fun StopsView() {
     // Assuming these fetches are correctly implemented in CSVHandler
@@ -284,10 +162,6 @@ fun StopsView() {
         }
     }
 }
-
-
-
-
 
 @Composable
 @Preview
