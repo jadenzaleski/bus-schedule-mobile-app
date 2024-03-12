@@ -2,25 +2,36 @@ package edu.miamioh.csi.capstone.busapp.views
 
 import android.Manifest
 import android.content.pm.PackageManager
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonColors
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.Divider
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -28,7 +39,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -47,7 +61,12 @@ import com.google.maps.android.compose.MarkerInfoWindowContent
 import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
 import edu.miamioh.csi.capstone.busapp.CSVHandler
+import edu.miamioh.csi.capstone.busapp.R
 import edu.miamioh.csi.capstone.busapp.navigation.Screens
+import edu.miamioh.csi.capstone.busapp.ui.theme.Black
+import edu.miamioh.csi.capstone.busapp.ui.theme.Gray400
+import edu.miamioh.csi.capstone.busapp.ui.theme.Green
+import edu.miamioh.csi.capstone.busapp.ui.theme.Light
 
 
 @Composable
@@ -69,9 +88,9 @@ fun StopsView() {
         ) == PackageManager.PERMISSION_GRANTED
     }
 
-    val initialPosition = LatLng(41.9028, 12.4964) // Rome, Italy as fallback
+    val initialPosition = LatLng(39.2, 16.25) // Cosenza
     val cameraPositionState = rememberCameraPositionState {
-        position = CameraPosition.fromLatLngZoom(initialPosition, 5f)
+        position = CameraPosition.fromLatLngZoom(initialPosition, 6f)
     }
 
     val defaultAgencyName = agencies.firstOrNull()?.agencyName ?: ""
@@ -79,39 +98,105 @@ fun StopsView() {
     var expanded by remember { mutableStateOf(false) }
 
     var maxStopsInput by remember { mutableStateOf("") }
-    var maxStops by remember { mutableStateOf(50) }
+    var maxStops by remember { mutableIntStateOf(50) }
 
     // Prepare the mapping of stop IDs to agency IDs
     val stopIdToAgencyIdMap = remember {
         CSVHandler.getStopIdToAgencyIdMap(stops, routes, trips, stopTimes)
     }
+    val focusManager = LocalFocusManager.current
 
-    Column {
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(8.dp)) {
-            Text(
-                text = "Select Agencies",
+    Column(modifier = Modifier.pointerInput(Unit) { detectTapGestures(onTap = {
+        focusManager.clearFocus()
+        }) }) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Start,
+            modifier = Modifier
+                .background(Light)
+                .padding(8.dp)
+                .fillMaxWidth(),
+        ) {
+
+            OutlinedButton(
+                onClick = { expanded = !expanded
+                            focusManager.clearFocus()},
+                colors = ButtonColors(
+                    containerColor = Color.Transparent,
+                    contentColor = Green,
+                    disabledContainerColor = Color.Gray,
+                    disabledContentColor = Color.Gray
+                ),
+                border = BorderStroke(2.dp, Green),
                 modifier = Modifier
-                    .clickable { expanded = true }
-                    .padding(end = 8.dp),
-                fontSize = 18.sp
-            )
+                    .padding(start = 5.dp)
+                    .height(50.dp),
+                shape = RoundedCornerShape(20)
+            ) {
+                Icon(
+                    painterResource(id = R.drawable.baseline_filter_list_24),
+                    contentDescription = null,
+                    modifier = Modifier.padding(end = 6.dp)
+                )
+                Text(text = "${selectedAgencyNames.size}")
+            }
 
-            TextField(
+            Spacer(modifier = Modifier.weight(1f))
+
+
+            OutlinedTextField(
                 value = maxStopsInput,
                 onValueChange = { maxStopsInput = it.filter { char -> char.isDigit() } },
-                label = { Text("Max Stops") },
+                keyboardActions = KeyboardActions(
+                    onDone = { focusManager.clearFocus()
+                        maxStopsInput.toIntOrNull()?.let {
+                            if (it >= 1) maxStops = it
+                        }},
+                ),
+//                    label = { Text("Max Stops", style = TextStyle(fontSize = 10.sp)) },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                modifier = Modifier.width(100.dp)
+                modifier = Modifier
+                    .width(120.dp)
+                    .height(50.dp),
+                colors = TextFieldDefaults.colors(
+                    unfocusedIndicatorColor = Gray400,
+                    focusedIndicatorColor = Gray400,
+                    focusedTextColor = Black,
+                    focusedLabelColor = Color.DarkGray,
+                    unfocusedLabelColor = Color.DarkGray,
+                    unfocusedContainerColor = Color.Transparent,
+                    focusedContainerColor = Color.Transparent,
+                ),
+                shape = RoundedCornerShape(20),
+                leadingIcon = {
+                    Icon(
+                        painterResource(id = R.drawable.baseline_numbers_24),
+                        contentDescription = null,
+                        modifier = Modifier
+                    )
+                }
             )
 
-            Button(
+
+            OutlinedButton(
                 onClick = {
                     maxStopsInput.toIntOrNull()?.let {
                         if (it >= 1) maxStops = it
                     }
+                    focusManager.clearFocus()
                 },
-                modifier = Modifier.padding(start = 8.dp)
+                modifier = Modifier
+                    .height(50.dp)
+                    .padding(start = 10.dp, end = 5.dp),
+                colors = ButtonColors(
+                    containerColor = Color.Transparent,
+                    contentColor = Green,
+                    disabledContainerColor = Color.Gray,
+                    disabledContentColor = Color.Gray
+                ),
+                border = BorderStroke(2.dp, Green),
+                shape = RoundedCornerShape(20)
             ) {
                 Text("Set")
             }
@@ -119,9 +204,10 @@ fun StopsView() {
 
         DropdownMenu(
             expanded = expanded,
-            onDismissRequest = { expanded = false },
-            modifier = Modifier.fillMaxWidth()
-        ) {
+            onDismissRequest = { expanded = !expanded },
+            modifier = Modifier.fillMaxWidth(0.65F),
+
+            ) {
             agencies.forEach { agency ->
                 val isSelected = agency.agencyName in selectedAgencyNames
                 DropdownMenuItem(
@@ -132,12 +218,13 @@ fun StopsView() {
                         } else {
                             selectedAgencyNames.add(agency.agencyName)
                         }
-                        expanded = false
+
                     },
                     leadingIcon = {
                         Checkbox(
                             checked = isSelected,
-                            onCheckedChange = null // Interaction handled by the item's onClick
+                            onCheckedChange = null, // Interaction handled by the item's onClick
+                            colors = CheckboxDefaults.colors(checkedColor = Green)
                         )
                     }
                 )
@@ -147,10 +234,14 @@ fun StopsView() {
         GoogleMap(
             modifier = Modifier.fillMaxSize(),
             cameraPositionState = cameraPositionState,
-            uiSettings = MapUiSettings(myLocationButtonEnabled = isLocationPermissionGranted, compassEnabled = true),
+            uiSettings = MapUiSettings(
+                myLocationButtonEnabled = isLocationPermissionGranted,
+                compassEnabled = true
+            ),
             properties = MapProperties(isMyLocationEnabled = isLocationPermissionGranted)
         ) {
-            val selectedAgencyIds = agencies.filter { it.agencyName in selectedAgencyNames }.map { it.agencyID }.toSet()
+            val selectedAgencyIds =
+                agencies.filter { it.agencyName in selectedAgencyNames }.map { it.agencyID }.toSet()
 
             // Filter stops based on the selected agency IDs and limit to maxStops
             val filteredStops = stops.filter { stop ->
@@ -163,6 +254,7 @@ fun StopsView() {
                     state = MarkerState(position = LatLng(stop.stopLat, stop.stopLon)),
                     onInfoWindowClick = {
                         // Navigate to another screen on info window click
+                        // TODO: FINISH
                         navController.navigate(Screens.RouteScreen.name) {
                             popUpTo(navController.graph.findStartDestination().id) {
                                 saveState = true
@@ -172,37 +264,45 @@ fun StopsView() {
                         }
                     }
                 ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.fillMaxWidth(0.8f)) {
-                        Text(text = stop.stopName,
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.fillMaxWidth(0.8f)
+                    ) {
+                        Text(
+                            text = stop.stopName,
                             modifier = Modifier.padding(top = 5.dp),
                             style = TextStyle(
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.Bold,
                             )
                         )
-                        Divider(modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 5.dp))
+                        HorizontalDivider(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 5.dp)
+                        )
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(text = "Lat: ${stop.stopLat}")
                             Spacer(modifier = Modifier.width(5.dp)) // Replaced VerticalDivider with Spacer for simplicity
                             Text(text = "Lon: ${stop.stopLon}")
                         }
                         Text(text = "Stop ID: ${stop.stopId}")
-                        Text(text = "Tap to plan",
+                        Text(
+                            text = "Tap to plan",
                             modifier = Modifier.padding(top = 10.dp, bottom = 5.dp),
                             style = TextStyle(
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color.Blue
-                            ))
+                            )
+                        )
                     }
                 }
             }
         }
     }
 }
+
 
 @Composable
 @Preview
