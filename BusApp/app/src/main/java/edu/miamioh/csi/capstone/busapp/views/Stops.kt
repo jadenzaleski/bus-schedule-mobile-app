@@ -137,6 +137,7 @@ fun updateMarkersBasedOnZoomAndPosition(stops: List<Stop>, zoomLevel: Float, cam
  * @param lon1 - The longitude of the first set of coordinates
  * @param lat2 - The latitude of the second set of coordinates
  * @param lon2 - The longitude of the second set of coordinates
+ * @return The distance between the two given coordinates
  */
 fun calculateDistance(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
     val earthRadius = 6371 // Radius of the earth in kilometers
@@ -154,6 +155,7 @@ fun calculateDistance(lat1: Double, lon1: Double, lat2: Double, lon2: Double): D
  * map. Subject to change depending on client preferences, but these numbers can be easily adjusted
  *
  * @param zoomLevel - The current zoom level of the active map
+ * @return How many stops should be displayed on the map presently
  */
 fun calculateNumberOfMarkers(zoomLevel: Float): Int {
     // This is a placeholder function. Adjust the logic based on your requirements.
