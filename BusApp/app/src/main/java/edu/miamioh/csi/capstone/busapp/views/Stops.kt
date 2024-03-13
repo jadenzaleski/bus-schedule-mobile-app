@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -16,7 +17,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.content.ContextCompat
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
-import com.google.maps.android.compose.CameraMoveStartedReason
 import com.google.maps.android.compose.CameraPositionState
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.MapProperties
@@ -25,10 +25,17 @@ import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
 import edu.miamioh.csi.capstone.busapp.CSVHandler
-import org.apache.commons.lang3.math.NumberUtils.toInt
+import edu.miamioh.csi.capstone.busapp.Stop
+import kotlin.math.atan2
+import kotlin.math.cos
+import kotlin.math.sin
+import kotlin.math.sqrt
 
 // Declare stopCount as a top-level variable
-var stopCount by mutableStateOf(0)
+var stopCount by mutableStateOf(10000)
+
+// At the top level, outside of your composables
+var markerStates = mutableStateListOf<MarkerState>()
 
 @Composable
 fun StopsView() {
@@ -40,8 +47,8 @@ fun GoogleMapCentralHQ() {
     val stops = CSVHandler.getStops()
     val context = LocalContext.current
     var isLocationPermissionGranted by remember { mutableStateOf(false) }
+    var currentZoomLevel by remember { mutableStateOf(9f) } // Initial zoom level
 
-    // This block of code checks to see if the locationPermission has been granted beforehand
     LaunchedEffect(key1 = context) {
         isLocationPermissionGranted = ContextCompat.checkSelfPermission(
             context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
@@ -49,7 +56,7 @@ fun GoogleMapCentralHQ() {
 
     val initialPosition = LatLng(38.9048, 16.5952)
     val cameraPositionState = rememberCameraPositionState {
-        position = CameraPosition.fromLatLngZoom(initialPosition, 9f)
+        position = CameraPosition.fromLatLngZoom(initialPosition, currentZoomLevel)
     }
 
     GoogleMap(
@@ -58,74 +65,87 @@ fun GoogleMapCentralHQ() {
         uiSettings = MapUiSettings(myLocationButtonEnabled = isLocationPermissionGranted, compassEnabled = true),
         properties = MapProperties(isMyLocationEnabled = isLocationPermissionGranted)
     ) {
-        stopCount = minOf(stops.size, 50)
-        for (i in 0 until stopCount) {
-            val stop = stops[i]
+        markerStates.forEach { markerState ->
             Marker(
-                state = MarkerState(position = LatLng(stop.stopLat, stop.stopLon)),
+                state = markerState,
                 title = "Stop",
-                snippet = "Latitude: ${stop.stopLat}, Longitude: ${stop.stopLon}"
+                snippet = "Latitude: ${markerState.position.latitude}, Longitude: ${markerState.position.longitude}"
             )
         }
     }
 
-    trackMapInteraction(cameraPositionState = cameraPositionState)
+    trackMapInteraction(cameraPositionState) { newZoomLevel, newPosition ->
+        // Now this triggers on both zoom and position changes
+        updateMarkersBasedOnZoomAndPosition(stops, newZoomLevel, newPosition)
+    }
+}
+
+fun updateMarkersBasedOnZoomAndPosition(stops: List<Stop>, zoomLevel: Float, cameraCentralPosition: LatLng) {
+    // Determine the number of markers to display based on the zoom level
+    val markerCount = calculateNumberOfMarkers(zoomLevel)
+
+    Log.i("checkZoomLevel", "" + zoomLevel)
+    Log.i("DEBUG", "" + markerCount)
+
+    // Calculate distances from the camera's central position to each stop
+    val distances = stops.map { stop ->
+        calculateDistance(cameraCentralPosition.latitude, cameraCentralPosition.longitude, stop.stopLat, stop.stopLon) to stop
+    }.sortedBy { it.first }
+
+    // Select the closest stops based on the calculated marker count
+    val closestStops = distances.take(markerCount).map { it.second }
+
+    // Clear current markers and add new ones for the closest stops
+    markerStates.clear()
+    closestStops.forEach { stop ->
+        markerStates.add(MarkerState(position = LatLng(stop.stopLat, stop.stopLon)))
+    }
+}
+
+fun calculateDistance(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
+    val earthRadius = 6371 // Radius of the earth in kilometers
+    val latDistance = Math.toRadians(lat2 - lat1)
+    val lonDistance = Math.toRadians(lon2 - lon1)
+    val a = sin(latDistance / 2) * sin(latDistance / 2) +
+            cos(Math.toRadians(lat1)) * cos(Math.toRadians(lat2)) *
+            sin(lonDistance / 2) * sin(lonDistance / 2)
+    val c = 2 * atan2(sqrt(a), sqrt(1 - a))
+    return earthRadius * c // Convert to distance
+}
+
+fun calculateNumberOfMarkers(zoomLevel: Float): Int {
+    // This is a placeholder function. Adjust the logic based on your requirements.
+    val zoomLev = zoomLevel
+    if (zoomLev <= 10.4) {
+        return 0;
+    } else if (zoomLev > 10.4 && zoomLev <= 12) {
+        return 150;
+    } else if (zoomLev > 12 && zoomLev <= 13) {
+        return 75;
+    } else if (zoomLev > 13 && zoomLev <= 14) {
+        return 50;
+    } else {
+        return 25;
+    }
 }
 
 @Composable
 fun trackMapInteraction(
-    cameraPositionState: CameraPositionState
+    cameraPositionState: CameraPositionState,
+    onCameraChange: (Float, LatLng) -> Unit
 ) {
-    // store the initial position of the camera
-    var initialCameraPosition by remember { mutableStateOf(cameraPositionState.position) }
+    // Track both the zoom level and the central position
+    val currentZoomLevel by remember { mutableStateOf(cameraPositionState.position.zoom) }
+    val currentPosition by remember { mutableStateOf(cameraPositionState.position.target) }
 
-    // called when the camera just starts moving
-    val onMapCameraMoveStart: (cameraPosition: CameraPosition) -> Unit = {
-        // store the camera's position when map started moving
-        initialCameraPosition = it
-    }
-
-    // called when the map camera stops moving
-    val onMapCameraIdle: (cameraPosition: CameraPosition) -> Unit = { newCameraPosition ->
-        // this is the reason why the camera was moving.
-        val cameraMovementReason = cameraPositionState.cameraMoveStartedReason
-
-        if (cameraMovementReason == CameraMoveStartedReason.GESTURE) {
-
-            if (newCameraPosition.zoom < initialCameraPosition.zoom) {
-                // this is zoom out
-                stopCount = toInt("" + newCameraPosition.zoom) * 2
-                Log.i("TEST", "" + newCameraPosition)
-                Log.i("STOP COUNT", "" + stopCount)
+    LaunchedEffect(cameraPositionState.isMoving) {
+        if (!cameraPositionState.isMoving) {
+            val newZoomLevel = cameraPositionState.position.zoom
+            val newPosition = cameraPositionState.position.target
+            // Check if either the zoom level or the position has changed
+            if (newZoomLevel != currentZoomLevel || newPosition != currentPosition) {
+                onCameraChange(newZoomLevel, newPosition)
             }
-
-            if (newCameraPosition.zoom > initialCameraPosition.zoom) {
-                // this is zoom in
-                stopCount = toInt("" + newCameraPosition.zoom) * 2
-                Log.i("TEST", "" + newCameraPosition)
-                Log.i("STOP COUNT", "" + stopCount)
-            }
-
-            if (newCameraPosition.bearing != initialCameraPosition.bearing) {
-                // this is map rotation
-                Log.i("TEST", "" + newCameraPosition)
-            }
-
-            // Please note target can change in any of the above 3 interactions as well.
-            if (newCameraPosition.target != initialCameraPosition.target) {
-                // this is zoom out
-                Log.i("TEST", "" + newCameraPosition)
-            }
-        }
-
-        initialCameraPosition = newCameraPosition
-    }
-
-    LaunchedEffect(key1 = cameraPositionState.isMoving) {
-        if (cameraPositionState.isMoving) {
-            onMapCameraMoveStart(cameraPositionState.position)
-        } else {
-            onMapCameraIdle(cameraPositionState.position)
         }
     }
 }
