@@ -31,9 +31,6 @@ import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sqrt
 
-// Declare stopCount as a top-level variable
-var stopCount by mutableStateOf(10000)
-
 // At the top level, outside of your composables
 var markerStates = mutableStateListOf<MarkerState>()
 
@@ -47,7 +44,7 @@ fun GoogleMapCentralHQ() {
     val stops = CSVHandler.getStops()
     val context = LocalContext.current
     var isLocationPermissionGranted by remember { mutableStateOf(false) }
-    var currentZoomLevel by remember { mutableStateOf(9f) } // Initial zoom level
+    val currentZoomLevel by remember { mutableStateOf(9f) } // Initial zoom level
 
     LaunchedEffect(key1 = context) {
         isLocationPermissionGranted = ContextCompat.checkSelfPermission(
@@ -115,17 +112,16 @@ fun calculateDistance(lat1: Double, lon1: Double, lat2: Double, lon2: Double): D
 
 fun calculateNumberOfMarkers(zoomLevel: Float): Int {
     // This is a placeholder function. Adjust the logic based on your requirements.
-    val zoomLev = zoomLevel
-    if (zoomLev <= 10.4) {
-        return 0;
-    } else if (zoomLev > 10.4 && zoomLev <= 12) {
-        return 150;
-    } else if (zoomLev > 12 && zoomLev <= 13) {
-        return 75;
-    } else if (zoomLev > 13 && zoomLev <= 14) {
-        return 50;
+    if (zoomLevel <= 10.4) {
+        return 0
+    } else if (zoomLevel > 10.4 && zoomLevel <= 12) {
+        return 150
+    } else if (zoomLevel > 12 && zoomLevel <= 13) {
+        return 75
+    } else if (zoomLevel > 13 && zoomLevel <= 14) {
+        return 50
     } else {
-        return 25;
+        return 25
     }
 }
 

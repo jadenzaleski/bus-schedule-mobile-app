@@ -59,7 +59,7 @@ dependencies {
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.navigation:navigation-compose:2.7.7")
-    implementation("androidx.compose.material3:material3:1.2.0")
+    implementation("androidx.compose.material3:material3:1.2.1")
     implementation ("com.opencsv:opencsv:5.9")
     implementation("dev.shreyaspatil.permission-flow:permission-flow-compose:1.2.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.8.0")
@@ -70,11 +70,11 @@ dependencies {
     implementation("com.google.maps.android:maps-compose-utils:4.3.0")
 
     // google maps services
-    implementation("com.google.android.gms:play-services-maps:18.0.2")
-    implementation("com.google.android.gms:play-services-location:21.1.0")
+    implementation("com.google.android.gms:play-services-maps:18.2.0")
+    implementation("com.google.android.gms:play-services-location:21.2.0")
 
     // google maps util
-    implementation("com.google.maps.android:android-maps-utils:3.4.0")
+    implementation("com.google.maps.android:android-maps-utils:3.7.0")
 //    implementation("com.google.maps.android:maps-ktx:5.0.0")
 
     implementation("com.exyte:animated-navigation-bar:1.0.0")
@@ -85,5 +85,5 @@ dependencies {
     androidTestImplementation(platform("androidx.compose:compose-bom:2024.02.00"))
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
     debugImplementation("androidx.compose.ui:ui-tooling")
-    debugImplementation("androidx.compose.ui:ui-test-manifest:1.6.1")
+    debugImplementation("androidx.compose.ui:ui-test-manifest:1.6.3")
 }
