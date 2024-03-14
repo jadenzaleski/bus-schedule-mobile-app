@@ -264,6 +264,7 @@ fun StopsWorkhorse() {
             }
         }
     }
+
     GoogleMap(
         modifier = Modifier.fillMaxSize(),
         cameraPositionState = cameraPositionState,
