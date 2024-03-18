@@ -38,6 +38,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
@@ -139,21 +140,23 @@ fun StopsWorkhorse() {
         CSVHandler.getStopIdToAgencyIdMap(stops, routes, trips, stopTimes)
     }
 
-    var selectedAgencyIds = remember(selectedAgencyNames) {
-        agencies.filter { it.agencyName in selectedAgencyNames }.map { it.agencyID }.toSet()
-    }
+    var selectedAgencyIds = remember {
+        derivedStateOf {
+            agencies.filter { it.agencyName in selectedAgencyNames }.map { it.agencyID }.toSet()
+        }
+    }.value
 
     var maxStopsInput by remember { mutableStateOf("50") }
     var maxStops by remember { mutableIntStateOf(50) }
-    Log.i("maxStopsBefore", "" + maxStops)
+    //Log.i("maxStopsBefore", "" + maxStops)
 
     // Map interaction tracking
     trackMapInteraction(cameraPositionState) { zoomLevel, center ->
         mapCenter = center
-        Log.i("maxStopsAfter", "" + maxStops)
+        Log.i("maxStops", "" + maxStops)
         //maxStops = minOf(maxStops, calculateNumberOfMarkers(zoomLevel))
         //Log.i("# of Stops based on Zoom", "" + calculateNumberOfMarkers(zoomLevel))
-        Log.i("# of Stops Displayed", "" + maxStops)
+        //Log.i("# of Stops Displayed", "" + maxStops)
     }
 
     // Dynamically calculate filtered stops based on current criteria
