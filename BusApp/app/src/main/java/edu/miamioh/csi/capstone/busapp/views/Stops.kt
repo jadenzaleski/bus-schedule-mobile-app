@@ -137,7 +137,7 @@ fun StopsWorkhorse() {
 
     Column(modifier = Modifier.pointerInput(Unit) { detectTapGestures(onTap = {
         focusManager.clearFocus()
-        }) }) {
+    }) }) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Start,
@@ -263,91 +263,24 @@ fun StopsWorkhorse() {
                 )
             }
         }
-    }
-
-    GoogleMap(
-        modifier = Modifier.fillMaxSize(),
-        cameraPositionState = cameraPositionState,
-        uiSettings = MapUiSettings(myLocationButtonEnabled = isLocationPermissionGranted, compassEnabled = true),
-        properties = MapProperties(isMyLocationEnabled = isLocationPermissionGranted)
-    ) {
-        markerStates.forEach { markerState ->
-            Marker(
-                state = markerState,
-                title = "Stop",
-                snippet = "Latitude: ${markerState.position.latitude}, Longitude: ${markerState.position.longitude}"
-            )
+        GoogleMap(
+            modifier = Modifier.fillMaxSize(),
+            cameraPositionState = cameraPositionState,
+            uiSettings = MapUiSettings(myLocationButtonEnabled = isLocationPermissionGranted, compassEnabled = true),
+            properties = MapProperties(isMyLocationEnabled = isLocationPermissionGranted)
+        ) {
+            markerStates.forEach { markerState ->
+                val stop = stops.find { it.stopLat == markerState.position.latitude && it.stopLon == markerState.position.longitude }
+                if (stop != null) {
+                    Marker(
+                        state = markerState,
+                        title = stop.stopName, // Display stop name as the title
+                        snippet = "Lat: ${stop.stopLat}, Lon: ${stop.stopLon}, ID: ${stop.stopId}" // Display additional info as the snippet
+                    )
+                }
+            }
         }
     }
-//        GoogleMap(
-//            modifier = Modifier.fillMaxSize(),
-//            cameraPositionState = cameraPositionState,
-//            uiSettings = MapUiSettings(
-//                myLocationButtonEnabled = isLocationPermissionGranted,
-//                compassEnabled = true
-//            ),
-//            properties = MapProperties(isMyLocationEnabled = isLocationPermissionGranted)
-//        ) {
-//            val selectedAgencyIds =
-//                agencies.filter { it.agencyName in selectedAgencyNames }.map { it.agencyID }.toSet()
-//
-//            // Filter stops based on the selected agency IDs and limit to maxStops
-//            val filteredStops = stops.filter { stop ->
-//                stopIdToAgencyIdMap[stop.stopId] in selectedAgencyIds
-//            }.take(maxStops)
-//
-//            filteredStops.forEach { stop ->
-//                // Using the custom MarkerInfoWindowContent instead of the standard Marker
-//                MarkerInfoWindowContent(
-//                    state = MarkerState(position = LatLng(stop.stopLat, stop.stopLon)),
-//                    onInfoWindowClick = {
-//                        // Navigate to another screen on info window click
-//                        // TODO: FINISH
-//                        navController.navigate(Screens.RouteScreen.name) {
-//                            popUpTo(navController.graph.findStartDestination().id) {
-//                                saveState = true
-//                            }
-//                            launchSingleTop = true
-//                            restoreState = true
-//                        }
-//                    }
-//                ) {
-//                    Column(
-//                        horizontalAlignment = Alignment.CenterHorizontally,
-//                        modifier = Modifier.fillMaxWidth(0.8f)
-//                    ) {
-//                        Text(
-//                            text = stop.stopName,
-//                            modifier = Modifier.padding(top = 5.dp),
-//                            style = TextStyle(
-//                                fontSize = 16.sp,
-//                                fontWeight = FontWeight.Bold,
-//                            )
-//                        )
-//                        HorizontalDivider(
-//                            modifier = Modifier
-//                                .fillMaxWidth()
-//                                .padding(vertical = 5.dp)
-//                        )
-//                        Row(verticalAlignment = Alignment.CenterVertically) {
-//                            Text(text = "Lat: ${stop.stopLat}")
-//                            Spacer(modifier = Modifier.width(5.dp)) // Replaced VerticalDivider with Spacer for simplicity
-//                            Text(text = "Lon: ${stop.stopLon}")
-//                        }
-//                        Text(text = "Stop ID: ${stop.stopId}")
-//                        Text(
-//                            text = "Tap to plan",
-//                            modifier = Modifier.padding(top = 10.dp, bottom = 5.dp),
-//                            style = TextStyle(
-//                                fontSize = 16.sp,
-//                                fontWeight = FontWeight.Bold,
-//                                color = Color.Blue
-//                            )
-//                        )
-//                    }
-//                }
-//            }
-//        }
 
     trackMapInteraction(cameraPositionState) { newZoomLevel, newPosition ->
         // Triggers appropriate function based on zoom or coordinate position changes.
@@ -464,3 +397,74 @@ fun trackMapInteraction(
 fun StopsViewPreview() {
     StopsView()
 }
+
+
+//        GoogleMap(
+//            modifier = Modifier.fillMaxSize(),
+//            cameraPositionState = cameraPositionState,
+//            uiSettings = MapUiSettings(
+//                myLocationButtonEnabled = isLocationPermissionGranted,
+//                compassEnabled = true
+//            ),
+//            properties = MapProperties(isMyLocationEnabled = isLocationPermissionGranted)
+//        ) {
+//            val selectedAgencyIds =
+//                agencies.filter { it.agencyName in selectedAgencyNames }.map { it.agencyID }.toSet()
+//
+//            // Filter stops based on the selected agency IDs and limit to maxStops
+//            val filteredStops = stops.filter { stop ->
+//                stopIdToAgencyIdMap[stop.stopId] in selectedAgencyIds
+//            }.take(maxStops)
+//
+//            filteredStops.forEach { stop ->
+//                // Using the custom MarkerInfoWindowContent instead of the standard Marker
+//                MarkerInfoWindowContent(
+//                    state = MarkerState(position = LatLng(stop.stopLat, stop.stopLon)),
+//                    onInfoWindowClick = {
+//                        // Navigate to another screen on info window click
+//                        // TODO: FINISH
+//                        navController.navigate(Screens.RouteScreen.name) {
+//                            popUpTo(navController.graph.findStartDestination().id) {
+//                                saveState = true
+//                            }
+//                            launchSingleTop = true
+//                            restoreState = true
+//                        }
+//                    }
+//                ) {
+//                    Column(
+//                        horizontalAlignment = Alignment.CenterHorizontally,
+//                        modifier = Modifier.fillMaxWidth(0.8f)
+//                    ) {
+//                        Text(
+//                            text = stop.stopName,
+//                            modifier = Modifier.padding(top = 5.dp),
+//                            style = TextStyle(
+//                                fontSize = 16.sp,
+//                                fontWeight = FontWeight.Bold,
+//                            )
+//                        )
+//                        HorizontalDivider(
+//                            modifier = Modifier
+//                                .fillMaxWidth()
+//                                .padding(vertical = 5.dp)
+//                        )
+//                        Row(verticalAlignment = Alignment.CenterVertically) {
+//                            Text(text = "Lat: ${stop.stopLat}")
+//                            Spacer(modifier = Modifier.width(5.dp)) // Replaced VerticalDivider with Spacer for simplicity
+//                            Text(text = "Lon: ${stop.stopLon}")
+//                        }
+//                        Text(text = "Stop ID: ${stop.stopId}")
+//                        Text(
+//                            text = "Tap to plan",
+//                            modifier = Modifier.padding(top = 10.dp, bottom = 5.dp),
+//                            style = TextStyle(
+//                                fontSize = 16.sp,
+//                                fontWeight = FontWeight.Bold,
+//                                color = Color.Blue
+//                            )
+//                        )
+//                    }
+//                }
+//            }
+//        }
