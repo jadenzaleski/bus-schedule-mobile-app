@@ -80,6 +80,7 @@ import edu.miamioh.csi.capstone.busapp.ui.theme.Green
 import edu.miamioh.csi.capstone.busapp.ui.theme.Light
 import kotlin.math.atan2
 import kotlin.math.cos
+import kotlin.math.min
 import kotlin.math.sin
 import kotlin.math.sqrt
 
@@ -153,7 +154,7 @@ fun StopsWorkhorse() {
     // Map interaction tracking
     trackMapInteraction(cameraPositionState) { zoomLevel, center ->
         mapCenter = center
-        Log.i("maxStops", "" + maxStops)
+        //Log.i("maxStops", "" + maxStops)
         //maxStops = minOf(maxStops, calculateNumberOfMarkers(zoomLevel))
         //Log.i("# of Stops based on Zoom", "" + calculateNumberOfMarkers(zoomLevel))
         //Log.i("# of Stops Displayed", "" + maxStops)
@@ -162,11 +163,13 @@ fun StopsWorkhorse() {
     // Dynamically calculate filtered stops based on current criteria
     val filteredStops = remember(mapCenter, selectedAgencyIds, maxStops) {
         Log.i("Agency Names", "" + selectedAgencyIds)
+        Log.i("# of Stops Displayed", min(maxStops, 150).toString())
+        maxStopsInput = min(maxStops, 150).toString()
         stops.filter { stop ->
             stopIdToAgencyIdMap[stop.stopId] in selectedAgencyIds &&
                     calculateDistance(mapCenter.latitude, mapCenter.longitude, stop.stopLat, stop.stopLon) <= 60
         }.sortedBy { calculateDistance(mapCenter.latitude, mapCenter.longitude, it.stopLat, it.stopLon) }
-            .take(maxStops)
+            .take(min(maxStops, 150))
     }
 
     val focusManager = LocalFocusManager.current
@@ -277,6 +280,7 @@ fun StopsWorkhorse() {
             modifier = Modifier.fillMaxWidth(0.65F),
 
             ) {
+            // Potentially add a "Clear All" button here.
             agencies.forEach { agency ->
                 val isSelected = agency.agencyName in selectedAgencyNames
                 DropdownMenuItem(
