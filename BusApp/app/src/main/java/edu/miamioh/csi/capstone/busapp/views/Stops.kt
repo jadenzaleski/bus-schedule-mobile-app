@@ -9,6 +9,7 @@ package edu.miamioh.csi.capstone.busapp.views
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.util.Log
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -29,6 +30,7 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -49,10 +51,14 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.rememberNavController
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
@@ -60,12 +66,13 @@ import com.google.maps.android.compose.CameraPositionState
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.MapProperties
 import com.google.maps.android.compose.MapUiSettings
-import com.google.maps.android.compose.Marker
+import com.google.maps.android.compose.MarkerInfoWindowContent
 import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
 import edu.miamioh.csi.capstone.busapp.CSVHandler
 import edu.miamioh.csi.capstone.busapp.R
 import edu.miamioh.csi.capstone.busapp.Stop
+import edu.miamioh.csi.capstone.busapp.navigation.Screens
 import edu.miamioh.csi.capstone.busapp.ui.theme.Black
 import edu.miamioh.csi.capstone.busapp.ui.theme.Gray400
 import edu.miamioh.csi.capstone.busapp.ui.theme.Green
@@ -117,8 +124,9 @@ fun StopsWorkhorse() {
      * The initial zoom level of the map
      */
     val initialPosition = LatLng(39.2, 16.25) // Cosenza
+    var mapCenter by remember { mutableStateOf(initialPosition) }
+
     val cameraPositionState = rememberCameraPositionState {
-//        position = CameraPosition.fromLatLngZoom(initialPosition, 6f)
         position = CameraPosition.fromLatLngZoom(initialPosition, currentZoomLevel)
     }
 
@@ -126,13 +134,38 @@ fun StopsWorkhorse() {
     val selectedAgencyNames = remember { mutableStateListOf(defaultAgencyName) }
     var expanded by remember { mutableStateOf(false) }
 
-    var maxStopsInput by remember { mutableStateOf("") }
-    var maxStops by remember { mutableIntStateOf(50) }
-
     // Prepare the mapping of stop IDs to agency IDs
     val stopIdToAgencyIdMap = remember {
         CSVHandler.getStopIdToAgencyIdMap(stops, routes, trips, stopTimes)
     }
+
+    var selectedAgencyIds = remember(selectedAgencyNames) {
+        agencies.filter { it.agencyName in selectedAgencyNames }.map { it.agencyID }.toSet()
+    }
+
+    var maxStopsInput by remember { mutableStateOf("50") }
+    var maxStops by remember { mutableIntStateOf(50) }
+    Log.i("maxStopsBefore", "" + maxStops)
+
+    // Map interaction tracking
+    trackMapInteraction(cameraPositionState) { zoomLevel, center ->
+        mapCenter = center
+        Log.i("maxStopsAfter", "" + maxStops)
+        //maxStops = minOf(maxStops, calculateNumberOfMarkers(zoomLevel))
+        //Log.i("# of Stops based on Zoom", "" + calculateNumberOfMarkers(zoomLevel))
+        Log.i("# of Stops Displayed", "" + maxStops)
+    }
+
+    // Dynamically calculate filtered stops based on current criteria
+    val filteredStops = remember(mapCenter, selectedAgencyIds, maxStops) {
+        Log.i("Agency Names", "" + selectedAgencyIds)
+        stops.filter { stop ->
+            stopIdToAgencyIdMap[stop.stopId] in selectedAgencyIds &&
+                    calculateDistance(mapCenter.latitude, mapCenter.longitude, stop.stopLat, stop.stopLon) <= 60
+        }.sortedBy { calculateDistance(mapCenter.latitude, mapCenter.longitude, it.stopLat, it.stopLon) }
+            .take(maxStops)
+    }
+
     val focusManager = LocalFocusManager.current
 
     Column(modifier = Modifier.pointerInput(Unit) { detectTapGestures(onTap = {
@@ -267,24 +300,60 @@ fun StopsWorkhorse() {
             modifier = Modifier.fillMaxSize(),
             cameraPositionState = cameraPositionState,
             uiSettings = MapUiSettings(myLocationButtonEnabled = isLocationPermissionGranted, compassEnabled = true),
-            properties = MapProperties(isMyLocationEnabled = isLocationPermissionGranted)
+            properties = MapProperties(isMyLocationEnabled = isLocationPermissionGranted, minZoomPreference = 5.0f)
         ) {
-            markerStates.forEach { markerState ->
-                val stop = stops.find { it.stopLat == markerState.position.latitude && it.stopLon == markerState.position.longitude }
-                if (stop != null) {
-                    Marker(
-                        state = markerState,
-                        title = stop.stopName, // Display stop name as the title
-                        snippet = "Lat: ${stop.stopLat}, Lon: ${stop.stopLon}, ID: ${stop.stopId}" // Display additional info as the snippet
-                    )
+            filteredStops.forEach { stop ->
+                // Using the custom MarkerInfoWindowContent instead of the standard Marker
+                MarkerInfoWindowContent(
+                    state = MarkerState(position = LatLng(stop.stopLat, stop.stopLon)),
+                    onInfoWindowClick = {
+                        // Navigate to another screen on info window click
+                        // TODO: FINISH
+                        navController.navigate(Screens.RouteScreen.name) {
+                            popUpTo(navController.graph.findStartDestination().id) {
+                                saveState = true
+                            }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    }
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.fillMaxWidth(0.8f)
+                    ) {
+                        Text(
+                            text = stop.stopName,
+                            modifier = Modifier.padding(top = 5.dp),
+                            style = TextStyle(
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                            )
+                        )
+                        HorizontalDivider(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 5.dp)
+                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(text = "Lat: ${stop.stopLat}")
+                            Spacer(modifier = Modifier.width(5.dp)) // Replaced VerticalDivider with Spacer for simplicity
+                            Text(text = "Lon: ${stop.stopLon}")
+                        }
+                        Text(text = "Stop ID: ${stop.stopId}")
+                        Text(
+                            text = "Tap to plan",
+                            modifier = Modifier.padding(top = 10.dp, bottom = 5.dp),
+                            style = TextStyle(
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.Blue
+                            )
+                        )
+                    }
                 }
             }
         }
-    }
-
-    trackMapInteraction(cameraPositionState) { newZoomLevel, newPosition ->
-        // Triggers appropriate function based on zoom or coordinate position changes.
-        updateMarkersBasedOnZoomAndPosition(stops, newZoomLevel, newPosition)
     }
 }
 
@@ -298,6 +367,7 @@ fun StopsWorkhorse() {
  * @param cameraCentralPosition - The coordinates corresponding to the current center of the map
  *        on the screen
  */
+/*
 fun updateMarkersBasedOnZoomAndPosition(stops: List<Stop>, zoomLevel: Float, cameraCentralPosition: LatLng) {
     // Calls a function to figure out how many stops should be displayed based on the zoom level
     val markerCount = calculateNumberOfMarkers(zoomLevel)
@@ -312,7 +382,7 @@ fun updateMarkersBasedOnZoomAndPosition(stops: List<Stop>, zoomLevel: Float, cam
     }.sortedBy { it.first }
 
     // Finds the "x" closest stops, where x = markerCount
-    val closestStops = distances.take(markerCount).map { it.second }
+    //val closestStops = distances.take(markerCount).map { it.second }
 
     // Clear all current markers stored and add new ones for the closest stops
     markerStates.clear()
@@ -320,6 +390,7 @@ fun updateMarkersBasedOnZoomAndPosition(stops: List<Stop>, zoomLevel: Float, cam
         markerStates.add(MarkerState(position = LatLng(stop.stopLat, stop.stopLon)))
     }
 }
+ */
 
 /**
  * Using the Haversine formula: calculates the distance between two sets of latitudes and longitudes
@@ -341,6 +412,13 @@ fun calculateDistance(lat1: Double, lon1: Double, lat2: Double, lon2: Double): D
     return earthRadius * c // Convert to distance
 }
 
+fun isWithinVisibleRange(stop: Stop, mapCenter: LatLng, mapZoomLevel: Float): Boolean {
+    val baseDistanceKm = 10000 // Adjust this value based on your requirements
+    val visibleRangeAtCurrentZoom = baseDistanceKm / Math.pow(2.0, (mapZoomLevel / 2).toDouble()).toFloat()
+    val distanceToCenter = calculateDistance(mapCenter.latitude, mapCenter.longitude, stop.stopLat, stop.stopLon)
+    return distanceToCenter <= visibleRangeAtCurrentZoom
+}
+
 /**
  * Based on the zoom level of the map, decides how many markers (stops) should be displayed on the
  * map. Subject to change depending on client preferences, but these numbers can be easily adjusted
@@ -348,6 +426,7 @@ fun calculateDistance(lat1: Double, lon1: Double, lat2: Double, lon2: Double): D
  * @param zoomLevel - The current zoom level of the active map
  * @return How many stops should be displayed on the map presently
  */
+/*
 fun calculateNumberOfMarkers(zoomLevel: Float): Int {
     // This is a placeholder function. Adjust the logic based on your requirements.
     if (zoomLevel <= 10.4) {
@@ -362,6 +441,7 @@ fun calculateNumberOfMarkers(zoomLevel: Float): Int {
         return 25
     }
 }
+*/
 
 /**
  * Detects when there are changes to either the zoom level or central camera position of the map.
@@ -376,18 +456,11 @@ fun trackMapInteraction(
     cameraPositionState: CameraPositionState,
     onCameraChange: (Float, LatLng) -> Unit
 ) {
-    // Tracks both the zoom level and the central position
-    val currentZoomLevel by remember { mutableStateOf(cameraPositionState.position.zoom) }
-    val currentPosition by remember { mutableStateOf(cameraPositionState.position.target) }
-
     LaunchedEffect(cameraPositionState.isMoving) {
         if (!cameraPositionState.isMoving) {
             val newZoomLevel = cameraPositionState.position.zoom
             val newPosition = cameraPositionState.position.target
-            // Check if either the zoom level or the position has changed
-            if (newZoomLevel != currentZoomLevel || newPosition != currentPosition) {
-                onCameraChange(newZoomLevel, newPosition)
-            }
+            onCameraChange(newZoomLevel, newPosition)
         }
     }
 }
@@ -397,74 +470,3 @@ fun trackMapInteraction(
 fun StopsViewPreview() {
     StopsView()
 }
-
-
-//        GoogleMap(
-//            modifier = Modifier.fillMaxSize(),
-//            cameraPositionState = cameraPositionState,
-//            uiSettings = MapUiSettings(
-//                myLocationButtonEnabled = isLocationPermissionGranted,
-//                compassEnabled = true
-//            ),
-//            properties = MapProperties(isMyLocationEnabled = isLocationPermissionGranted)
-//        ) {
-//            val selectedAgencyIds =
-//                agencies.filter { it.agencyName in selectedAgencyNames }.map { it.agencyID }.toSet()
-//
-//            // Filter stops based on the selected agency IDs and limit to maxStops
-//            val filteredStops = stops.filter { stop ->
-//                stopIdToAgencyIdMap[stop.stopId] in selectedAgencyIds
-//            }.take(maxStops)
-//
-//            filteredStops.forEach { stop ->
-//                // Using the custom MarkerInfoWindowContent instead of the standard Marker
-//                MarkerInfoWindowContent(
-//                    state = MarkerState(position = LatLng(stop.stopLat, stop.stopLon)),
-//                    onInfoWindowClick = {
-//                        // Navigate to another screen on info window click
-//                        // TODO: FINISH
-//                        navController.navigate(Screens.RouteScreen.name) {
-//                            popUpTo(navController.graph.findStartDestination().id) {
-//                                saveState = true
-//                            }
-//                            launchSingleTop = true
-//                            restoreState = true
-//                        }
-//                    }
-//                ) {
-//                    Column(
-//                        horizontalAlignment = Alignment.CenterHorizontally,
-//                        modifier = Modifier.fillMaxWidth(0.8f)
-//                    ) {
-//                        Text(
-//                            text = stop.stopName,
-//                            modifier = Modifier.padding(top = 5.dp),
-//                            style = TextStyle(
-//                                fontSize = 16.sp,
-//                                fontWeight = FontWeight.Bold,
-//                            )
-//                        )
-//                        HorizontalDivider(
-//                            modifier = Modifier
-//                                .fillMaxWidth()
-//                                .padding(vertical = 5.dp)
-//                        )
-//                        Row(verticalAlignment = Alignment.CenterVertically) {
-//                            Text(text = "Lat: ${stop.stopLat}")
-//                            Spacer(modifier = Modifier.width(5.dp)) // Replaced VerticalDivider with Spacer for simplicity
-//                            Text(text = "Lon: ${stop.stopLon}")
-//                        }
-//                        Text(text = "Stop ID: ${stop.stopId}")
-//                        Text(
-//                            text = "Tap to plan",
-//                            modifier = Modifier.padding(top = 10.dp, bottom = 5.dp),
-//                            style = TextStyle(
-//                                fontSize = 16.sp,
-//                                fontWeight = FontWeight.Bold,
-//                                color = Color.Blue
-//                            )
-//                        )
-//                    }
-//                }
-//            }
-//        }
