@@ -9,7 +9,6 @@ package edu.miamioh.csi.capstone.busapp.views
 
 import android.Manifest
 import android.content.pm.PackageManager
-import android.util.Log
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -72,7 +71,6 @@ import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
 import edu.miamioh.csi.capstone.busapp.CSVHandler
 import edu.miamioh.csi.capstone.busapp.R
-import edu.miamioh.csi.capstone.busapp.Stop
 import edu.miamioh.csi.capstone.busapp.navigation.Screens
 import edu.miamioh.csi.capstone.busapp.ui.theme.Black
 import edu.miamioh.csi.capstone.busapp.ui.theme.Gray400
@@ -84,9 +82,6 @@ import kotlin.math.min
 import kotlin.math.sin
 import kotlin.math.sqrt
 
-// A mutable list of marker states. This variable stores whatever stops will
-// be actively displayed at a specific moment in time based on user actions
-var markerStates = mutableStateListOf<MarkerState>()
 
 @Composable
 fun StopsView() {
@@ -122,17 +117,21 @@ fun StopsWorkhorse() {
     /*
      * Sets up initial map settings for when user first loads up the Stops page upon opening app.
      * This includes:
-     * The initial starting coordinates to center upon when the map is first loaded
-     * The initial zoom level of the map
+     * The initial starting coordinates to center upon when the map is first loaded.
+     * The initial center coordinates of the map being actively displayed on the screen.
+     * The cameraPositionState of the app after the initial boot-up sequence.
      */
     val initialPosition = LatLng(39.2, 16.25) // Cosenza
     var mapCenter by remember { mutableStateOf(initialPosition) }
-
     val cameraPositionState = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(initialPosition, currentZoomLevel)
     }
 
+    // Upon starting the app, the first agency pulled from the "agencies" variable will be
+    // auto-selected and active on the map.
     val defaultAgencyName = agencies.firstOrNull()?.agencyName ?: ""
+
+    // Returns all agency names that are presently selected via the dropdown.
     val selectedAgencyNames = remember { mutableStateListOf(defaultAgencyName) }
     var expanded by remember { mutableStateOf(false) }
 
@@ -141,29 +140,32 @@ fun StopsWorkhorse() {
         CSVHandler.getStopIdToAgencyIdMap(stops, routes, trips, stopTimes)
     }
 
+    /*
+     * selectedAgencyIds identifies which agencies have been selected by the user to be displayed
+     * on the map. filterStops checks each of its elements to see if a stop's agency is found here.
+     *
+     * It is automatically updated whenever selectedAgencyNames gets updated (via the dropdown).
+     */
     var selectedAgencyIds = remember {
         derivedStateOf {
             agencies.filter { it.agencyName in selectedAgencyNames }.map { it.agencyID }.toSet()
         }
     }.value
 
+    // Sets the initial number of stops displayed when the app is started.
     var maxStopsInput by remember { mutableStateOf("50") }
     var maxStops by remember { mutableIntStateOf(50) }
-    //Log.i("maxStopsBefore", "" + maxStops)
 
-    // Map interaction tracking
+    // Tracks whenever the center coordinates of the map changes, and updates mapCenter accordingly
+    // for use in distance calculations, etc.
     trackMapInteraction(cameraPositionState) { zoomLevel, center ->
         mapCenter = center
-        //Log.i("maxStops", "" + maxStops)
-        //maxStops = minOf(maxStops, calculateNumberOfMarkers(zoomLevel))
-        //Log.i("# of Stops based on Zoom", "" + calculateNumberOfMarkers(zoomLevel))
-        //Log.i("# of Stops Displayed", "" + maxStops)
     }
 
-    // Dynamically calculate filtered stops based on current criteria
+    // Dynamically calculate filtered stops based on all relevant criteria
     val filteredStops = remember(mapCenter, selectedAgencyIds, maxStops) {
-        Log.i("Agency Names", "" + selectedAgencyIds)
-        Log.i("# of Stops Displayed", min(maxStops, 150).toString())
+        //Log.i("Agency Names", "" + selectedAgencyIds)
+        //Log.i("# of Stops Displayed", min(maxStops, 150).toString())
         maxStopsInput = min(maxStops, 150).toString()
         stops.filter { stop ->
             stopIdToAgencyIdMap[stop.stopId] in selectedAgencyIds &&
@@ -174,6 +176,10 @@ fun StopsWorkhorse() {
 
     val focusManager = LocalFocusManager.current
 
+    /*
+     * Code for the top bar of the Stops page. Contains various fields that the user can manipulate
+     * (including what agencies are active, and the max number of stops to display).
+     */
     Column(modifier = Modifier.pointerInput(Unit) { detectTapGestures(onTap = {
         focusManager.clearFocus()
     }) }) {
@@ -186,6 +192,7 @@ fun StopsWorkhorse() {
                 .fillMaxWidth(),
         ) {
 
+            // Creates a button that, when pressed, activates the dropdown menu full of agencies.
             OutlinedButton(
                 onClick = {
                     expanded = !expanded
@@ -213,7 +220,8 @@ fun StopsWorkhorse() {
 
             Spacer(modifier = Modifier.weight(1f))
 
-
+            // Creates a text field where the user can input the max number of stops they want
+            // displayed at a certain moment in time.
             OutlinedTextField(
                 value = maxStopsInput,
                 onValueChange = { maxStopsInput = it.filter { char -> char.isDigit() } },
@@ -225,7 +233,7 @@ fun StopsWorkhorse() {
                         }
                     },
                 ),
-//                    label = { Text("Max Stops", style = TextStyle(fontSize = 10.sp)) },
+
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 modifier = Modifier
@@ -250,7 +258,8 @@ fun StopsWorkhorse() {
                 }
             )
 
-
+            // Creates a button that, when pressed, formally changes the variable that stores how
+            // many stops should be presently displayed.
             OutlinedButton(
                 onClick = {
                     maxStopsInput.toIntOrNull()?.let {
@@ -274,6 +283,7 @@ fun StopsWorkhorse() {
             }
         }
 
+        // Specific code for the dropdown menu and how the agency names are displayed.
         DropdownMenu(
             expanded = expanded,
             onDismissRequest = { expanded = !expanded },
@@ -303,6 +313,9 @@ fun StopsWorkhorse() {
                 )
             }
         }
+
+        // Generates the basic Google Maps interface you see on the screen, and displays stops in
+        // the form of markers as appropriate.
         GoogleMap(
             modifier = Modifier.fillMaxSize(),
             cameraPositionState = cameraPositionState,
@@ -314,7 +327,7 @@ fun StopsWorkhorse() {
                 MarkerInfoWindowContent(
                     state = MarkerState(position = LatLng(stop.stopLat, stop.stopLon)),
                     onInfoWindowClick = {
-                        // Navigate to another screen on info window click
+                        // Should navigate to another screen on info window click
                         // TODO: FINISH
                         navController.navigate(Screens.RouteScreen.name) {
                             popUpTo(navController.graph.findStartDestination().id) {
@@ -344,7 +357,8 @@ fun StopsWorkhorse() {
                         )
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(text = "Lat: ${stop.stopLat}")
-                            Spacer(modifier = Modifier.width(5.dp)) // Replaced VerticalDivider with Spacer for simplicity
+                            // Replaced VerticalDivider with Spacer for simplicity
+                            Spacer(modifier = Modifier.width(5.dp))
                             Text(text = "Lon: ${stop.stopLon}")
                         }
                         Text(text = "Stop ID: ${stop.stopId}")
@@ -365,41 +379,6 @@ fun StopsWorkhorse() {
 }
 
 /**
- * A function that updates the list of markers that should be actively displayed on the map whenever
- * a user gesture is recorded. It finds out how many stops should be displayed, as well as which
- * stops should be displayed (based on Haversine formula's distance from a set point)
- *
- * @param stops - Fed from CSVHandler, contains all stop information taken from CORe website
- * @param zoomLevel - The current zoom level of the map
- * @param cameraCentralPosition - The coordinates corresponding to the current center of the map
- *        on the screen
- */
-/*
-fun updateMarkersBasedOnZoomAndPosition(stops: List<Stop>, zoomLevel: Float, cameraCentralPosition: LatLng) {
-    // Calls a function to figure out how many stops should be displayed based on the zoom level
-    val markerCount = calculateNumberOfMarkers(zoomLevel)
-
-    // Some helpful debugging code involving Logcat
-    // Log.i("checkZoomLevel", "" + zoomLevel)
-    // Log.i("DEBUG", "" + markerCount)
-
-    // Calculate distances from the camera's central coordinates to each individual stop
-    val distances = stops.map { stop ->
-        calculateDistance(cameraCentralPosition.latitude, cameraCentralPosition.longitude, stop.stopLat, stop.stopLon) to stop
-    }.sortedBy { it.first }
-
-    // Finds the "x" closest stops, where x = markerCount
-    //val closestStops = distances.take(markerCount).map { it.second }
-
-    // Clear all current markers stored and add new ones for the closest stops
-    markerStates.clear()
-    closestStops.forEach { stop ->
-        markerStates.add(MarkerState(position = LatLng(stop.stopLat, stop.stopLon)))
-    }
-}
- */
-
-/**
  * Using the Haversine formula: calculates the distance between two sets of latitudes and longitudes
  *
  * @param lat1 - The latitude of the first set of coordinates
@@ -417,13 +396,6 @@ fun calculateDistance(lat1: Double, lon1: Double, lat2: Double, lon2: Double): D
             sin(lonDistance / 2) * sin(lonDistance / 2)
     val c = 2 * atan2(sqrt(a), sqrt(1 - a))
     return earthRadius * c // Convert to distance
-}
-
-fun isWithinVisibleRange(stop: Stop, mapCenter: LatLng, mapZoomLevel: Float): Boolean {
-    val baseDistanceKm = 10000 // Adjust this value based on your requirements
-    val visibleRangeAtCurrentZoom = baseDistanceKm / Math.pow(2.0, (mapZoomLevel / 2).toDouble()).toFloat()
-    val distanceToCenter = calculateDistance(mapCenter.latitude, mapCenter.longitude, stop.stopLat, stop.stopLon)
-    return distanceToCenter <= visibleRangeAtCurrentZoom
 }
 
 /**
