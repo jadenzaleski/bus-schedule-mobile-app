@@ -164,15 +164,18 @@ fun StopsWorkhorse() {
 
     // Dynamically calculate filtered stops based on all relevant criteria
     val filteredStops = remember(mapCenter, selectedAgencyIds, maxStops) {
-        //Log.i("Agency Names", "" + selectedAgencyIds)
-        //Log.i("# of Stops Displayed", min(maxStops, 150).toString())
         maxStopsInput = min(maxStops, 150).toString()
         stops.filter { stop ->
-            stopIdToAgencyIdMap[stop.stopId] in selectedAgencyIds &&
+            val agencyIdsForStop = stopIdToAgencyIdMap[stop.stopId]
+            //Log.i("All Agencies Associated with Stops", "" + stopIdToAgencyIdMap[stop.stopId])
+            //Log.i("All Agencies Selected by User", "" + selectedAgencyIds)
+
+            agencyIdsForStop != null && agencyIdsForStop.any { it in selectedAgencyIds } &&
                     calculateDistance(mapCenter.latitude, mapCenter.longitude, stop.stopLat, stop.stopLon) <= 60
         }.sortedBy { calculateDistance(mapCenter.latitude, mapCenter.longitude, it.stopLat, it.stopLon) }
             .take(min(maxStops, 150))
     }
+
 
     val focusManager = LocalFocusManager.current
 
