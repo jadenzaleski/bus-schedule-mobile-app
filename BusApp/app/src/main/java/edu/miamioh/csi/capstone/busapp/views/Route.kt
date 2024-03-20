@@ -9,6 +9,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -19,9 +20,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.ButtonColors
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
@@ -41,6 +42,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -50,8 +52,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -70,13 +72,14 @@ import edu.miamioh.csi.capstone.busapp.CSVHandler
 import edu.miamioh.csi.capstone.busapp.R
 import edu.miamioh.csi.capstone.busapp.navigation.Screens
 import edu.miamioh.csi.capstone.busapp.ui.theme.Black
-import edu.miamioh.csi.capstone.busapp.ui.theme.Gray400
 import edu.miamioh.csi.capstone.busapp.ui.theme.Green
 import edu.miamioh.csi.capstone.busapp.ui.theme.Light
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
 import kotlin.math.min
+import kotlin.random.Random
+import kotlin.system.measureTimeMillis
 
 @Composable
 fun RouteView() {
@@ -98,7 +101,7 @@ fun RouteView() {
     }
 
     /*
-     * Sets up initial map settings for when user first loads up the Stops page upon opening app.
+     * Sets up initial map settings for when user first loads up the Routes page upon opening app.
      * This includes:
      * The initial starting coordinates to center upon when the map is first loaded
      * The initial zoom level of the map
@@ -109,40 +112,32 @@ fun RouteView() {
     val cameraPositionState = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(initialPosition, currentZoomLevel)
     }
-
+    // Agencies
     val defaultAgencyName = agencies.firstOrNull()?.agencyName ?: ""
     val selectedAgencyNames = remember { mutableStateListOf(defaultAgencyName) }
-    var expanded by remember { mutableStateOf(false) }
-
+    var filterAgenciesExpanded by remember { mutableStateOf(false) }
     // Prepare the mapping of stop IDs to agency IDs
     val stopIdToAgencyIdMap = remember {
         CSVHandler.getStopIdToAgencyIdMap(stops, routes, trips, stopTimes)
     }
-
+    // List of selected agencies
     var selectedAgencyIds = remember {
         derivedStateOf {
             agencies.filter { it.agencyName in selectedAgencyNames }.map { it.agencyID }.toSet()
         }
     }.value
-
-    var maxStopsInput by remember { mutableStateOf("50") }
-    var maxStops by remember { mutableIntStateOf(100) }
-    //Log.i("maxStopsBefore", "" + maxStops)
+    // Max stops to show on the Map, this will be constant for routes. for now.
+    var maxStops by remember { mutableIntStateOf(150) }
 
     // Map interaction tracking
     trackMapInteraction(cameraPositionState) { zoomLevel, center ->
         mapCenter = center
-        //Log.i("maxStops", "" + maxStops)
-        //maxStops = minOf(maxStops, calculateNumberOfMarkers(zoomLevel))
-        //Log.i("# of Stops based on Zoom", "" + calculateNumberOfMarkers(zoomLevel))
-        //Log.i("# of Stops Displayed", "" + maxStops)
     }
 
     // Dynamically calculate filtered stops based on current criteria
     val filteredStops = remember(mapCenter, selectedAgencyIds, maxStops) {
         Log.i("Agency Names", "" + selectedAgencyIds)
         Log.i("# of Stops Displayed", min(maxStops, 150).toString())
-        maxStopsInput = min(maxStops, 150).toString()
         stops.filter { stop ->
             stopIdToAgencyIdMap[stop.stopId] in selectedAgencyIds &&
                     calculateDistance(
@@ -162,8 +157,11 @@ fun RouteView() {
             .take(min(maxStops, 150))
     }
 
+    // allow for clearing of keyboard
     val focusManager = LocalFocusManager.current
-    // set initial date to current time
+
+    // +++ FORM +++
+    // set initial date in form to current time
     var selectedTime by remember {
         mutableStateOf(
             SimpleDateFormat(
@@ -172,9 +170,12 @@ fun RouteView() {
             ).format(Calendar.getInstance().time)
         )
     }
-    var startID by remember { mutableStateOf("") }
-    var stopID by remember { mutableStateOf("") }
+    var StartIsCurrentLocation = remember { mutableStateOf(false) }
+    var EndIsCurrentLocation = remember { mutableStateOf(false) }
+    var StartSearchString by rememberSaveable { mutableStateOf("") }
+    var EndSearchString by rememberSaveable { mutableStateOf("") }
 
+    // Column that holds the map
     Column(modifier = Modifier.pointerInput(Unit) {
         detectTapGestures(onTap = {
             focusManager.clearFocus()
@@ -182,7 +183,7 @@ fun RouteView() {
     }) {
 
         GoogleMap(
-            modifier = Modifier.fillMaxHeight(0.7f),
+            modifier = Modifier.fillMaxHeight(0.6f),
             cameraPositionState = cameraPositionState,
             uiSettings = MapUiSettings(
                 myLocationButtonEnabled = isLocationPermissionGranted,
@@ -193,6 +194,8 @@ fun RouteView() {
                 minZoomPreference = 5.0f
             )
         ) {
+
+
             filteredStops.forEach { stop ->
                 // Using the custom MarkerInfoWindowContent instead of the standard Marker
                 MarkerInfoWindowContent(
@@ -245,43 +248,14 @@ fun RouteView() {
                 }
             }
         }
-
-        DropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = !expanded },
-            modifier = Modifier.fillMaxWidth(0.65F),
-
-            ) {
-            // Potentially add a "Clear All" button here.
-            agencies.forEach { agency ->
-                val isSelected = agency.agencyName in selectedAgencyNames
-                DropdownMenuItem(
-                    text = { Text(agency.agencyName) },
-                    onClick = {
-                        if (isSelected) {
-                            selectedAgencyNames.remove(agency.agencyName)
-                        } else {
-                            selectedAgencyNames.add(agency.agencyName)
-                        }
-
-                    },
-                    leadingIcon = {
-                        Checkbox(
-                            checked = isSelected,
-                            onCheckedChange = null, // Interaction handled by the item's onClick
-                            colors = CheckboxDefaults.colors(checkedColor = Green)
-                        )
-                    }
-                )
-            }
-        }
-
+        // Column to hold the Form.
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(horizontal = 15.dp)
                 .background(Light), verticalArrangement = Arrangement.SpaceEvenly
         ) {
+            // Row that holds the agencies button and time button
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -289,7 +263,7 @@ fun RouteView() {
             ) {
                 OutlinedButton(
                     onClick = {
-                        expanded = !expanded
+                        filterAgenciesExpanded = !filterAgenciesExpanded
                         focusManager.clearFocus()
                     },
                     colors = ButtonColors(
@@ -298,9 +272,8 @@ fun RouteView() {
                         disabledContainerColor = Color.Gray,
                         disabledContentColor = Color.Gray
                     ),
-                    border = BorderStroke(2.dp, Green),
+                    border = BorderStroke(1.dp, Green),
                     modifier = Modifier
-                        .padding(start = 5.dp)
                         .height(50.dp),
                     shape = RoundedCornerShape(20)
                 ) {
@@ -337,9 +310,8 @@ fun RouteView() {
                             true
                         ).show()
                     },
-                    border = BorderStroke(2.dp, Green),
+                    border = BorderStroke(1.dp, Green),
                     modifier = Modifier
-                        .padding(start = 5.dp)
                         .height(50.dp),
                     shape = RoundedCornerShape(20)
                 ) {
@@ -352,84 +324,176 @@ fun RouteView() {
                 }
 
             }
+            // Row that holds the FROM: location button and text-field
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                Text(
+                    text = "From:",
+                    style = TextStyle(fontSize = 24.sp, fontFamily = FontFamily.Monospace),
+                    modifier = Modifier.padding(end = 10.dp)
+                )
+
+                OutlinedButton(
+                    onClick = {
+                        StartIsCurrentLocation.value = StartIsCurrentLocation.value.not()
+                        focusManager.clearFocus()
+                    },
+                    colors = ButtonColors(
+                        containerColor = if (StartIsCurrentLocation.value) Green else Color.Transparent,
+                        contentColor = if (StartIsCurrentLocation.value) Color.White else Color.Gray,
+                        disabledContainerColor = Color.Gray,
+                        disabledContentColor = Color.Gray
+                    ),
+                    border = BorderStroke(
+                        1.dp,
+                        if (StartIsCurrentLocation.value) Green else Color.Gray
+                    ),
+                    modifier = Modifier
+                        .height(50.dp)
+                        .width(50.dp),
+                    shape = RoundedCornerShape(20),
+                    contentPadding = PaddingValues(horizontal = 1.dp)
+                ) {
+                    Icon(
+                        painterResource(id = R.drawable.baseline_my_location_24),
+                        contentDescription = null,
+                        Modifier.padding(horizontal = 1.dp)
+                    )
+                }
+
                 OutlinedTextField(
-                    value = startID,
-                    onValueChange = { startID = it.filter { char -> char.isDigit() } },
+                    value = StartSearchString,
+                    onValueChange = { StartSearchString = it },
                     keyboardActions = KeyboardActions(
                         onDone = {
                             focusManager.clearFocus()
                         },
                     ),
-                    label = { Text("Start ID", style = TextStyle(fontSize = 15.sp)) },
+                    placeholder = {
+                        Text(
+                            text = "Search Anything...",
+                            fontSize = 15.sp,
+                            lineHeight = 20.sp,
+                            color = Color.Gray
+                        )
+                    },
                     singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier
-                        .width(150.dp),
+                        .fillMaxWidth()
+                        .height(50.dp)
+                        .padding(start = 10.dp),
                     colors = TextFieldDefaults.colors(
-                        unfocusedIndicatorColor = Gray400,
-                        focusedIndicatorColor = Gray400,
+                        unfocusedIndicatorColor = Color.Gray,
+                        focusedIndicatorColor = Color.Gray,
                         focusedTextColor = Black,
                         focusedLabelColor = Color.DarkGray,
                         unfocusedLabelColor = Color.DarkGray,
                         unfocusedContainerColor = Color.Transparent,
                         focusedContainerColor = Color.Transparent,
+                        cursorColor = Color.Gray
                     ),
                     shape = RoundedCornerShape(20),
                     leadingIcon = {
                         Icon(
-                            painterResource(id = R.drawable.baseline_numbers_24),
+                            Icons.Default.Search,
                             contentDescription = null,
                             modifier = Modifier
                         )
-                    }
+                    },
                 )
-                OutlinedTextField(
-                    value = stopID,
-                    onValueChange = { stopID = it.filter { char -> char.isDigit() } },
-                    keyboardActions = KeyboardActions(
-                        onDone = {
-                            focusManager.clearFocus()
-                        },
-                    ),
-                    label = { Text("Stop ID", style = TextStyle(fontSize = 15.sp)) },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier
-                        .width(150.dp),
-                    colors = TextFieldDefaults.colors(
-                        unfocusedIndicatorColor = Gray400,
-                        focusedIndicatorColor = Gray400,
-                        focusedTextColor = Black,
-                        focusedLabelColor = Color.DarkGray,
-                        unfocusedLabelColor = Color.DarkGray,
-                        unfocusedContainerColor = Color.Transparent,
-                        focusedContainerColor = Color.Transparent,
-                    ),
-                    shape = RoundedCornerShape(20),
-                    leadingIcon = {
-                        Icon(
-                            painterResource(id = R.drawable.baseline_numbers_24),
-                            contentDescription = null,
-                            modifier = Modifier
-                        )
-                    }
-                )
+
+
             }
+            // Row that holds the TO: location button and text-field
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "To:  ",
+                    style = TextStyle(fontSize = 24.sp, fontFamily = FontFamily.Monospace),
+                    modifier = Modifier.padding(end = 10.dp)
+                )
+
+                OutlinedButton(
+                    onClick = {
+                        EndIsCurrentLocation.value = EndIsCurrentLocation.value.not()
+                        focusManager.clearFocus()
+                    },
+                    colors = ButtonColors(
+                        containerColor = if (EndIsCurrentLocation.value) Green else Color.Transparent,
+                        contentColor = if (EndIsCurrentLocation.value) Color.White else Color.Gray,
+                        disabledContainerColor = Color.Gray,
+                        disabledContentColor = Color.Gray
+                    ),
+                    border = BorderStroke(
+                        1.dp,
+                        if (EndIsCurrentLocation.value) Green else Color.Gray
+                    ),
+                    modifier = Modifier
+                        .height(50.dp)
+                        .width(50.dp),
+                    shape = RoundedCornerShape(20),
+                    contentPadding = PaddingValues(horizontal = 1.dp)
+                ) {
+                    Icon(
+                        painterResource(id = R.drawable.baseline_my_location_24),
+                        contentDescription = null,
+                        Modifier.padding(horizontal = 1.dp)
+                    )
+                }
+
+                OutlinedTextField(
+                    value = EndSearchString,
+                    onValueChange = { EndSearchString = it },
+                    keyboardActions = KeyboardActions(
+                        onDone = {
+                            focusManager.clearFocus()
+                        },
+                    ),
+                    placeholder = {
+                        Text(
+                            text = "Search Anything...",
+                            fontSize = 15.sp,
+                            lineHeight = 20.sp,
+                            color = Color.Gray
+                        )
+                    },
+                    singleLine = true,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(50.dp)
+                        .padding(start = 10.dp),
+                    colors = TextFieldDefaults.colors(
+                        unfocusedIndicatorColor = Color.Gray,
+                        focusedIndicatorColor = Color.Gray,
+                        focusedTextColor = Black,
+                        focusedLabelColor = Color.DarkGray,
+                        unfocusedLabelColor = Color.DarkGray,
+                        unfocusedContainerColor = Color.Transparent,
+                        focusedContainerColor = Color.Transparent,
+                        cursorColor = Color.Gray
+                    ),
+                    shape = RoundedCornerShape(20),
+                    leadingIcon = {
+                        Icon(
+                            Icons.Default.Search,
+                            contentDescription = null,
+                            modifier = Modifier
+                        )
+                    },
+                )
+
+
+            }
+            // EXECUTE button
             OutlinedButton(
                 onClick = {
-                    if (stopID != "" && startID != "")
-                    // Calculate Route and show
-                        calcAndDisplayRoute(
-                            startID.toInt(),
-                            stopID.toInt(),
-                            selectedTime,
-                            selectedAgencyIds.toList()
-                        )
+
                 },
                 colors = ButtonColors(
                     containerColor = Color.Transparent,
@@ -445,7 +509,38 @@ fun RouteView() {
             ) {
                 Text(text = "Go")
             }
+        }
 
+    }
+
+    // Dropdown menu for list of agencies
+    DropdownMenu(
+        expanded = filterAgenciesExpanded,
+        onDismissRequest = { filterAgenciesExpanded = !filterAgenciesExpanded },
+        modifier = Modifier.fillMaxWidth(0.65F),
+
+        ) {
+        // Potentially add a "Clear All" button here.
+        agencies.forEach { agency ->
+            val isSelected = agency.agencyName in selectedAgencyNames
+            DropdownMenuItem(
+                text = { Text(agency.agencyName) },
+                onClick = {
+                    if (isSelected) {
+                        selectedAgencyNames.remove(agency.agencyName)
+                    } else {
+                        selectedAgencyNames.add(agency.agencyName)
+                    }
+
+                },
+                leadingIcon = {
+                    Checkbox(
+                        checked = isSelected,
+                        onCheckedChange = null, // Interaction handled by the item's onClick
+                        colors = CheckboxDefaults.colors(checkedColor = Green)
+                    )
+                }
+            )
         }
     }
 
@@ -461,7 +556,38 @@ fun calcAndDisplayRoute(
         "calcAndDisplayRoute",
         "StartID: $startID, StopID: $stopID, Arrival Time: $arrivalTime, Allowed Agency IDs: ${allowedAgencyIDs}."
     )
-    // find best route and call snap to roads which needs a list of lat an lon coords.
+    val graph = Graph(6000) // Create a graph with 1000 nodes
+    val elapsedTime = measureTimeMillis {
+        for (i in 0 until graph.numberOfNodes) {
+            for (j in 0 until 25) {
+                if (i != j) { // Avoid adding self-loops
+                    graph.addEdge(i, Random.nextInt(0, graph.numberOfNodes - 1))
+                }
+            }
+        }
+        // For a realistic timing, you might want to add many more edges or do other intensive operations
+    }
+    Log.d("GRAPH", "DONE IN: $elapsedTime milliseconds")
+}
+
+class Graph(val numberOfNodes: Int) {
+    private val adjacencyList = MutableList<MutableList<Int>>(numberOfNodes) { mutableListOf() }
+
+    fun addEdge(node1: Int, node2: Int) {
+        adjacencyList[node1].add(node2)
+        // For undirected graph, add the reverse edge as well
+        // adjacencyList[node2].add(node1)
+    }
+
+    fun displayGraph() {
+        for (i in adjacencyList.indices) {
+            print("Node $i: ")
+            for (j in adjacencyList[i]) {
+                print("$j ")
+            }
+            println()
+        }
+    }
 }
 
 @Composable
