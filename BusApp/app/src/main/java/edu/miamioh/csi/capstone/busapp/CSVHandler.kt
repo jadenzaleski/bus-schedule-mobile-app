@@ -793,4 +793,65 @@ object CSVHandler {
         return trips
     }
 
+    fun getAgencyIdToStopsMap(
+        stops: List<Stop>,
+        routes: List<Route>,
+        trips: List<Trip>,
+        stopTimes: List<StopTime>
+    ): Map<Int, List<Stop>> {
+        val agencyIdToRouteIds = this.routes.groupBy { it.agencyID }.mapValues { it.value.map(Route::routeID) }
+        val routeIdToTripIds = this.trips.groupBy { it.routeID }.mapValues { it.value.map(Trip::tripID) }
+        val tripIdToStopIds = this.stopTimes.groupBy { it.tripID }.mapValues { it.value.map(StopTime::stopID).distinct() }
+        val stopIdToStop = this.stops.associateBy { it.stopId }
+
+        val agencyIdToStops = mutableMapOf<Int, MutableList<Stop>>()
+
+        agencyIdToRouteIds.forEach { (agencyId, routeIds) ->
+            routeIds.forEach { routeId ->
+                routeIdToTripIds[routeId]?.forEach { tripId ->
+                    tripIdToStopIds[tripId]?.forEach { stopId ->
+                        stopIdToStop[stopId]?.let { stop ->
+                            agencyIdToStops.getOrPut(agencyId) { mutableListOf() }.add(stop)
+                        }
+                    }
+                }
+            }
+        }
+
+        return agencyIdToStops
+    }
+
+    fun getStopIdToAgencyIdMap(
+        stops: List<Stop>,
+        routes: List<Route>,
+        trips: List<Trip>,
+        stopTimes: List<StopTime>
+    ): Map<Int, Int> {
+        val routeIdToAgencyId = routes.associate { it.routeID to it.agencyID }
+        val tripIdToRouteId = trips.associate { it.tripID to it.routeID }
+        val stopTimeToTripId = stopTimes.groupBy { it.stopID }.mapValues { entry ->
+            entry.value.map { it.tripID }.distinct()
+        }
+
+        val stopIdToAgencyId = mutableMapOf<Int, Int>()
+
+        stopTimeToTripId.forEach { (stopId, tripIds) ->
+            tripIds.forEach { tripId ->
+                val routeId = tripIdToRouteId[tripId]
+                val agencyId = routeId?.let { routeIdToAgencyId[it] }
+                if (agencyId != null) {
+                    // This assumes a stop can be associated with multiple trips (and potentially routes),
+                    // but it simplifies to one agency ID per stop based on the first found association.
+                    // If stops can truly belong to multiple agencies, this approach needs reevaluation.
+                    stopIdToAgencyId[stopId] = agencyId
+                    return@forEach // Skip further trips once an agency is found for the stop
+                }
+            }
+        }
+
+        return stopIdToAgencyId
+    }
+
+
+
 }
