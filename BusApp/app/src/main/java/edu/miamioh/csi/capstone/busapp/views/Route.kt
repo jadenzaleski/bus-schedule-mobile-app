@@ -1,9 +1,13 @@
 package edu.miamioh.csi.capstone.busapp.views
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.app.TimePickerDialog
 import android.content.pm.PackageManager
+import android.location.Location
 import android.util.Log
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -21,6 +25,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.ButtonColors
@@ -47,6 +52,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
@@ -60,6 +67,9 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.rememberNavController
+import coil.compose.AsyncImage
+import com.google.android.gms.location.FusedLocationProviderClient
+import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.GoogleMap
@@ -72,23 +82,67 @@ import edu.miamioh.csi.capstone.busapp.CSVHandler
 import edu.miamioh.csi.capstone.busapp.R
 import edu.miamioh.csi.capstone.busapp.navigation.Screens
 import edu.miamioh.csi.capstone.busapp.ui.theme.Black
+import edu.miamioh.csi.capstone.busapp.ui.theme.Gray300
 import edu.miamioh.csi.capstone.busapp.ui.theme.Green
 import edu.miamioh.csi.capstone.busapp.ui.theme.Light
+import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
+import org.json.JSONException
+import org.json.JSONObject
+import java.io.BufferedReader
+import java.io.IOException
+import java.io.InputStreamReader
+import java.net.URL
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
 import kotlin.math.min
-import kotlin.random.Random
-import kotlin.system.measureTimeMillis
+
+
+// struct for places that we get from api
+data class Place(
+    var name: String,
+    var lat: Double,
+    var lon: Double,
+    var address: String,
+    var iconURL: String
+)
+
+// user location
+var userLon = 0.0
+var userLat = 0.0
 
 @Composable
 fun RouteView() {
+    val context = LocalContext.current
+    // location permissions
+    val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
+    val locationPermissionLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
+            if (isGranted) {
+                getLastLocation(fusedLocationClient)
+            }
+        }
+    // Check for location permissions
+    if (ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+    ) {
+        // If permissions granted, get the last known location
+        getLastLocation(fusedLocationClient)
+    } else {
+        // Request location permissions
+        locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+    }
+    // csv
     val stops = CSVHandler.getStops()
     val routes = CSVHandler.getRoutes()
     val trips = CSVHandler.getTrips()
     val stopTimes = CSVHandler.getStopTimes()
     val agencies = CSVHandler.getAgencies()
-    val context = LocalContext.current
     val navController = rememberNavController()
 
     var isLocationPermissionGranted by remember { mutableStateOf(false) }
@@ -170,17 +224,76 @@ fun RouteView() {
             ).format(Calendar.getInstance().time)
         )
     }
-    var StartIsCurrentLocation = remember { mutableStateOf(false) }
-    var EndIsCurrentLocation = remember { mutableStateOf(false) }
-    var StartSearchString by rememberSaveable { mutableStateOf("") }
-    var EndSearchString by rememberSaveable { mutableStateOf("") }
+    var startIsCurrentLocation = remember { mutableStateOf(false) }
+    var endIsCurrentLocation = remember { mutableStateOf(false) }
+    var startSearchString by rememberSaveable { mutableStateOf("") }
+    var endSearchString by rememberSaveable { mutableStateOf("") }
+    var startSearchResultsExpanded by remember { mutableStateOf(false) }
+    var endSearchResultsExpanded by remember { mutableStateOf(false) }
+    var searchResults = remember { mutableStateListOf(Place("", 0.0, 0.0, "", "")) }
+    var selectedStartPlace = remember { mutableStateOf(Place("", 0.0, 0.0, "", "")) }
+    var selectedEndPlace = remember { mutableStateOf(Place("", 0.0, 0.0, "", "")) }
+
+    // search function calls google API to find 20 results that match the users query.
+    @OptIn(DelicateCoroutinesApi::class)
+    fun search(query: String) {
+        GlobalScope.launch(Dispatchers.IO) {
+            try {
+                val key = "&key=AIzaSyArxmzr9k53luII5xTXHT98rCV2dWEZU_E"
+                val location = "&location=" + mapCenter.latitude + "%2C" + mapCenter.longitude
+                val url =
+                    "https://maps.googleapis.com/maps/api/place/textsearch/json?query=" + query + location + key + "&rankby=distance"
+                val connection = URL(url).openConnection()
+                val reader = BufferedReader(InputStreamReader(connection.getInputStream()))
+                val jsonData = StringBuilder()
+
+                var line: String?
+                while (reader.readLine().also { line = it } != null) {
+                    jsonData.append(line)
+                }
+                reader.close()
+
+                val jsonObject = JSONObject(jsonData.toString())
+
+//            Log.i("JSON", jsonObject.toString())
+                // and them to an array and go through the json pulling out the necessary values
+                // then adding them to a list Compose can use.
+                val resultsArray = jsonObject.getJSONArray("results")
+                searchResults.clear()
+                for (i in 0 until resultsArray.length()) {
+                    val resultObj = resultsArray.getJSONObject(i)
+                    val name = resultObj.getString("name")
+                    val formattedAddress = resultObj.getString("formatted_address")
+                    val iconURL = resultObj.getString("icon")
+                    val geometryObj = resultObj.getJSONObject("geometry")
+                    val locationObj = geometryObj.getJSONObject("location")
+                    val lat = locationObj.getDouble("lat")
+                    val lon = locationObj.getDouble("lng")
+//                    Log.i("PlaceInfo", "Name: $name, Address: $formattedAddress, Latitude: $lat, Longitude: $lon, Icon: $iconURL")
+                    searchResults.add(Place(name, lat, lon, formattedAddress, iconURL))
+                    // sort by distance from the user
+                    searchResults.sortBy { x ->
+                        calculateDistance(userLat, userLon, x.lat, x.lon)
+                    }
+
+                }
+            } catch (e: IOException) {
+                Log.i("Error", "Error occurred: ${e.message}")
+            } catch (e: JSONException) {
+                Log.i("Error", "Error occurred while parsing JSON: ${e.message}")
+            }
+        }
+    }
+
 
     // Column that holds the map
-    Column(modifier = Modifier.pointerInput(Unit) {
-        detectTapGestures(onTap = {
-            focusManager.clearFocus()
-        })
-    }) {
+    Column(
+        verticalArrangement = Arrangement.Top,
+        modifier = Modifier.pointerInput(Unit) {
+            detectTapGestures(onTap = {
+                focusManager.clearFocus()
+            })
+        }) {
 
         GoogleMap(
             modifier = Modifier.fillMaxHeight(0.6f),
@@ -194,8 +307,6 @@ fun RouteView() {
                 minZoomPreference = 5.0f
             )
         ) {
-
-
             filteredStops.forEach { stop ->
                 // Using the custom MarkerInfoWindowContent instead of the standard Marker
                 MarkerInfoWindowContent(
@@ -248,6 +359,7 @@ fun RouteView() {
                 }
             }
         }
+
         // Column to hold the Form.
         Column(
             modifier = Modifier
@@ -255,6 +367,7 @@ fun RouteView() {
                 .padding(horizontal = 15.dp)
                 .background(Light), verticalArrangement = Arrangement.SpaceEvenly
         ) {
+
             // Row that holds the agencies button and time button
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -335,21 +448,21 @@ fun RouteView() {
                     style = TextStyle(fontSize = 24.sp, fontFamily = FontFamily.Monospace),
                     modifier = Modifier.padding(end = 10.dp)
                 )
-
+                // current location button
                 OutlinedButton(
                     onClick = {
-                        StartIsCurrentLocation.value = StartIsCurrentLocation.value.not()
+                        startIsCurrentLocation.value = startIsCurrentLocation.value.not()
                         focusManager.clearFocus()
                     },
                     colors = ButtonColors(
-                        containerColor = if (StartIsCurrentLocation.value) Green else Color.Transparent,
-                        contentColor = if (StartIsCurrentLocation.value) Color.White else Color.Gray,
+                        containerColor = if (startIsCurrentLocation.value) Green else Color.Transparent,
+                        contentColor = if (startIsCurrentLocation.value) Color.White else Color.Gray,
                         disabledContainerColor = Color.Gray,
                         disabledContentColor = Color.Gray
                     ),
                     border = BorderStroke(
                         1.dp,
-                        if (StartIsCurrentLocation.value) Green else Color.Gray
+                        if (startIsCurrentLocation.value) Green else Color.Gray
                     ),
                     modifier = Modifier
                         .height(50.dp)
@@ -363,18 +476,22 @@ fun RouteView() {
                         Modifier.padding(horizontal = 1.dp)
                     )
                 }
-
+                // search box for start
                 OutlinedTextField(
-                    value = StartSearchString,
-                    onValueChange = { StartSearchString = it },
+                    value = startSearchString,
+                    enabled = startIsCurrentLocation.value.not(),
+                    onValueChange = { startSearchString = it },
                     keyboardActions = KeyboardActions(
                         onDone = {
+
+                            startSearchResultsExpanded = startSearchResultsExpanded.not()
+                            search(startSearchString)
                             focusManager.clearFocus()
                         },
                     ),
                     placeholder = {
                         Text(
-                            text = "Search Anything...",
+                            text = if (startIsCurrentLocation.value.not()) "Search Anything..." else "Current Location.",
                             fontSize = 15.sp,
                             lineHeight = 20.sp,
                             color = Color.Gray
@@ -393,18 +510,87 @@ fun RouteView() {
                         unfocusedLabelColor = Color.DarkGray,
                         unfocusedContainerColor = Color.Transparent,
                         focusedContainerColor = Color.Transparent,
-                        cursorColor = Color.Gray
+                        cursorColor = Color.Gray,
+                        disabledContainerColor = Gray300,
                     ),
                     shape = RoundedCornerShape(20),
-                    leadingIcon = {
-                        Icon(
-                            Icons.Default.Search,
-                            contentDescription = null,
-                            modifier = Modifier
-                        )
+                    trailingIcon = {
+                        // search button
+                        OutlinedButton(
+                            onClick = {
+                                startSearchResultsExpanded =
+                                    !startSearchResultsExpanded
+                                search(startSearchString)
+                                focusManager.clearFocus()
+                            },
+                            enabled = startIsCurrentLocation.value.not(),
+                            colors = ButtonColors(
+                                containerColor = Color.Transparent,
+                                contentColor = Green,
+                                disabledContainerColor = Color.Transparent,
+                                disabledContentColor = Color.Gray
+                            ),
+                            border = BorderStroke(0.dp, Color.Transparent),
+                            contentPadding = PaddingValues(horizontal = 1.dp),
+                            shape = RoundedCornerShape(50)
+                        ) {
+                            Icon(
+                                Icons.Default.Search,
+                                contentDescription = null,
+                                modifier = Modifier
+                            )
+                        }
                     },
                 )
 
+                //Dropdown menu for start search results
+                DropdownMenu(
+                    expanded = startSearchResultsExpanded,
+                    onDismissRequest = { startSearchResultsExpanded = !startSearchResultsExpanded },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .fillMaxHeight(0.5f),
+
+                    ) {
+                    searchResults.forEach { result ->
+                        DropdownMenuItem(
+                            modifier = Modifier.padding(vertical = 8.dp),
+                            text = {
+                                val dist = calculateDistance(
+                                    userLat,
+                                    userLon,
+                                    result.lat,
+                                    result.lon
+                                )
+                                Column {
+                                    Text(result.name)
+                                    Text("${String.format("%.3f", dist)}km", fontSize = 12.sp)
+                                    Text(
+                                        result.address,
+                                        fontWeight = FontWeight.Light,
+                                        fontSize = 12.sp
+                                    )
+                                }
+                            },
+                            onClick = {
+                                selectedStartPlace.value = result
+                                startSearchResultsExpanded = !startSearchResultsExpanded
+                                startSearchString = selectedStartPlace.value.name
+                            },
+                            leadingIcon = {
+                                AsyncImage(
+                                    modifier = Modifier
+                                        .width(24.dp)
+                                        .height(24.dp),
+                                    model = result.iconURL,
+                                    contentDescription = "Place Image",
+                                    colorFilter = ColorFilter.colorMatrix(ColorMatrix().apply {
+                                        setToSaturation(0f) // grayscale
+                                    })
+                                )
+                            })
+                    }
+                }
 
             }
             // Row that holds the TO: location button and text-field
@@ -418,21 +604,21 @@ fun RouteView() {
                     style = TextStyle(fontSize = 24.sp, fontFamily = FontFamily.Monospace),
                     modifier = Modifier.padding(end = 10.dp)
                 )
-
+                // current location button
                 OutlinedButton(
                     onClick = {
-                        EndIsCurrentLocation.value = EndIsCurrentLocation.value.not()
+                        endIsCurrentLocation.value = endIsCurrentLocation.value.not()
                         focusManager.clearFocus()
                     },
                     colors = ButtonColors(
-                        containerColor = if (EndIsCurrentLocation.value) Green else Color.Transparent,
-                        contentColor = if (EndIsCurrentLocation.value) Color.White else Color.Gray,
+                        containerColor = if (endIsCurrentLocation.value) Green else Color.Transparent,
+                        contentColor = if (endIsCurrentLocation.value) Color.White else Color.Gray,
                         disabledContainerColor = Color.Gray,
                         disabledContentColor = Color.Gray
                     ),
                     border = BorderStroke(
                         1.dp,
-                        if (EndIsCurrentLocation.value) Green else Color.Gray
+                        if (endIsCurrentLocation.value) Green else Color.Gray
                     ),
                     modifier = Modifier
                         .height(50.dp)
@@ -446,18 +632,21 @@ fun RouteView() {
                         Modifier.padding(horizontal = 1.dp)
                     )
                 }
-
+                // search text box
                 OutlinedTextField(
-                    value = EndSearchString,
-                    onValueChange = { EndSearchString = it },
+                    value = endSearchString,
+                    onValueChange = { endSearchString = it },
+                    enabled = endIsCurrentLocation.value.not(),
                     keyboardActions = KeyboardActions(
                         onDone = {
+                            endSearchResultsExpanded = !endSearchResultsExpanded
+                            search(endSearchString)
                             focusManager.clearFocus()
                         },
                     ),
                     placeholder = {
                         Text(
-                            text = "Search Anything...",
+                            text = if (endIsCurrentLocation.value.not()) "Search Anything..." else "Current Location.",
                             fontSize = 15.sp,
                             lineHeight = 20.sp,
                             color = Color.Gray
@@ -476,32 +665,131 @@ fun RouteView() {
                         unfocusedLabelColor = Color.DarkGray,
                         unfocusedContainerColor = Color.Transparent,
                         focusedContainerColor = Color.Transparent,
-                        cursorColor = Color.Gray
+                        cursorColor = Color.Gray,
+                        disabledContainerColor = Gray300
                     ),
                     shape = RoundedCornerShape(20),
-                    leadingIcon = {
-                        Icon(
-                            Icons.Default.Search,
-                            contentDescription = null,
-                            modifier = Modifier
-                        )
+                    trailingIcon = {
+                        // search button
+                        OutlinedButton(
+                            onClick = {
+                                endSearchResultsExpanded =
+                                    !endSearchResultsExpanded
+                                search(endSearchString)
+                                focusManager.clearFocus()
+                            },
+                            enabled = endIsCurrentLocation.value.not(),
+                            colors = ButtonColors(
+                                containerColor = Color.Transparent,
+                                contentColor = Green,
+                                disabledContainerColor = Color.Transparent,
+                                disabledContentColor = Color.Gray
+                            ),
+                            border = BorderStroke(0.dp, Color.Transparent),
+                            contentPadding = PaddingValues(horizontal = 1.dp),
+                            shape = RoundedCornerShape(50)
+                        ) {
+                            Icon(
+                                Icons.Default.Search,
+                                contentDescription = null,
+                                modifier = Modifier
+                            )
+                        }
                     },
                 )
 
+                //Dropdown menu for search Results
+                DropdownMenu(
+                    expanded = endSearchResultsExpanded,
+                    onDismissRequest = { endSearchResultsExpanded = !endSearchResultsExpanded },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .fillMaxHeight(0.5f),
+
+                    ) {
+                    searchResults.forEach { result ->
+                        DropdownMenuItem(
+                            modifier = Modifier.padding(vertical = 8.dp),
+                            text = {
+                                val dist = calculateDistance(
+                                    userLat,
+                                    userLon,
+                                    result.lat,
+                                    result.lon
+                                )
+                                Column {
+                                    Text(result.name)
+                                    Text("${String.format("%.3f", dist)}km", fontSize = 12.sp)
+                                    Text(
+                                        result.address,
+                                        fontWeight = FontWeight.Light,
+                                        fontSize = 12.sp
+                                    )
+                                }
+                            },
+                            onClick = {
+                                selectedEndPlace.value = result
+                                endSearchResultsExpanded = !endSearchResultsExpanded
+                                endSearchString = selectedEndPlace.value.name
+                            },
+                            leadingIcon = {
+                                AsyncImage(
+                                    modifier = Modifier
+                                        .width(24.dp)
+                                        .height(24.dp),
+                                    model = result.iconURL,
+                                    contentDescription = "Place Image",
+                                    colorFilter = ColorFilter.colorMatrix(ColorMatrix().apply {
+                                        setToSaturation(0f) // grayscale
+                                    })
+                                )
+                            })
+                    }
+                }
+
 
             }
+
+            // make sure at least one thing from each row is checked and one agency
+            var valid =
+                (startIsCurrentLocation.value || (selectedStartPlace.value.lat > 0 && selectedStartPlace.value.lon > 0))
+                        &&
+                        (endIsCurrentLocation.value || (selectedEndPlace.value.lat > 0 && selectedEndPlace.value.lon > 0))
+                        &&
+                        selectedAgencyIds.isNotEmpty()
+
             // EXECUTE button
             OutlinedButton(
+                enabled = if (valid) true else false,
                 onClick = {
+                    // get the start and stop place object if its current location
+                    val start: Place = if (startIsCurrentLocation.value) {
+                        Place("Current Location", userLat, userLon, "", "")
+                    } else {
+                        selectedStartPlace.value
+                    }
+
+                    val stop: Place = if (startIsCurrentLocation.value) {
+                        Place("Current Location", userLat, userLon, "", "")
+                    } else {
+                        selectedEndPlace.value
+                    }
+                    // CALCULATE ROUTE!
+                    calcRoute(
+                        start = start,
+                        stop = stop,
+                        time = selectedTime,
+                        allowedAgencies = selectedAgencyIds
+                    )
 
                 },
                 colors = ButtonColors(
                     containerColor = Color.Transparent,
                     contentColor = Green,
-                    disabledContainerColor = Color.Gray,
+                    disabledContainerColor = Gray300,
                     disabledContentColor = Color.Gray
                 ),
-                border = BorderStroke(2.dp, Green),
+                border = BorderStroke(2.dp, if (valid) Green else Color.Gray),
                 modifier = Modifier
                     .height(50.dp)
                     .fillMaxWidth(),
@@ -520,7 +808,17 @@ fun RouteView() {
         modifier = Modifier.fillMaxWidth(0.65F),
 
         ) {
-        // Potentially add a "Clear All" button here.
+        // clear all button
+        DropdownMenuItem(
+            text = { Text("Clear All") },
+            onClick = {
+                selectedAgencyNames.clear()
+            },
+            leadingIcon = {
+                Icon(Icons.Filled.Clear, contentDescription = "Clear")
+            }
+        )
+
         agencies.forEach { agency ->
             val isSelected = agency.agencyName in selectedAgencyNames
             DropdownMenuItem(
@@ -544,51 +842,34 @@ fun RouteView() {
         }
     }
 
+
 }
 
-fun calcAndDisplayRoute(
-    startID: Int,
-    stopID: Int,
-    arrivalTime: String,
-    allowedAgencyIDs: List<Int>
-) {
-    Log.d(
-        "calcAndDisplayRoute",
-        "StartID: $startID, StopID: $stopID, Arrival Time: $arrivalTime, Allowed Agency IDs: ${allowedAgencyIDs}."
-    )
-    val graph = Graph(6000) // Create a graph with 1000 nodes
-    val elapsedTime = measureTimeMillis {
-        for (i in 0 until graph.numberOfNodes) {
-            for (j in 0 until 25) {
-                if (i != j) { // Avoid adding self-loops
-                    graph.addEdge(i, Random.nextInt(0, graph.numberOfNodes - 1))
-                }
+@SuppressLint("MissingPermission")
+private fun getLastLocation(fusedLocationClient: FusedLocationProviderClient) {
+    fusedLocationClient.lastLocation
+        .addOnSuccessListener { location: Location? ->
+            // Got last known location. In some rare situations, this can be null.
+            location?.let {
+                userLat = location.latitude
+                userLon = location.longitude
+                Log.i("LOCATION", "LAT: $userLat, LON: $userLon")
+                // Use latitude and longitude here
             }
         }
-        // For a realistic timing, you might want to add many more edges or do other intensive operations
-    }
-    Log.d("GRAPH", "DONE IN: $elapsedTime milliseconds")
-}
-
-class Graph(val numberOfNodes: Int) {
-    private val adjacencyList = MutableList<MutableList<Int>>(numberOfNodes) { mutableListOf() }
-
-    fun addEdge(node1: Int, node2: Int) {
-        adjacencyList[node1].add(node2)
-        // For undirected graph, add the reverse edge as well
-        // adjacencyList[node2].add(node1)
-    }
-
-    fun displayGraph() {
-        for (i in adjacencyList.indices) {
-            print("Node $i: ")
-            for (j in adjacencyList[i]) {
-                print("$j ")
-            }
-            println()
+        .addOnFailureListener { e ->
+            // Handle failure to get location
         }
-    }
 }
+
+// Route is calculated here
+fun calcRoute(start: Place, stop: Place, time: String, allowedAgencies: Set<Int>) {
+    val logMessage = "Start: ${start.name}, Lat: ${start.lat}, Lon: ${start.lon}, " +
+            "Stop: ${stop.name}, Lat: ${stop.lat}, Lon: ${stop.lon}, " +
+            "Time: $time, Allowed Agencies: $allowedAgencies"
+    Log.i("calcRoute", logMessage)
+}
+
 
 @Composable
 @Preview
