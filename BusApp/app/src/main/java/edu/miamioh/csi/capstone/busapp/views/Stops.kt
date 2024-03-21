@@ -169,13 +169,11 @@ fun StopsWorkhorse() {
             val agencyIdsForStop = stopIdToAgencyIdMap[stop.stopId]
             //Log.i("All Agencies Associated with Stops", "" + stopIdToAgencyIdMap[stop.stopId])
             //Log.i("All Agencies Selected by User", "" + selectedAgencyIds)
-
             agencyIdsForStop != null && agencyIdsForStop.any { it in selectedAgencyIds } &&
                     calculateDistance(mapCenter.latitude, mapCenter.longitude, stop.stopLat, stop.stopLon) <= 60
         }.sortedBy { calculateDistance(mapCenter.latitude, mapCenter.longitude, it.stopLat, it.stopLon) }
             .take(min(maxStops, 150))
     }
-
 
     val focusManager = LocalFocusManager.current
 
