@@ -793,6 +793,7 @@ object CSVHandler {
         return trips
     }
 
+    /*
     fun getAgencyIdToStopsMap(
         stops: List<Stop>,
         routes: List<Route>,
@@ -820,38 +821,41 @@ object CSVHandler {
 
         return agencyIdToStops
     }
+    */
 
     fun getStopIdToAgencyIdMap(
         stops: List<Stop>,
         routes: List<Route>,
         trips: List<Trip>,
         stopTimes: List<StopTime>
-    ): Map<Int, Int> {
+    ): Map<Int, List<Int>> {
         val routeIdToAgencyId = routes.associate { it.routeID to it.agencyID }
         val tripIdToRouteId = trips.associate { it.tripID to it.routeID }
         val stopTimeToTripId = stopTimes.groupBy { it.stopID }.mapValues { entry ->
             entry.value.map { it.tripID }.distinct()
         }
 
-        val stopIdToAgencyId = mutableMapOf<Int, Int>()
+        // Since stops can be associated with multiple agencies, we will store all the associated
+        // agencies in a list.
+        val stopIdToAgencyId = mutableMapOf<Int, MutableList<Int>>()
 
         stopTimeToTripId.forEach { (stopId, tripIds) ->
             tripIds.forEach { tripId ->
                 val routeId = tripIdToRouteId[tripId]
                 val agencyId = routeId?.let { routeIdToAgencyId[it] }
                 if (agencyId != null) {
-                    // This assumes a stop can be associated with multiple trips (and potentially routes),
-                    // but it simplifies to one agency ID per stop based on the first found association.
-                    // If stops can truly belong to multiple agencies, this approach needs reevaluation.
-                    stopIdToAgencyId[stopId] = agencyId
-                    return@forEach // Skip further trips once an agency is found for the stop
+                    // Initialize the list for this stopId if it doesn't exist
+                    if (stopIdToAgencyId[stopId] == null) {
+                        stopIdToAgencyId[stopId] = mutableListOf()
+                    }
+                    // Add the agencyId if it's not already in the list for this stopId
+                    if (agencyId !in stopIdToAgencyId[stopId]!!) {
+                        stopIdToAgencyId[stopId]!!.add(agencyId)
+                    }
                 }
             }
         }
-
         return stopIdToAgencyId
     }
-
-
 
 }
