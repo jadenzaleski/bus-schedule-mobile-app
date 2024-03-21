@@ -199,7 +199,7 @@ fun RouteView() {
                         mapCenter.longitude,
                         stop.stopLat,
                         stop.stopLon
-                    ) <= 60
+                    ) <= 60.0
         }.sortedBy {
             calculateDistance(
                 mapCenter.latitude,
