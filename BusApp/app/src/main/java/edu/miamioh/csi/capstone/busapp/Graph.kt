@@ -13,7 +13,7 @@ data class Node(
     val stopName: String,
     val stopLat: Double,
     val stopLon: Double,
-    var routeRecord: List<RouteRecord>
+    var routeRecords: List<RouteRecord>
 )
 
 /**
