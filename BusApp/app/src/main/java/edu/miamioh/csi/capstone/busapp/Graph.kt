@@ -1,5 +1,35 @@
 package edu.miamioh.csi.capstone.busapp
 
+import java.time.LocalTime
+
+/**
+ * A data class to represent the nodes that will make up the graphs used for route creation.
+ * In our situation, each node represents a different stop, which contains a variety of info.
+ * stopID, stopName, stopLat, and stopLon are all constants that do not change, but they are
+ * also UNIQUE. These values should not change in terms of the graph structure itself.
+ */
+data class Node(
+    val stopID: Int,
+    val stopName: String,
+    val stopLat: Double,
+    val stopLon: Double,
+    var routeRecord: List<SubNode>
+)
+
+/**
+ * A data class that holds information unique to each route record which will be associated with
+ * a node (stop). Note that stops can be associated with multiple routes and/or trips. For this
+ * reason, we create a SubNode class to handle these multiplicities.
+ */
+data class SubNode(
+    val agencyID: Int,
+    val routeID: Int,
+    val tripID: Int,
+    val departureTime: LocalTime,
+    val arrivalTime: LocalTime,
+    val stopSequence: Int
+)
+
 object Graph {
     /**
      * Based on the list of user-selected agencies, returns the list of ALL StopIds associated
