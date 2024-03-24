@@ -13,15 +13,15 @@ data class Node(
     val stopName: String,
     val stopLat: Double,
     val stopLon: Double,
-    var routeRecord: List<SubNode>
+    var routeRecord: List<RouteRecord>
 )
 
 /**
  * A data class that holds information unique to each route record which will be associated with
  * a node (stop). Note that stops can be associated with multiple routes and/or trips. For this
- * reason, we create a SubNode class to handle these multiplicities.
+ * reason, we create a RouteRecord class to handle these multiplicities.
  */
-data class SubNode(
+data class RouteRecord(
     val agencyID: Int,
     val routeID: Int,
     val tripID: Int,
