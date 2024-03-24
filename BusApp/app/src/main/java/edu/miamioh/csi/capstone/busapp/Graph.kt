@@ -42,8 +42,6 @@ object Graph {
      */
     fun findAllValidStopIdByAgencyId(
         agencyIdList: Set<Int>,
-        agencies: List<Agency>,
-        stops: List<Stop>,
         routes: List<Route>,
         trips: List<Trip>,
         stopTimes: List<StopTime>
