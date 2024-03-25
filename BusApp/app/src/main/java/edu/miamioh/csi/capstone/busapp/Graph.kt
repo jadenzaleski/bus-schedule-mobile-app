@@ -36,18 +36,21 @@ object Graph {
      * with those agencies. Funnels through manually created associations between required .csv
      * files in order to acquire final list of StopIds to be returned.
      *
-     * @param agencyIdList The list of active agencies selected by the user, represented by their
-     *                     ID number.
+     * @param agencyIDList - The list of active agencies selected by the user, represented by their
+     *                       ID number.
+     * @param routes - A list of Route objects (processed via the CSVHandler)
+     * @param trips - A list of Trip objects (processed via the CSVHandler)
+     * @param stopTimes - A list of StopTime objects (processed via the CSVHandler)
      * @return a list of all StopIds that are associated with the agencies selected
      */
     fun findAllValidStopIdByAgencyId(
-        agencyIdList: Set<Int>,
+        agencyIDList: Set<Int>,
         routes: List<Route>,
         trips: List<Trip>,
         stopTimes: List<StopTime>
     ): Set<Int> {
         // Find all qualifying routes based on the list of agencyIDs provided.
-        val filteredRoutes = routes.filter { it.agencyID in agencyIdList }
+        val filteredRoutes = routes.filter { it.agencyID in agencyIDList }
 
         // Find all qualifying trips based on the qualifying routes previously found.
         val filteredTripIds = trips.filter { trip ->
@@ -62,25 +65,59 @@ object Graph {
         return stopIds
     }
 
+    /**
+     * Based on given list of stopIDs, creates a set of Node objects for each stopID, which contain
+     * information on the stop itself, as well as information on what trips/agencies are associated
+     * for each route that goes through that stop.
+     *
+     * @param validStopIDs - The set of stopIDs, where a unique Node will be generated for each ID
+     * @param agencyIDList - The list of active agencies selected by the user, represented by their
+     *                     ID number.
+     * @param routes - A list of Route objects (processed via the CSVHandler)
+     * @param trips - A list of Trip objects (processed via the CSVHandler)
+     * @param stops - A list of Trip objects (processed via the CSVHandler)
+     * @param stopTimes - A list of StopTime objects (processed via the CSVHandler)
+     * @return a list of all StopIds that are associated with the agencies selected
+     */
     fun generateNodes(
         validStopIDs: Set<Int>,
-        agencyIdList: Set<Int>,
+        agencyIDList: Set<Int>,
         routes: List<Route>,
         trips: List<Trip>,
         stops: List<Stop>,
         stopTimes: List<StopTime>
     ): Set<Node> {
+        // Allows for quick lookup by the specified fields, which in this case act like keys.
+        // Makes the function a lot more efficient, which will be helpful in the long-run
+        // when this function may be making thousands of Node objects in some scenarios.
         val stopsMap = stops.associateBy { it.stopID }
         val tripsMap = trips.associateBy { it.tripID }
         val routesMap = routes.associateBy { it.routeID }
 
+        /*
+         * Iterate over every stopID in validStopIDs.
+         *
+         * The "agencyIDList" variable here holds all the agencyIDs selected in the dropdown by
+         * the user, so this ensures that agencies not specified by the user won't have their
+         * stops included here.
+         */
         return validStopIDs.mapNotNull { stopId ->
             stopsMap[stopId]?.let { stop ->
+                // Here, multiple StopTime records could be associated to the singular stop.
                 val routeRecords = stopTimes.filter { it.stopID == stopId }
                     .mapNotNull { stopTime ->
                         tripsMap[stopTime.tripID]?.let { trip ->
                             routesMap[trip.routeID]?.let { route ->
-                                if (agencyIdList.contains(route.agencyID)) {
+                                if (agencyIDList.contains(route.agencyID)) {
+                                    /*
+                                     * By this point, if we're able to create a RouteRecord, then
+                                     * the following checks should have occurred:
+                                     * - Trip and Route match the stopID (via tripID and routeID
+                                     *   fields)
+                                     * - agencyID (taken from route-in-question) matches at least
+                                     *   one of the agencyIDs in the list which contains user-
+                                     *   selected agencies from the UI
+                                     */
                                     RouteRecord(
                                         agencyID = route.agencyID,
                                         routeID = route.routeID,
@@ -93,6 +130,8 @@ object Graph {
                             }
                         }
                     }
+                // Now that all the RouteRecord objects have been generated for each tripID,
+                // generate the Node object for this stopID.
                 Node(
                     stopID = stop.stopID,
                     stopName = stop.stopName,
