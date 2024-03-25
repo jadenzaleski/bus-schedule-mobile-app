@@ -61,4 +61,46 @@ object Graph {
         // Return the generated set of Stop IDs. Since this is a set, there are no duplicates.
         return stopIds
     }
+
+    fun generateNodes(
+        validStopIDs: Set<Int>,
+        agencyIdList: Set<Int>,
+        routes: List<Route>,
+        trips: List<Trip>,
+        stops: List<Stop>,
+        stopTimes: List<StopTime>
+    ): Set<Node> {
+        val stopsMap = stops.associateBy { it.stopID }
+        val tripsMap = trips.associateBy { it.tripID }
+        val routesMap = routes.associateBy { it.routeID }
+
+        return validStopIDs.mapNotNull { stopId ->
+            stopsMap[stopId]?.let { stop ->
+                val routeRecords = stopTimes.filter { it.stopID == stopId }
+                    .mapNotNull { stopTime ->
+                        tripsMap[stopTime.tripID]?.let { trip ->
+                            routesMap[trip.routeID]?.let { route ->
+                                if (agencyIdList.contains(route.agencyID)) {
+                                    RouteRecord(
+                                        agencyID = route.agencyID,
+                                        routeID = route.routeID,
+                                        tripID = trip.tripID,
+                                        departureTime = LocalTime.parse(stopTime.departureTime),
+                                        arrivalTime = LocalTime.parse(stopTime.arrivalTime),
+                                        stopSequence = stopTime.stopSequence
+                                    )
+                                } else null
+                            }
+                        }
+                    }
+                Node(
+                    stopID = stop.stopID,
+                    stopName = stop.stopName,
+                    stopLat = stop.stopLat,
+                    stopLon = stop.stopLon,
+                    routeRecords = routeRecords
+                )
+            }
+        }.toSet()
+    }
 }
