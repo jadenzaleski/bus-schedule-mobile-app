@@ -30,7 +30,17 @@ data class RouteRecord(
     val stopSequence: Int
 )
 
+data class EdgeWeightRelation(
+    val endNode: Node,
+    val weight: Long
+)
+
 object Graph {
+    // Stores all nodes for the graph.
+    val graphNodes: MutableSet<Node> = mutableSetOf()
+    // Stores all edges and weights for the graph (essentially, an adjacency list).
+    val EdgeWeightRelations: HashMap<Int, List<EdgeWeightRelation>> = HashMap()
+
     /**
      * Based on the list of user-selected agencies, returns the list of ALL StopIds associated
      * with those agencies. Funnels through manually created associations between required .csv
@@ -141,5 +151,61 @@ object Graph {
                 )
             }
         }.toSet()
+    }
+
+    /**
+     *
+     */
+    fun generateEdgesAndWeights(
+        nodes: Set<Node>
+    ): HashMap<Int, List<EdgeWeightRelation>> {
+        // Initializes the adjacency list that will hold all edge and weight information.
+        val adjacencyList = HashMap<Int, MutableList<EdgeWeightRelation>>()
+
+        // Iterate over every node provided to the function.
+        // Here, you can think of originNode as the potential node from which the edge points from.
+        nodes.forEach { originNode ->
+            // Iterate through all RouteRecords from the originNode.
+            originNode.routeRecords.forEach { originRecord ->
+                // Doesn't make sense to check the originNode against itself, so filter that out.
+                nodes.filter { it.stopID != originNode.stopID }.forEach { potentialDestNode ->
+                    potentialDestNode.routeRecords.firstOrNull { destRecord ->
+                        /*
+                         * Checks:
+                         * 1) If the RouteRecords have the same routeID and tripID. We check both of
+                         *    these, although technically tripID is the really important field here.
+                         *    Having the same tripID means that the bus runs through both stops in
+                         *    question on one singular route run.
+                         * 2) The stopSequence value tells us whether the stops are in consecutive
+                         *    order (and thus if we should establish an edge or not here). Note that
+                         *    the originRecord's stopSequence value has to be exactly one less than
+                         *    the destRecord's stopSequence value because the bus should logically
+                         *    stop at the originNode first and having an exact difference of one
+                         *    means the stops come in the correct, consecutive order.
+                         */
+                        originRecord.routeID == destRecord.routeID &&
+                                originRecord.tripID == destRecord.tripID &&
+                                originRecord.stopSequence == destRecord.stopSequence - 1
+                    }?.also { matchingDestRecord ->
+                        // Calculates the weight. Using some Java code imports here to do this.
+                        val weight = java.time.Duration.between(
+                            originRecord.departureTime, matchingDestRecord.arrivalTime
+                        ).toMinutes()
+
+                        // Creates the EdgeWeightRelation object to be stored.
+                        val edge = EdgeWeightRelation(endNode = potentialDestNode, weight = weight)
+                        /*
+                         * Adds the edge to the adjacencyList. If the key doesn't exist in the
+                         * HashMap, adds it before adding the associated value to the key.
+                         * Otherwise, just adds the value to the pre-existing key.
+                         */
+                        adjacencyList.computeIfAbsent(originNode.stopID) { mutableListOf() }.add(edge)
+                    }
+                }
+            }
+        }
+
+        // Convert mutable lists to immutable before returning
+        return adjacencyList.mapValues { (_, v) -> v.toList() } as HashMap<Int, List<EdgeWeightRelation>>
     }
 }
