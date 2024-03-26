@@ -1,6 +1,8 @@
-package edu.miamioh.csi.capstone.busapp
+package edu.miamioh.csi.capstone.busapp.backend
+
 
 import java.time.LocalTime
+
 
 /**
  * A data class to represent the nodes that will make up the graphs used for route creation.
@@ -16,6 +18,7 @@ data class Node(
     var routeRecords: List<RouteRecord>
 )
 
+
 /**
  * A data class that holds information unique to each route record which will be associated with
  * a node (stop). Note that stops can be associated with multiple routes and/or trips. For this
@@ -30,10 +33,12 @@ data class RouteRecord(
     val stopSequence: Int
 )
 
+
 data class EdgeWeightRelation(
     val endNode: Node,
     val weight: Long
 )
+
 
 object Graph {
     // Stores all nodes for the graph.
@@ -62,18 +67,22 @@ object Graph {
         // Find all qualifying routes based on the list of agencyIDs provided.
         val filteredRoutes = routes.filter { it.agencyID in agencyIDList }
 
+
         // Find all qualifying trips based on the qualifying routes previously found.
         val filteredTripIds = trips.filter { trip ->
             filteredRoutes.any { it.routeID == trip.routeID }
         }.map { it.tripID }.toSet()
 
+
         // Find all qualifying stops (represented by ID) based on the qualifying trips previously
         // found.
         val stopIds = stopTimes.filter { it.tripID in filteredTripIds }.map { it.stopID }.toSet()
 
+
         // Return the generated set of Stop IDs. Since this is a set, there are no duplicates.
         return stopIds
     }
+
 
     /**
      * Based on given list of stopIDs, creates a set of Node objects for each stopID, which contain
@@ -104,6 +113,7 @@ object Graph {
         val tripsMap = trips.associateBy { it.tripID }
         val routesMap = routes.associateBy { it.routeID }
 
+
         /*
          * Iterate over every stopID in validStopIDs.
          *
@@ -132,8 +142,8 @@ object Graph {
                                         agencyID = route.agencyID,
                                         routeID = route.routeID,
                                         tripID = trip.tripID,
-                                        departureTime = LocalTime.parse(stopTime.departureTime),
-                                        arrivalTime = LocalTime.parse(stopTime.arrivalTime),
+                                        departureTime = parseStringToLocalTime(stopTime.departureTime),
+                                        arrivalTime = parseStringToLocalTime(stopTime.arrivalTime),
                                         stopSequence = stopTime.stopSequence
                                     )
                                 } else null
@@ -153,8 +163,14 @@ object Graph {
         }.toSet()
     }
 
+
     /**
+     * Given a set of Nodes which have the ability to have connection (or edges) between one
+     * another, creates said edges and assign weights under pre-described conditions.
      *
+     * @param nodes - A set of nodes to be processed and potentially connected via edges
+     * @return a HashMap with the stopID of each node as the key, and a list of EdgeWeightRelation
+     *         objects containing edge and weight details as the value
      */
     fun generateEdgesAndWeights(
         nodes: Set<Node>
@@ -192,12 +208,13 @@ object Graph {
                             originRecord.departureTime, matchingDestRecord.arrivalTime
                         ).toMinutes()
 
+
                         // Creates the EdgeWeightRelation object to be stored.
                         val edge = EdgeWeightRelation(endNode = potentialDestNode, weight = weight)
                         /*
                          * Adds the edge to the adjacencyList. If the key doesn't exist in the
                          * HashMap, adds it before adding the associated value to the key.
-                         * Otherwise, just adds the value to the pre-existing key.
+                         * Otherwise, just adds the value to the pre-existing key's list.
                          */
                         adjacencyList.computeIfAbsent(originNode.stopID) { mutableListOf() }.add(edge)
                     }
@@ -207,5 +224,24 @@ object Graph {
 
         // Convert mutable lists to immutable before returning
         return adjacencyList.mapValues { (_, v) -> v.toList() } as HashMap<Int, List<EdgeWeightRelation>>
+    }
+
+
+    /**
+     * A helper function to manually adjust time (HH:MM:SS) being expressed in a String that will
+     * be converted and potentially manipulated into a Java LocalTime variable. Functions very
+     * similarly to LocalTime.Parse, along with some adjustments.
+     * Can be helpful in ensuring a DateTimeParseException doesn't occur.
+     *
+     * @param timeAsString - A string representing a time (HH:MM:SS)
+     * @return a LocalTime variable with the same "time value" as the string, adjusted to ensure
+     *         invalid values cannot be generated
+     */
+    private fun parseStringToLocalTime(timeAsString: String): LocalTime {
+        val parts = timeAsString.split(":").map { it.toInt() }
+        val normalizedHour = parts[0] % 24
+        val minute = parts[1]
+        val second = parts[2]
+        return LocalTime.of(normalizedHour, minute, second)
     }
 }

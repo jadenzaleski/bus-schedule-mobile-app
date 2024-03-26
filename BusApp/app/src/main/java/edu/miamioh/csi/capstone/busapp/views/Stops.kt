@@ -1,7 +1,7 @@
 /**
  * Contributors: Jaden Zaleski, Daniel Tai, Ayo Obisesan
  * Last Modified: 3/13/2024
- * Description: Contains all the front-end and back-end code for the Stops page. See individual
+ * Description: Contains all the front-end and some back-end code for the Stops page. See individual
  *              method documentation for further details
  */
 
@@ -69,8 +69,8 @@ import com.google.maps.android.compose.MapUiSettings
 import com.google.maps.android.compose.MarkerInfoWindowContent
 import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
-import edu.miamioh.csi.capstone.busapp.CSVHandler
 import edu.miamioh.csi.capstone.busapp.R
+import edu.miamioh.csi.capstone.busapp.backend.CSVHandler
 import edu.miamioh.csi.capstone.busapp.navigation.Screens
 import edu.miamioh.csi.capstone.busapp.ui.theme.Black
 import edu.miamioh.csi.capstone.busapp.ui.theme.Gray400
@@ -151,6 +151,18 @@ fun StopsWorkhorse() {
             agencies.filter { it.agencyName in selectedAgencyNames }.map { it.agencyID }.toSet()
         }
     }.value
+
+    /* Some Tester Code:
+    var validStopIDs = Graph.findAllValidStopIdByAgencyId(selectedAgencyIds, routes, trips,
+        stopTimes)
+    var allNodes = Graph.generateNodes(validStopIDs, selectedAgencyIds, routes, trips, stops,
+        stopTimes)
+    var adjacencyList = Graph.generateEdgesAndWeights(allNodes)
+    val totalElements = adjacencyList.values.sumOf { it.size }
+    Log.i("All Valid StopIDs", "" + validStopIDs)
+    Log.i("Node Count", "" + allNodes.size)
+    Log.i("Edge Counter", "" + totalElements)
+     */
 
     // Sets the initial number of stops displayed when the app is started.
     var maxStopsInput by remember { mutableStateOf("50") }

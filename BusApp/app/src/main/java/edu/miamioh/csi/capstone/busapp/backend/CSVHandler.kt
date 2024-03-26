@@ -1,14 +1,14 @@
-package edu.miamioh.csi.capstone.busapp
+package edu.miamioh.csi.capstone.busapp.backend
 
 import android.util.Log
-import edu.miamioh.csi.capstone.busapp.CSVHandler.agencies
-import edu.miamioh.csi.capstone.busapp.CSVHandler.calendar
-import edu.miamioh.csi.capstone.busapp.CSVHandler.info
-import edu.miamioh.csi.capstone.busapp.CSVHandler.routes
-import edu.miamioh.csi.capstone.busapp.CSVHandler.serviceDates
-import edu.miamioh.csi.capstone.busapp.CSVHandler.stopTimes
-import edu.miamioh.csi.capstone.busapp.CSVHandler.stops
-import edu.miamioh.csi.capstone.busapp.CSVHandler.trips
+import edu.miamioh.csi.capstone.busapp.backend.CSVHandler.agencies
+import edu.miamioh.csi.capstone.busapp.backend.CSVHandler.calendar
+import edu.miamioh.csi.capstone.busapp.backend.CSVHandler.info
+import edu.miamioh.csi.capstone.busapp.backend.CSVHandler.routes
+import edu.miamioh.csi.capstone.busapp.backend.CSVHandler.serviceDates
+import edu.miamioh.csi.capstone.busapp.backend.CSVHandler.stopTimes
+import edu.miamioh.csi.capstone.busapp.backend.CSVHandler.stops
+import edu.miamioh.csi.capstone.busapp.backend.CSVHandler.trips
 import java.io.BufferedReader
 import java.io.File
 import java.io.FileNotFoundException
