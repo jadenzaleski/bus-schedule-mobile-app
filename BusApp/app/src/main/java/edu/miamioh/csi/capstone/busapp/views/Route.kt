@@ -78,7 +78,7 @@ import com.google.maps.android.compose.MapUiSettings
 import com.google.maps.android.compose.MarkerInfoWindowContent
 import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
-import edu.miamioh.csi.capstone.busapp.CSVHandler
+import edu.miamioh.csi.capstone.busapp.backend.CSVHandler
 import edu.miamioh.csi.capstone.busapp.R
 import edu.miamioh.csi.capstone.busapp.navigation.Screens
 import edu.miamioh.csi.capstone.busapp.ui.theme.Black
@@ -191,7 +191,7 @@ fun RouteView() {
     // Dynamically calculate filtered stops based on current criteria
     val filteredStops = remember(mapCenter, selectedAgencyIds, maxStops) {
         stops.filter { stop ->
-            val agencyIdsForStop = stopIdToAgencyIdMap[stop.stopId]
+            val agencyIdsForStop = stopIdToAgencyIdMap[stop.stopID]
             //Log.i("All Agencies Associated with Stops", "" + stopIdToAgencyIdMap[stop.stopId])
             //Log.i("All Agencies Selected by User", "" + selectedAgencyIds)
             agencyIdsForStop != null && agencyIdsForStop.any { it in selectedAgencyIds } &&
@@ -345,7 +345,7 @@ fun RouteView() {
                             Spacer(modifier = Modifier.width(5.dp)) // Replaced VerticalDivider with Spacer for simplicity
                             Text(text = "Lon: ${stop.stopLon}")
                         }
-                        Text(text = "Stop ID: ${stop.stopId}")
+                        Text(text = "Stop ID: ${stop.stopID}")
                         Text(
                             text = "Tap to plan",
                             modifier = Modifier.padding(top = 10.dp, bottom = 5.dp),

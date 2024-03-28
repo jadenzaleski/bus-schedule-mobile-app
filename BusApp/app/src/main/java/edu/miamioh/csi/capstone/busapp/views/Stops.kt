@@ -1,7 +1,7 @@
 /**
  * Contributors: Jaden Zaleski, Daniel Tai, Ayo Obisesan
- * Last Modified: 3/13/2024
- * Description: Contains all the front-end and back-end code for the Stops page. See individual
+ * Last Modified: 3/27/2024
+ * Description: Contains all the front-end and some back-end code for the Stops page. See individual
  *              method documentation for further details
  */
 
@@ -9,6 +9,7 @@ package edu.miamioh.csi.capstone.busapp.views
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.util.Log
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -69,8 +70,8 @@ import com.google.maps.android.compose.MapUiSettings
 import com.google.maps.android.compose.MarkerInfoWindowContent
 import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
-import edu.miamioh.csi.capstone.busapp.CSVHandler
 import edu.miamioh.csi.capstone.busapp.R
+import edu.miamioh.csi.capstone.busapp.backend.CSVHandler
 import edu.miamioh.csi.capstone.busapp.navigation.Screens
 import edu.miamioh.csi.capstone.busapp.ui.theme.Black
 import edu.miamioh.csi.capstone.busapp.ui.theme.Gray400
@@ -152,6 +153,20 @@ fun StopsWorkhorse() {
         }
     }.value
 
+    Log.i("Valid Agency IDs: ", "" + selectedAgencyIds)
+
+    /* Some Tester Code:
+    var validStopIDs = Graph.findAllValidStopIdByAgencyId(selectedAgencyIds, routes, trips,
+        stopTimes)
+    var allNodes = Graph.generateNodes(validStopIDs, selectedAgencyIds, routes, trips, stops,
+        stopTimes)
+    var adjacencyList = Graph.generateEdgesAndWeights(allNodes)
+    val totalElements = adjacencyList.values.sumOf { it.size }
+    Log.i("All Valid StopIDs", "" + validStopIDs)
+    Log.i("Node Count", "" + allNodes.size)
+    Log.i("Edge Counter", "" + totalElements)
+     */
+
     // Sets the initial number of stops displayed when the app is started.
     var maxStopsInput by remember { mutableStateOf("50") }
     var maxStops by remember { mutableIntStateOf(50) }
@@ -166,7 +181,7 @@ fun StopsWorkhorse() {
     val filteredStops = remember(mapCenter, selectedAgencyIds, maxStops) {
         maxStopsInput = min(maxStops, 150).toString()
         stops.filter { stop ->
-            val agencyIdsForStop = stopIdToAgencyIdMap[stop.stopId]
+            val agencyIdsForStop = stopIdToAgencyIdMap[stop.stopID]
             //Log.i("All Agencies Associated with Stops", "" + stopIdToAgencyIdMap[stop.stopId])
             //Log.i("All Agencies Selected by User", "" + selectedAgencyIds)
             agencyIdsForStop != null && agencyIdsForStop.any { it in selectedAgencyIds } &&
@@ -362,7 +377,7 @@ fun StopsWorkhorse() {
                             Spacer(modifier = Modifier.width(5.dp))
                             Text(text = "Lon: ${stop.stopLon}")
                         }
-                        Text(text = "Stop ID: ${stop.stopId}")
+                        Text(text = "Stop ID: ${stop.stopID}")
                         Text(
                             text = "Tap to plan",
                             modifier = Modifier.padding(top = 10.dp, bottom = 5.dp),
