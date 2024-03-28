@@ -20,7 +20,8 @@ data class Node(
     val stopName: String,
     val stopLat: Double,
     val stopLon: Double,
-    var routeRecords: List<RouteRecord>
+    var routeRecords: List<RouteRecord>,
+    var isActive: Boolean
 )
 
 
@@ -163,7 +164,8 @@ object Graph {
                     stopName = stop.stopName,
                     stopLat = stop.stopLat,
                     stopLon = stop.stopLon,
-                    routeRecords = routeRecords
+                    routeRecords = routeRecords,
+                    isActive = true
                 )
             }
         }.toSet()
@@ -234,6 +236,7 @@ object Graph {
     }
      */
 
+    /*
     fun generateEdgesAndWeights(nodes: Set<Node>): HashMap<Int, List<EdgeWeightRelation>> {
         // Convert nodes list to a map for O(1) access time
         val nodesMap = nodes.associateBy { it.stopID }
@@ -274,7 +277,57 @@ object Graph {
         // Return the adjacency list with immutable lists
         return adjacencyList.mapValues { (_, v) -> v.toList() } as HashMap<Int, List<EdgeWeightRelation>>
     }
+     */
 
+    fun generateEdgesAndWeights(
+        nodes: Set<Node>,
+        selectedTime: String
+    ): HashMap<Int, List<EdgeWeightRelation>> {
+        // Convert nodes list to a map for O(1) access time
+        val nodesMap = nodes.associateBy { it.stopID }
+
+        // Initialize the adjacency list
+        val adjacencyList = HashMap<Int, MutableList<EdgeWeightRelation>>()
+
+        val timeBoundary = parseStringToLocalTime("$selectedTime:00")
+
+        nodes.forEach { originNode ->
+            originNode.routeRecords.forEach { originRecord ->
+                // Proceed only if the originRecord's times are after or at the timeFilter
+                if (!originRecord.departureTime.isBefore(timeBoundary) && !originRecord.arrivalTime.isBefore(timeBoundary)) {
+                    // Calculate the next stop sequence to look for in destination node's RouteRecords
+                    val nextStopSequence = originRecord.stopSequence + 1
+
+                    nodesMap.values.firstOrNull { destinationNode ->
+                        destinationNode.routeRecords.any { destRecord ->
+                            destRecord.routeID == originRecord.routeID &&
+                                    destRecord.tripID == originRecord.tripID &&
+                                    destRecord.stopSequence == nextStopSequence &&
+                                    !destRecord.departureTime.isBefore(timeBoundary) && // Ensure destRecord's times are also after or at the timeFilter
+                                    !destRecord.arrivalTime.isBefore(timeBoundary)
+                        }
+                    }?.let { matchingDestNode ->
+                        // Find the matching destination RouteRecord again to calculate the weight
+                        matchingDestNode.routeRecords.find { destRecord ->
+                            destRecord.routeID == originRecord.routeID &&
+                                    destRecord.tripID == originRecord.tripID &&
+                                    destRecord.stopSequence == nextStopSequence
+                        }?.let { matchingDestRecord ->
+                            val weight = java.time.Duration.between(
+                                originRecord.departureTime, matchingDestRecord.arrivalTime
+                            ).toMinutes()
+
+                            val edge = EdgeWeightRelation(matchingDestNode, weight)
+                            adjacencyList.computeIfAbsent(originNode.stopID) { mutableListOf() }.add(edge)
+                        }
+                    }
+                }
+            }
+        }
+
+        // Return the adjacency list with immutable lists
+        return adjacencyList.mapValues { (_, v) -> v.toList() } as HashMap<Int, List<EdgeWeightRelation>>
+    }
 
     /**
      * A helper function to manually adjust time (HH:MM:SS) being expressed in a String that will

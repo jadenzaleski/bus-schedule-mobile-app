@@ -33,7 +33,7 @@ object GraphTester {
         val agencies = CSVHandler.getAgencies()
 
         // Place agencyIDs you want to test in this Set.
-        val selectedAgencyIds = mutableSetOf(25)
+        val selectedAgencyIds = mutableSetOf(26)
 
         // Test # of Stops, and print list of stopIDs for manual check with .CSV files.
         var validStopIDs = Graph.findAllValidStopIdByAgencyId(selectedAgencyIds, routes, trips,
@@ -48,7 +48,7 @@ object GraphTester {
 
         // Test # of Edges generated (unless another method gets written for testing purposes, you
         // do this check manually.
-        var adjacencyList = Graph.generateEdgesAndWeights(validNodes)
+        var adjacencyList = Graph.generateEdgesAndWeights(validNodes, "20:20")
         Log.i("# of Edges generated", "" + adjacencyList.values.flatten().size)
     }
 }

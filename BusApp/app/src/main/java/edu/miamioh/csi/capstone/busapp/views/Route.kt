@@ -78,8 +78,8 @@ import com.google.maps.android.compose.MapUiSettings
 import com.google.maps.android.compose.MarkerInfoWindowContent
 import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
-import edu.miamioh.csi.capstone.busapp.backend.CSVHandler
 import edu.miamioh.csi.capstone.busapp.R
+import edu.miamioh.csi.capstone.busapp.backend.CSVHandler
 import edu.miamioh.csi.capstone.busapp.navigation.Screens
 import edu.miamioh.csi.capstone.busapp.ui.theme.Black
 import edu.miamioh.csi.capstone.busapp.ui.theme.Gray300
@@ -435,7 +435,6 @@ fun RouteView() {
                     )
                     Text(text = selectedTime)
                 }
-
             }
             // Row that holds the FROM: location button and text-field
             Row(
