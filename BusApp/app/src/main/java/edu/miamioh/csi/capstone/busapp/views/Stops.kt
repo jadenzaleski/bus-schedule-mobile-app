@@ -1,6 +1,6 @@
 /**
  * Contributors: Jaden Zaleski, Daniel Tai, Ayo Obisesan
- * Last Modified: 3/13/2024
+ * Last Modified: 3/27/2024
  * Description: Contains all the front-end and some back-end code for the Stops page. See individual
  *              method documentation for further details
  */
@@ -9,6 +9,7 @@ package edu.miamioh.csi.capstone.busapp.views
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.util.Log
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -151,6 +152,8 @@ fun StopsWorkhorse() {
             agencies.filter { it.agencyName in selectedAgencyNames }.map { it.agencyID }.toSet()
         }
     }.value
+
+    Log.i("Valid Agency IDs: ", "" + selectedAgencyIds)
 
     /* Some Tester Code:
     var validStopIDs = Graph.findAllValidStopIdByAgencyId(selectedAgencyIds, routes, trips,

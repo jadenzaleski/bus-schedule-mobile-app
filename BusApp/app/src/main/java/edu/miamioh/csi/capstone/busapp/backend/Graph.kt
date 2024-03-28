@@ -1,8 +1,13 @@
+/**
+ * Contributors: Daniel Tai
+ * Last Modified: 3/27/2024
+ * Description: Contains the back-end code for creating a Graph based on the CORe website
+ *              information and some user input taken from our UI.
+ */
+
 package edu.miamioh.csi.capstone.busapp.backend
 
-
 import java.time.LocalTime
-
 
 /**
  * A data class to represent the nodes that will make up the graphs used for route creation.
@@ -33,7 +38,11 @@ data class RouteRecord(
     val stopSequence: Int
 )
 
-
+/**
+ * A data class meant to represent an edge between two nodes. Contains the endNode that the edge
+ * points toward, and also stores the weight which will be referenced in the future based on
+ * whatever algorithm we choose to work with to generate routes optimally.
+ */
 data class EdgeWeightRelation(
     val endNode: Node,
     val weight: Long
@@ -67,17 +76,14 @@ object Graph {
         // Find all qualifying routes based on the list of agencyIDs provided.
         val filteredRoutes = routes.filter { it.agencyID in agencyIDList }
 
-
         // Find all qualifying trips based on the qualifying routes previously found.
         val filteredTripIds = trips.filter { trip ->
             filteredRoutes.any { it.routeID == trip.routeID }
         }.map { it.tripID }.toSet()
 
-
         // Find all qualifying stops (represented by ID) based on the qualifying trips previously
         // found.
         val stopIds = stopTimes.filter { it.tripID in filteredTripIds }.map { it.stopID }.toSet()
-
 
         // Return the generated set of Stop IDs. Since this is a set, there are no duplicates.
         return stopIds
@@ -172,6 +178,7 @@ object Graph {
      * @return a HashMap with the stopID of each node as the key, and a list of EdgeWeightRelation
      *         objects containing edge and weight details as the value
      */
+    /*
     fun generateEdgesAndWeights(
         nodes: Set<Node>
     ): HashMap<Int, List<EdgeWeightRelation>> {
@@ -223,6 +230,48 @@ object Graph {
         }
 
         // Convert mutable lists to immutable before returning
+        return adjacencyList.mapValues { (_, v) -> v.toList() } as HashMap<Int, List<EdgeWeightRelation>>
+    }
+     */
+
+    fun generateEdgesAndWeights(nodes: Set<Node>): HashMap<Int, List<EdgeWeightRelation>> {
+        // Convert nodes list to a map for O(1) access time
+        val nodesMap = nodes.associateBy { it.stopID }
+
+        // Initialize the adjacency list
+        val adjacencyList = HashMap<Int, MutableList<EdgeWeightRelation>>()
+
+        nodes.forEach { originNode ->
+            originNode.routeRecords.forEach { originRecord ->
+                // Directly access potential destination node, avoiding unnecessary filtering
+                val nextStopSequence = originRecord.stopSequence + 1
+
+                // Attempt to find a single destination node that matches criteria
+                val destinationNode = nodesMap.values.firstOrNull { destinationNode ->
+                    destinationNode.routeRecords.any { destRecord ->
+                        destRecord.routeID == originRecord.routeID &&
+                                destRecord.tripID == originRecord.tripID &&
+                                destRecord.stopSequence == nextStopSequence
+                    }
+                }
+
+                // If a matching destination node is found, calculate the weight and add the edge
+                destinationNode?.routeRecords?.find { destRecord ->
+                    destRecord.routeID == originRecord.routeID &&
+                            destRecord.tripID == originRecord.tripID &&
+                            destRecord.stopSequence == nextStopSequence
+                }?.let { matchingDestRecord ->
+                    val weight = java.time.Duration.between(
+                        originRecord.departureTime, matchingDestRecord.arrivalTime
+                    ).toMinutes()
+
+                    val edge = EdgeWeightRelation(destinationNode, weight)
+                    adjacencyList.computeIfAbsent(originNode.stopID) { mutableListOf() }.add(edge)
+                }
+            }
+        }
+
+        // Return the adjacency list with immutable lists
         return adjacencyList.mapValues { (_, v) -> v.toList() } as HashMap<Int, List<EdgeWeightRelation>>
     }
 
