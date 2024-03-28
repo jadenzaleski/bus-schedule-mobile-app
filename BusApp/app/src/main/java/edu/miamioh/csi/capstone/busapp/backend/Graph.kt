@@ -7,7 +7,10 @@
 
 package edu.miamioh.csi.capstone.busapp.backend
 
+import edu.miamioh.csi.capstone.busapp.views.Place
+import edu.miamioh.csi.capstone.busapp.views.calculateDistance
 import java.time.LocalTime
+import java.util.PriorityQueue
 
 /**
  * A data class to represent the nodes that will make up the graphs used for route creation.
@@ -327,6 +330,54 @@ object Graph {
 
         // Return the adjacency list with immutable lists
         return adjacencyList.mapValues { (_, v) -> v.toList() } as HashMap<Int, List<EdgeWeightRelation>>
+    }
+
+    /**
+     * Optimized function for finding the closest bus stops for a given Place object, which contains
+     * an associated latitude and longitude location.
+     *
+     * @param location - The location from which to find the closest bus stops (nodes)
+     * @param nodes - The set of available nodes in the Graph, generated from the list of valid
+     *                AgencyIDs the user specified
+     */
+    fun getNearbyNodesByCoordinatesOptimized(
+        location: Place,
+        nodes: Set<Node>
+    ): List<Node> {
+        val maxDistance = 3.21869  // Expressed in km. Equals about two miles.
+
+        /*
+         * Using a PriorityQueue really helps the efficiency of this algorithm. Previously, I was
+         * keeping a list containing the distances between the location and ALL nodes in the set.
+         * But if the set is large, this can make this method very slow computationally.
+         *
+         * The PQ gets sorted based on the distance between an individual node and the location.
+         * For association purposes, we place the Node and the corresponding distance value together
+         * in a pair.
+         */
+        val closestNodes = PriorityQueue<Pair<Node, Double>>(compareBy { it.second })
+
+        nodes.forEach { node ->
+            val distance = calculateDistance(location.lat, location.lon, node.stopLat, node.stopLon)
+            if (distance < maxDistance) {
+                /*
+                 * For now, I want the list of nodes returned to have a size no greater than 3 (can
+                 * be adjusted as needed).
+                 *
+                 * If the size of the list is not greater than 3 already, simply add the node if it
+                 * fits the distance condition. Otherwise, if the incoming distance value is less
+                 * than the "farthest" node in the PQ, remove that node and add the incoming node.
+                 */
+                if (closestNodes.size < 3) {
+                    closestNodes.add(node to distance)
+                } else if (distance < closestNodes.peek().second) {
+                    closestNodes.poll() // Remove the farthest node
+                    closestNodes.add(node to distance)
+                }
+            }
+        }
+
+        return closestNodes.map { it.first }
     }
 
     /**
