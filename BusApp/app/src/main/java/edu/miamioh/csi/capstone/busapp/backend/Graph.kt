@@ -49,7 +49,21 @@ data class RouteRecord(
  */
 data class EdgeWeightRelation(
     val endNode: Node,
+    val origRouteRecord: RouteRecord,
+    val destRouteRecord: RouteRecord,
     val weight: Long
+)
+
+/**
+ *
+ */
+data class FinalRoutePoint(
+    val stopID: Int,
+    val stopName: String,
+    val stopLat: Double,
+    val stopLon: Double,
+    val arrivalTime: LocalTime,
+    val departureTime: LocalTime
 )
 
 
@@ -58,6 +72,15 @@ object Graph {
     val graphNodes: MutableSet<Node> = mutableSetOf()
     // Stores all edges and weights for the graph (essentially, an adjacency list).
     val EdgeWeightRelations: HashMap<Int, List<EdgeWeightRelation>> = HashMap()
+
+    fun optimalRouteGenerator(
+        startPoints: Set<Node>,
+        endPoints: Set<Node>,
+        nodes: Set<Node>,
+        edges: HashMap<Int, List<EdgeWeightRelation>>
+    ) {
+
+    }
 
     /**
      * Based on the list of user-selected agencies, returns the list of ALL StopIds associated
@@ -282,7 +305,7 @@ object Graph {
     }
      */
 
-    fun generateEdgesAndWeights(
+    fun generateEdgesAndWeightsWithTimeFilter(
         nodes: Set<Node>,
         selectedTime: String
     ): HashMap<Int, List<EdgeWeightRelation>> {
@@ -292,35 +315,43 @@ object Graph {
         // Initialize the adjacency list
         val adjacencyList = HashMap<Int, MutableList<EdgeWeightRelation>>()
 
+        // Convert the selected time to LocalTime
         val timeBoundary = parseStringToLocalTime("$selectedTime:00")
 
         nodes.forEach { originNode ->
             originNode.routeRecords.forEach { originRecord ->
-                // Proceed only if the originRecord's times are after or at the timeFilter
+                // Filter based on the time condition
                 if (!originRecord.departureTime.isBefore(timeBoundary) && !originRecord.arrivalTime.isBefore(timeBoundary)) {
-                    // Calculate the next stop sequence to look for in destination node's RouteRecords
                     val nextStopSequence = originRecord.stopSequence + 1
 
+                    // Search for a destination node that matches the criteria
                     nodesMap.values.firstOrNull { destinationNode ->
                         destinationNode.routeRecords.any { destRecord ->
                             destRecord.routeID == originRecord.routeID &&
                                     destRecord.tripID == originRecord.tripID &&
                                     destRecord.stopSequence == nextStopSequence &&
-                                    !destRecord.departureTime.isBefore(timeBoundary) && // Ensure destRecord's times are also after or at the timeFilter
+                                    !destRecord.departureTime.isBefore(timeBoundary) &&
                                     !destRecord.arrivalTime.isBefore(timeBoundary)
                         }
                     }?.let { matchingDestNode ->
-                        // Find the matching destination RouteRecord again to calculate the weight
+                        // Find the matching destination RouteRecord to get the exact record
                         matchingDestNode.routeRecords.find { destRecord ->
                             destRecord.routeID == originRecord.routeID &&
                                     destRecord.tripID == originRecord.tripID &&
                                     destRecord.stopSequence == nextStopSequence
                         }?.let { matchingDestRecord ->
+                            // Calculate the weight based on the departure and arrival times
                             val weight = java.time.Duration.between(
                                 originRecord.departureTime, matchingDestRecord.arrivalTime
                             ).toMinutes()
 
-                            val edge = EdgeWeightRelation(matchingDestNode, weight)
+                            // Create an EdgeWeightRelation object with both RouteRecords
+                            val edge = EdgeWeightRelation(
+                                endNode = matchingDestNode,
+                                origRouteRecord = originRecord, // Include origin RouteRecord
+                                destRouteRecord = matchingDestRecord, // Include destination RouteRecord
+                                weight = weight
+                            )
                             adjacencyList.computeIfAbsent(originNode.stopID) { mutableListOf() }.add(edge)
                         }
                     }

@@ -48,7 +48,7 @@ object GraphTester {
 
         // Test # of Edges generated (unless another method gets written for testing purposes, you
         // do this check manually.
-        var adjacencyList = Graph.generateEdgesAndWeights(validNodes, "20:20")
+        var adjacencyList = Graph.generateEdgesAndWeightsWithTimeFilter(validNodes, "20:20")
         Log.i("# of Edges generated", "" + adjacencyList.values.flatten().size)
     }
 }

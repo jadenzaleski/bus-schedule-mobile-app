@@ -157,18 +157,6 @@ fun StopsWorkhorse() {
 
     Log.i("Valid Agency IDs: ", "" + selectedAgencyIds)
 
-    /* Some Tester Code:
-    var validStopIDs = Graph.findAllValidStopIdByAgencyId(selectedAgencyIds, routes, trips,
-        stopTimes)
-    var allNodes = Graph.generateNodes(validStopIDs, selectedAgencyIds, routes, trips, stops,
-        stopTimes)
-    var adjacencyList = Graph.generateEdgesAndWeights(allNodes)
-    val totalElements = adjacencyList.values.sumOf { it.size }
-    Log.i("All Valid StopIDs", "" + validStopIDs)
-    Log.i("Node Count", "" + allNodes.size)
-    Log.i("Edge Counter", "" + totalElements)
-     */
-
     // Sets the initial number of stops displayed when the app is started.
     var maxStopsInput by remember { mutableStateOf("50") }
     var maxStops by remember { mutableIntStateOf(50) }
