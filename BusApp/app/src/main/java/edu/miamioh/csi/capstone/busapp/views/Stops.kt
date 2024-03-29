@@ -175,8 +175,8 @@ fun StopsWorkhorse() {
             //Log.i("All Agencies Associated with Stops", "" + stopIdToAgencyIdMap[stop.stopId])
             //Log.i("All Agencies Selected by User", "" + selectedAgencyIds)
             agencyIdsForStop != null && agencyIdsForStop.any { it in selectedAgencyIds } &&
-                    calculateDistance(mapCenter.latitude, mapCenter.longitude, stop.stopLat, stop.stopLon) <= 60
-        }.sortedBy { calculateDistance(mapCenter.latitude, mapCenter.longitude, it.stopLat, it.stopLon) }
+                    calculateSphericalDistance(mapCenter.latitude, mapCenter.longitude, stop.stopLat, stop.stopLon) <= 60
+        }.sortedBy { calculateSphericalDistance(mapCenter.latitude, mapCenter.longitude, it.stopLat, it.stopLon) }
             .take(min(maxStops, 150))
     }
 
@@ -393,7 +393,7 @@ fun StopsWorkhorse() {
  * @param lon2 - The longitude of the second set of coordinates
  * @return The distance between the two given coordinates
  */
-fun calculateDistance(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
+fun calculateSphericalDistance(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
     val earthRadius = 6371 // Radius of the earth in kilometers
     val latDistance = Math.toRadians(lat2 - lat1)
     val lonDistance = Math.toRadians(lon2 - lon1)
