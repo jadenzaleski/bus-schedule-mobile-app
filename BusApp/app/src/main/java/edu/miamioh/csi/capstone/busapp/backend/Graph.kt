@@ -1,6 +1,6 @@
 /**
  * Contributors: Daniel Tai
- * Last Modified: 3/27/2024
+ * Last Modified: 3/28/2024
  * Description: Contains the back-end code for creating a Graph based on the CORe website
  *              information and some user input taken from our UI.
  */
@@ -25,7 +25,6 @@ data class Node(
     val stopLat: Double,
     val stopLon: Double,
     var routeRecords: List<RouteRecord>,
-    var isActive: Boolean
 )
 
 
@@ -50,9 +49,10 @@ data class RouteRecord(
  * whatever algorithm we choose to work with to generate routes optimally.
  */
 data class EdgeWeightRelation(
-    val endNode: Node,
-    val origRouteRecord: RouteRecord,
-    val destRouteRecord: RouteRecord,
+    val endStopID: Int,
+    val tripID: Int,
+    val departureTime: LocalTime,
+    val arrivalTime: LocalTime,
     val weight: Long
 )
 
@@ -64,8 +64,6 @@ data class FinalRoutePoint(
     val stopName: String,
     val stopLat: Double,
     val stopLon: Double,
-    val arrivalTime: LocalTime,
-    val departureTime: LocalTime
 )
 
 
@@ -89,6 +87,8 @@ object Graph {
         selectedTime: String,
         validAgencyIDs: Set<Int>
     ): List<FinalRoutePoint> {
+        Log.i("Input Variables", "Selected Time: " + selectedTime)
+
         val validStopIDs = findAllValidStopIdByAgencyId(validAgencyIDs, routes, trips, stopTimes)
         Log.i("Route Generation", "Valid Stop IDs Found (Stage 1/6)")
 
@@ -96,21 +96,31 @@ object Graph {
             stops, stopTimes)
         Log.i("Route Generation", "Nodes created (Stage 2/6)")
 
-        val adjacencyList = generateEdgesAndWeightsWithTimeFilter(graphNodes, selectedTime)
+        val filteredGraphNodes = filterRouteRecordsByTime(graphNodes, selectedTime)
+
+        val adjacencyList = generateEdgesAndWeights(filteredGraphNodes)
         Log.i("Route Generation", "Adjacency List created (Stage 3/6)")
+        Log.i("# of Edges generated", "" + adjacencyList.values.flatten().size)
 
-        val potentialStartBusStops = getNearbyNodesByCoordinatesOptimized(startLocation, graphNodes)
+        for (edge in adjacencyList.get(3101)!!) {
+            Log.i("EdgeWeightRelation endID", "" + edge.endStopID)
+            Log.i("EdgeWeightRelation DT", "" + edge.departureTime)
+            Log.i("EdgeWeightRelation AT", "" + edge.arrivalTime)
+        }
+
+        val potentialStartBusStops = getNearbyNodesByCoordinatesOptimized(startLocation,
+            filteredGraphNodes)
         Log.i("Route Generation", "Potential starting stops identified (Stage 4/6)")
-        Log.i("# of Starting Stops", "" + potentialStartBusStops.size)
+        Log.i("# of Starting Stops", "" + potentialStartBusStops)
 
-        val potentialEndBusStops = getNearbyNodesByCoordinatesOptimized(endLocation, graphNodes)
+        val potentialEndBusStops = getNearbyNodesByCoordinatesOptimized(endLocation,
+            filteredGraphNodes)
         Log.i("Route Generation", "Potential ending stops identified (Stage 5/6)")
-        Log.i("# of Ending Stops", "" + potentialEndBusStops.size)
+        Log.i("# of Ending Stops", "" + potentialEndBusStops)
 
         val finalRoute = generateRoute(potentialStartBusStops, potentialEndBusStops, adjacencyList,
-            selectedTime)
+            filteredGraphNodes, selectedTime)
         Log.i("Route Generation", "Final route with points generated (Stage 6/6)")
-
         Log.i("Route Generation", "Returning route now...")
         return finalRoute
     }
@@ -128,84 +138,81 @@ object Graph {
     fun generateRoute(
         startPoints: List<Node>,
         endPoints: List<Node>,
-        adjacencyList: HashMap<Int, List<EdgeWeightRelation>>,
+        adjacencyList: HashMap<Int, MutableList<EdgeWeightRelation>>,
+        nodes: Set<Node>,
         selectedTime: String
     ): List<FinalRoutePoint> {
-        // Heuristic function: Estimate distance based on the spherical distance between two geographical points.
-        fun heuristic(node: Node, endNode: Node): Double {
-            return calculateSphericalDistance(node.stopLat, node.stopLon, endNode.stopLat, endNode.stopLon)
-        }
+        // Create a map from nodes for quick lookup
+        val nodesMap = nodes.associateBy { it.stopID }
 
-        // Initialize open and closed set for A* algorithm
+        val selectedTimeBoundary = parseStringToLocalTime("$selectedTime:00")
+
+        // Initialize priority queue and score maps
         val openSet = PriorityQueue<Pair<Node, Double>>(compareBy { it.second })
-        startPoints.forEach { openSet.add(it to 0.0) }
-
         val cameFrom = mutableMapOf<Int, Node>()
-
-        // For node n, gScore[n] is the cost of the cheapest path from start to n currently known, initialized to infinity for all nodes except the start node.
         val gScore = mutableMapOf<Int, Double>().withDefault { Double.MAX_VALUE }
-        startPoints.forEach { gScore[it.stopID] = 0.0 }
-
-        // For node n, fScore[n] := gScore[n] + h(n). fScore[n] represents our current best guess as to how short a path from start to finish can be if it goes through n.
         val fScore = mutableMapOf<Int, Double>().withDefault { Double.MAX_VALUE }
-        startPoints.forEach { fScore[it.stopID] = heuristic(it, endPoints.first()) }
+
+        // Prepare start points
+        startPoints.forEach { node ->
+            gScore[node.stopID] = 0.0
+            fScore[node.stopID] = heuristic(node, endPoints.first())
+            openSet.add(node to fScore.getValue(node.stopID))
+        }
 
         while (openSet.isNotEmpty()) {
             val current = openSet.poll().first
 
-            // Check if current is in the endPoints list
+            // Check if current node is an end node
             if (endPoints.any { it.stopID == current.stopID }) {
-                return reconstructPath(cameFrom, current)
+                return reconstructPath(cameFrom, current, nodesMap)
             }
 
-            adjacencyList[current.stopID]?.forEach { neighborRelation ->
-                val tentativeGScore = gScore.getValue(current.stopID) + neighborRelation.weight.toDouble()
-                val neighbor = neighborRelation.endNode
-                if (tentativeGScore < gScore.getValue(neighbor.stopID)) {
-                    // This path to neighbor is better than any previous one. Record it!
-                    cameFrom[neighbor.stopID] = current
-                    gScore[neighbor.stopID] = tentativeGScore
-                    fScore[neighbor.stopID] = gScore.getValue(neighbor.stopID) + heuristic(neighbor, endPoints.first())
+            adjacencyList[current.stopID]?.forEach { edge ->
+                val neighborID = edge.endStopID
+                val tentativeGScore = gScore.getValue(current.stopID) + edge.weight
 
-                    if (!openSet.any { it.first.stopID == neighbor.stopID }) {
-                        openSet.add(neighbor to fScore.getValue(neighbor.stopID))
+                if (tentativeGScore < gScore.getValue(neighborID)) {
+                    nodesMap[neighborID]?.let { neighbor ->
+                        cameFrom[neighbor.stopID] = current
+                        gScore[neighbor.stopID] = tentativeGScore
+                        fScore[neighbor.stopID] = tentativeGScore + heuristic(neighbor, endPoints.first())
+
+                        if (openSet.none { it.first.stopID == neighbor.stopID }) {
+                            openSet.add(neighbor to fScore.getValue(neighbor.stopID))
+                        }
                     }
                 }
             }
         }
 
-        // If we get here, then no path exists
+        // Return an empty list if no path is found
         return emptyList()
     }
 
-    /**
-     * Reconstructs the path from start to goal node as discovered by the A* algorithm.
-     *
-     * @param cameFrom - A map indicating for each node n, which node it can be most efficiently reached from.
-     * @param current - The current goal node from which to backtrack to the start node.
-     * @return A list of FinalRoutePoint objects representing the path from start to goal.
-     */
-    private fun reconstructPath(cameFrom: Map<Int, Node>, current: Node): List<FinalRoutePoint> {
+    private fun heuristic(node: Node, endNode: Node): Double {
+        return calculateSphericalDistance(node.stopLat, node.stopLon, endNode.stopLat, endNode.stopLon)
+    }
+
+    private fun reconstructPath(cameFrom: Map<Int, Node>, current: Node, nodesMap: Map<Int, Node>): List<FinalRoutePoint> {
+        val path = mutableListOf<Node>(current)
         var currentNode = current
-        val totalPath = mutableListOf<Node>(currentNode)
 
         while (cameFrom.containsKey(currentNode.stopID)) {
             currentNode = cameFrom[currentNode.stopID]!!
-            totalPath.add(0, currentNode) // Insert at the beginning
+            path.add(0, currentNode)
         }
 
-        // Convert the Node path to FinalRoutePoint path
-        return totalPath.map { node ->
+        return path.map { node ->
             FinalRoutePoint(
                 stopID = node.stopID,
                 stopName = node.stopName,
                 stopLat = node.stopLat,
                 stopLon = node.stopLon,
-                arrivalTime = node.routeRecords.first().arrivalTime,
-                departureTime = node.routeRecords.first().departureTime
             )
         }
     }
+
 
 
     /**
@@ -309,10 +316,27 @@ object Graph {
                     stopLat = stop.stopLat,
                     stopLon = stop.stopLon,
                     routeRecords = routeRecords,
-                    isActive = true
                 )
             }
         }.toSet()
+    }
+
+    fun filterRouteRecordsByTime(
+        nodes: Set<Node>,
+        selectedTime: String
+    ): Set<Node> {
+        // Convert the selected time string to a LocalTime object
+        val timeBoundary = parseStringToLocalTime("$selectedTime:00")
+
+        // Iterate through each node to filter RouteRecords
+        return nodes.map { node ->
+            // Filter RouteRecords based on the time condition
+            val filteredRecords = node.routeRecords.filter { record ->
+                !record.departureTime.isBefore(timeBoundary) && !record.arrivalTime.isBefore(timeBoundary)
+            }
+            // Create a new Node with the filtered RouteRecords
+            node.copy(routeRecords = filteredRecords)
+        }.toSet() // Return a new set with updated nodes
     }
 
 
@@ -423,63 +447,49 @@ object Graph {
     }
      */
 
-    fun generateEdgesAndWeightsWithTimeFilter(
-        nodes: Set<Node>,
-        selectedTime: String
-    ): HashMap<Int, List<EdgeWeightRelation>> {
-        // Convert nodes list to a map for O(1) access time
+    fun generateEdgesAndWeights(nodes: Set<Node>): HashMap<Int, MutableList<EdgeWeightRelation>> {
+        // Map nodes for quick lookup
         val nodesMap = nodes.associateBy { it.stopID }
 
         // Initialize the adjacency list
         val adjacencyList = HashMap<Int, MutableList<EdgeWeightRelation>>()
 
-        // Convert the selected time to LocalTime
-        val timeBoundary = parseStringToLocalTime("$selectedTime:00")
-
         nodes.forEach { originNode ->
             originNode.routeRecords.forEach { originRecord ->
-                // Filter based on the time condition
-                if (!originRecord.departureTime.isBefore(timeBoundary) && !originRecord.arrivalTime.isBefore(timeBoundary)) {
-                    val nextStopSequence = originRecord.stopSequence + 1
+                val nextStopSequence = originRecord.stopSequence + 1
 
-                    // Search for a destination node that matches the criteria
-                    nodesMap.values.firstOrNull { destinationNode ->
-                        destinationNode.routeRecords.any { destRecord ->
-                            destRecord.routeID == originRecord.routeID &&
-                                    destRecord.tripID == originRecord.tripID &&
-                                    destRecord.stopSequence == nextStopSequence &&
-                                    !destRecord.departureTime.isBefore(timeBoundary) &&
-                                    !destRecord.arrivalTime.isBefore(timeBoundary)
-                        }
-                    }?.let { matchingDestNode ->
-                        // Find the matching destination RouteRecord to get the exact record
-                        matchingDestNode.routeRecords.find { destRecord ->
-                            destRecord.routeID == originRecord.routeID &&
-                                    destRecord.tripID == originRecord.tripID &&
-                                    destRecord.stopSequence == nextStopSequence
-                        }?.let { matchingDestRecord ->
-                            // Calculate the weight based on the departure and arrival times
-                            val weight = java.time.Duration.between(
-                                originRecord.departureTime, matchingDestRecord.arrivalTime
-                            ).toMinutes()
+                // Find destination nodes based on matching route and trip ID, ensuring sequence continuity
+                nodesMap.values.forEach { potentialDestNode ->
+                    potentialDestNode.routeRecords.firstOrNull { destRecord ->
+                        destRecord.routeID == originRecord.routeID &&
+                                destRecord.tripID == originRecord.tripID &&
+                                destRecord.stopSequence == nextStopSequence
+                    }?.let { matchingDestRecord ->
+                        // Calculate the weight as the difference in minutes between departure and arrival times
+                        val weight = java.time.Duration.between(
+                            originRecord.departureTime, matchingDestRecord.arrivalTime
+                        ).toMinutes()
 
-                            // Create an EdgeWeightRelation object with both RouteRecords
-                            val edge = EdgeWeightRelation(
-                                endNode = matchingDestNode,
-                                origRouteRecord = originRecord, // Include origin RouteRecord
-                                destRouteRecord = matchingDestRecord, // Include destination RouteRecord
-                                weight = weight
-                            )
-                            adjacencyList.computeIfAbsent(originNode.stopID) { mutableListOf() }.add(edge)
-                        }
+                        // Create a new EdgeWeightRelation object
+                        val edge = EdgeWeightRelation(
+                            endStopID = potentialDestNode.stopID,
+                            tripID = originRecord.tripID,
+                            departureTime = originRecord.departureTime,
+                            arrivalTime = matchingDestRecord.arrivalTime,
+                            weight = weight
+                        )
+
+                        // Add the new edge to the adjacency list
+                        adjacencyList.computeIfAbsent(originNode.stopID) { mutableListOf() }.add(edge)
                     }
                 }
             }
         }
 
-        // Return the adjacency list with immutable lists
-        return adjacencyList.mapValues { (_, v) -> v.toList() } as HashMap<Int, List<EdgeWeightRelation>>
+        // Return the adjacency list
+        return adjacencyList
     }
+
 
     /**
      * Optimized function for finding the closest bus stops for a given Place object, which contains
@@ -493,7 +503,7 @@ object Graph {
         location: Place,
         nodes: Set<Node>
     ): List<Node> {
-        val maxDistance = 3.21869  // Expressed in km. Equals about two miles.
+        val maxDistance = 0.25  // Expressed in km.
 
         /*
          * Using a PriorityQueue really helps the efficiency of this algorithm. Previously, I was

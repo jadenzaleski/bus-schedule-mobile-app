@@ -47,19 +47,22 @@ object GraphTester {
             stopTimes)
         Log.i("# of Nodes Generated from Valid Stops", "" + validNodes.size)
 
+        //var filteredNodes = Graph.filterRouteRecordsByTime(validNodes, )
+
         // Test # of Edges generated (unless another method gets written for testing purposes, you
         // do this check manually.
-        var adjacencyList = Graph.generateEdgesAndWeightsWithTimeFilter(validNodes, "00:00")
+        var adjacencyList = Graph.generateEdgesAndWeights(validNodes)
         Log.i("# of Edges generated", "" + adjacencyList.values.flatten().size)
 
         var start = Place("3101", 39.303718, 16.253402, "", "")
-        var end = Place("3100", 39.817653, 16.200771, "", "")
+        var end = Place("3110", 39.666626, 16.295893, "", "")
+
 
         var finalRoute = Graph.optimalRouteGenerator(start, end, "07:10", selectedAgencyIds)
         Log.i("Final Route Size", "" + finalRoute.size)
 
         for (point in finalRoute) {
-            Log.i("Point in Route", "" + point.stopName + ", " + point.departureTime)
+            Log.i("Point in Route", "" + point.stopID + ", " + point.stopName)
         }
     }
 }
