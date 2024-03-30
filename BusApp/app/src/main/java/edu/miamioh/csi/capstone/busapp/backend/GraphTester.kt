@@ -58,8 +58,8 @@ object GraphTester {
         Log.i("# of Edges generated", "" + adjacencyList.values.flatten().size)
          */
 
-        var start = Place("4165", 39.30709, 16.24726, "", "")
-        var end = Place("3110", 38.909297, 16.587267, "", "")
+        var start = Place("", 38.76257, 16.328503, "", "")
+        var end = Place("", 39.398974, 16.262295, "", "")
 
         var finalRoute = Graph.optimalRouteGenerator(start, end, "00:00", selectedAgencyIds)
         Log.i("Final Route Size", "" + finalRoute.size)

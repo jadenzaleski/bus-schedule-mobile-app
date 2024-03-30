@@ -87,7 +87,7 @@ import kotlin.math.sqrt
 
 @Composable
 fun StopsView() {
-    //StopsWorkhorse()
+    StopsWorkhorse()
     GraphTester.runTests()
 }
 
