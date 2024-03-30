@@ -2,7 +2,7 @@
  * Contributors: Daniel Tai
  * Last Modified: 3/27/2024
  * Description: A file for testing the creation of Graphs produced using functionalities outlined in
- *              the Graph.kt file.
+ *              the RouteGenerator.kt file.
  */
 
 package edu.miamioh.csi.capstone.busapp.backend
@@ -11,10 +11,10 @@ package edu.miamioh.csi.capstone.busapp.backend
 import android.util.Log
 import edu.miamioh.csi.capstone.busapp.views.Place
 
-object GraphTester {
+object RouteGeneratorTester {
     /**
      * A tester suite that ensures the Graph being created from a designated list of agencyIDs is
-     * correct. Calls upon functions from the Graph.kt file to get the output to be tested. There
+     * correct. Calls upon functions from the RouteGenerator.kt file to get the output to be tested. There
      * are some manual elements you'll need to do here at this point based on how this tester file
      * is set up. This includes:
      * - Doing manual calculations for the expected number of edges
@@ -58,10 +58,10 @@ object GraphTester {
         Log.i("# of Edges generated", "" + adjacencyList.values.flatten().size)
          */
 
-        var start = Place("", 38.76257, 16.328503, "", "")
-        var end = Place("", 39.398974, 16.262295, "", "")
+        var start = Place("4490", 39.331681, 16.184743, "", "")
+        var end = Place("4365", 39.333011, 16.202143, "", "")
 
-        var finalRoute = Graph.optimalRouteGenerator(start, end, "00:00", selectedAgencyIds)
+        var finalRoute = RouteGenerator.routeWorkhorse(start, end, "00:00", selectedAgencyIds)
         Log.i("Final Route Size", "" + finalRoute.size)
 
         for (point in finalRoute) {

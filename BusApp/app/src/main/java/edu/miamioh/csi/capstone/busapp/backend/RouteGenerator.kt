@@ -93,7 +93,7 @@ class EfficientPriorityQueue<T>(private val comparator: Comparator<T>) {
 }
 
 
-object Graph {
+object RouteGenerator {
     private val stops = CSVHandler.getStops()
     private val routes = CSVHandler.getRoutes()
     private val trips = CSVHandler.getTrips()
@@ -111,7 +111,7 @@ object Graph {
      *                         generate the route
      * @return a list of FinalRoutePoint objects representing the generated optimal route
      */
-    fun optimalRouteGenerator(
+    fun routeWorkhorse(
         startLocation: Place,
         endLocation: Place,
         selectedTime: String,
@@ -168,7 +168,7 @@ object Graph {
         //Log.i("# of Edges generated", "" + adjacencyList.values.flatten().size)
 
         // Generates the final route to be returned.
-        val finalRoute = generateRoute(potentialStartBusStops, potentialEndBusStops, adjacencyList,
+        val finalRoute = generateOptimalRoute(potentialStartBusStops, potentialEndBusStops, adjacencyList,
             finalFilteredNodes)
         Log.i("Route Generation", "Final route with points generated (Stage 8/8)")
         Log.i("Route Generation", "Returning route now...")
@@ -187,7 +187,7 @@ object Graph {
      * @param nodes - The nodes (bus stops) that are available for use in generating the route
      * @return a list of FinalRoutePoint objects representing the generated optimal route
      */
-    private fun generateRoute(
+    private fun generateOptimalRoute(
         startPoints: List<Node>,
         endPoints: List<Node>,
         adjacencyList: HashMap<Int, MutableList<Edge>>,

@@ -1,5 +1,6 @@
 package edu.miamioh.csi.capstone.busapp.views
 
+
 import android.Manifest
 import android.annotation.SuppressLint
 import android.app.TimePickerDialog
@@ -15,7 +16,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -33,7 +33,6 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -65,7 +64,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
-import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.rememberNavController
 import coil.compose.AsyncImage
 import com.google.android.gms.location.FusedLocationProviderClient
@@ -75,12 +73,10 @@ import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.MapProperties
 import com.google.maps.android.compose.MapUiSettings
-import com.google.maps.android.compose.MarkerInfoWindowContent
-import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
 import edu.miamioh.csi.capstone.busapp.R
 import edu.miamioh.csi.capstone.busapp.backend.CSVHandler
-import edu.miamioh.csi.capstone.busapp.navigation.Screens
+import edu.miamioh.csi.capstone.busapp.backend.RouteGenerator
 import edu.miamioh.csi.capstone.busapp.ui.theme.Black
 import edu.miamioh.csi.capstone.busapp.ui.theme.Gray300
 import edu.miamioh.csi.capstone.busapp.ui.theme.Green
@@ -110,9 +106,11 @@ data class Place(
     var iconURL: String
 )
 
+
 // user location
 var userLon = 0.0
 var userLat = 0.0
+
 
 @Composable
 fun RouteView() {
@@ -145,14 +143,17 @@ fun RouteView() {
     val agencies = CSVHandler.getAgencies()
     val navController = rememberNavController()
 
+
     var isLocationPermissionGranted by remember { mutableStateOf(false) }
     val currentZoomLevel by remember { mutableStateOf(9f) } // Initial zoom level
+
 
     LaunchedEffect(key1 = context) {
         isLocationPermissionGranted = ContextCompat.checkSelfPermission(
             context, Manifest.permission.ACCESS_FINE_LOCATION
         ) == PackageManager.PERMISSION_GRANTED
     }
+
 
     /*
      * Sets up initial map settings for when user first loads up the Routes page upon opening app.
@@ -162,6 +163,7 @@ fun RouteView() {
      */
     val initialPosition = LatLng(39.2, 16.25) // Cosenza
     var mapCenter by remember { mutableStateOf(initialPosition) }
+
 
     val cameraPositionState = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(initialPosition, currentZoomLevel)
@@ -180,13 +182,17 @@ fun RouteView() {
             agencies.filter { it.agencyName in selectedAgencyNames }.map { it.agencyID }.toSet()
         }
     }.value
+
+
     // Max stops to show on the Map, this will be constant for routes. for now.
     var maxStops by remember { mutableIntStateOf(150) }
+
 
     // Map interaction tracking
     trackMapInteraction(cameraPositionState) { zoomLevel, center ->
         mapCenter = center
     }
+
 
     // Dynamically calculate filtered stops based on current criteria
     val filteredStops = remember(mapCenter, selectedAgencyIds, maxStops) {
@@ -211,8 +217,10 @@ fun RouteView() {
         }.take(min(maxStops, 150))
     }
 
-    // allow for clearing of keyboard
+
+    // Allow for clearing of keyboard
     val focusManager = LocalFocusManager.current
+
 
     // +++ FORM +++
     // set initial date in form to current time
@@ -234,9 +242,10 @@ fun RouteView() {
     var selectedStartPlace = remember { mutableStateOf(Place("", 0.0, 0.0, "", "")) }
     var selectedEndPlace = remember { mutableStateOf(Place("", 0.0, 0.0, "", "")) }
 
-    // search function calls google API to find 20 results that match the users query.
+
+    // Search function calls google API to find 20 results that match the users query.
     @OptIn(DelicateCoroutinesApi::class)
-    fun search(query: String) {
+    fun googleSearch(query: String) {
         GlobalScope.launch(Dispatchers.IO) {
             try {
                 val key = "&key=AIzaSyArxmzr9k53luII5xTXHT98rCV2dWEZU_E"
@@ -247,13 +256,16 @@ fun RouteView() {
                 val reader = BufferedReader(InputStreamReader(connection.getInputStream()))
                 val jsonData = StringBuilder()
 
+
                 var line: String?
                 while (reader.readLine().also { line = it } != null) {
                     jsonData.append(line)
                 }
                 reader.close()
 
+
                 val jsonObject = JSONObject(jsonData.toString())
+
 
 //            Log.i("JSON", jsonObject.toString())
                 // and them to an array and go through the json pulling out the necessary values
@@ -276,6 +288,7 @@ fun RouteView() {
                         calculateSphericalDistance(userLat, userLon, x.lat, x.lon)
                     }
 
+
                 }
             } catch (e: IOException) {
                 Log.i("Error", "Error occurred: ${e.message}")
@@ -285,6 +298,59 @@ fun RouteView() {
         }
     }
 
+    @OptIn(DelicateCoroutinesApi::class)
+    fun googleSnapToRoads(query: String) {
+        GlobalScope.launch(Dispatchers.IO) {
+            try {
+                val key = "&key=AIzaSyArxmzr9k53luII5xTXHT98rCV2dWEZU_E"
+                val location = "&location=" + mapCenter.latitude + "%2C" + mapCenter.longitude
+                val url =
+                    "https://maps.googleapis.com/maps/api/place/textsearch/json?query=" + query + location + key + "&rankby=distance"
+                val connection = URL(url).openConnection()
+                val reader = BufferedReader(InputStreamReader(connection.getInputStream()))
+                val jsonData = StringBuilder()
+
+
+                var line: String?
+                while (reader.readLine().also { line = it } != null) {
+                    jsonData.append(line)
+                }
+                reader.close()
+
+
+                val jsonObject = JSONObject(jsonData.toString())
+
+
+//            Log.i("JSON", jsonObject.toString())
+                // and them to an array and go through the json pulling out the necessary values
+                // then adding them to a list Compose can use.
+                val resultsArray = jsonObject.getJSONArray("results")
+                searchResults.clear()
+                for (i in 0 until resultsArray.length()) {
+                    val resultObj = resultsArray.getJSONObject(i)
+                    val name = resultObj.getString("name")
+                    val formattedAddress = resultObj.getString("formatted_address")
+                    val iconURL = resultObj.getString("icon")
+                    val geometryObj = resultObj.getJSONObject("geometry")
+                    val locationObj = geometryObj.getJSONObject("location")
+                    val lat = locationObj.getDouble("lat")
+                    val lon = locationObj.getDouble("lng")
+//                    Log.i("PlaceInfo", "Name: $name, Address: $formattedAddress, Latitude: $lat, Longitude: $lon, Icon: $iconURL")
+                    searchResults.add(Place(name, lat, lon, formattedAddress, iconURL))
+                    // sort by distance from the user
+                    searchResults.sortBy { x ->
+                        calculateSphericalDistance(userLat, userLon, x.lat, x.lon)
+                    }
+
+
+                }
+            } catch (e: IOException) {
+                Log.i("Error", "Error occurred: ${e.message}")
+            } catch (e: JSONException) {
+                Log.i("Error", "Error occurred while parsing JSON: ${e.message}")
+            }
+        }
+    }
 
     // Column that holds the map
     Column(
@@ -294,6 +360,7 @@ fun RouteView() {
                 focusManager.clearFocus()
             })
         }) {
+
 
         GoogleMap(
             modifier = Modifier.fillMaxHeight(0.6f),
@@ -306,7 +373,9 @@ fun RouteView() {
                 isMyLocationEnabled = isLocationPermissionGranted,
                 minZoomPreference = 5.0f
             )
-        ) {
+        )
+        /*
+        {
             filteredStops.forEach { stop ->
                 // Using the custom MarkerInfoWindowContent instead of the standard Marker
                 MarkerInfoWindowContent(
@@ -359,6 +428,8 @@ fun RouteView() {
                 }
             }
         }
+         */
+
 
         // Column to hold the Form.
         Column(
@@ -367,6 +438,7 @@ fun RouteView() {
                 .padding(horizontal = 15.dp)
                 .background(Light), verticalArrangement = Arrangement.SpaceEvenly
         ) {
+
 
             // Row that holds the agencies button and time button
             Row(
@@ -397,6 +469,7 @@ fun RouteView() {
                     )
                     Text(text = "${selectedAgencyNames.size}")
                 }
+
 
                 OutlinedButton(
                     colors = ButtonColors(
@@ -483,8 +556,9 @@ fun RouteView() {
                     keyboardActions = KeyboardActions(
                         onDone = {
 
+
                             startSearchResultsExpanded = startSearchResultsExpanded.not()
-                            search(startSearchString)
+                            googleSearch(startSearchString)
                             focusManager.clearFocus()
                         },
                     ),
@@ -519,7 +593,7 @@ fun RouteView() {
                             onClick = {
                                 startSearchResultsExpanded =
                                     !startSearchResultsExpanded
-                                search(startSearchString)
+                                googleSearch(startSearchString)
                                 focusManager.clearFocus()
                             },
                             enabled = startIsCurrentLocation.value.not(),
@@ -542,6 +616,7 @@ fun RouteView() {
                     },
                 )
 
+
                 //Dropdown menu for start search results
                 DropdownMenu(
                     expanded = startSearchResultsExpanded,
@@ -549,6 +624,7 @@ fun RouteView() {
                     modifier = Modifier
                         .fillMaxWidth()
                         .fillMaxHeight(0.5f),
+
 
                     ) {
                     searchResults.forEach { result ->
@@ -590,6 +666,7 @@ fun RouteView() {
                             })
                     }
                 }
+
 
             }
             // Row that holds the TO: location button and text-field
@@ -639,7 +716,7 @@ fun RouteView() {
                     keyboardActions = KeyboardActions(
                         onDone = {
                             endSearchResultsExpanded = !endSearchResultsExpanded
-                            search(endSearchString)
+                            googleSearch(endSearchString)
                             focusManager.clearFocus()
                         },
                     ),
@@ -674,7 +751,7 @@ fun RouteView() {
                             onClick = {
                                 endSearchResultsExpanded =
                                     !endSearchResultsExpanded
-                                search(endSearchString)
+                                googleSearch(endSearchString)
                                 focusManager.clearFocus()
                             },
                             enabled = endIsCurrentLocation.value.not(),
@@ -697,6 +774,7 @@ fun RouteView() {
                     },
                 )
 
+
                 //Dropdown menu for search Results
                 DropdownMenu(
                     expanded = endSearchResultsExpanded,
@@ -704,6 +782,7 @@ fun RouteView() {
                     modifier = Modifier
                         .fillMaxWidth()
                         .fillMaxHeight(0.5f),
+
 
                     ) {
                     searchResults.forEach { result ->
@@ -745,9 +824,8 @@ fun RouteView() {
                             })
                     }
                 }
-
-
             }
+
 
             // make sure at least one thing from each row is checked and one agency
             var valid =
@@ -756,6 +834,7 @@ fun RouteView() {
                         (endIsCurrentLocation.value || (selectedEndPlace.value.lat > 0 && selectedEndPlace.value.lon > 0))
                         &&
                         selectedAgencyIds.isNotEmpty()
+
 
             // EXECUTE button
             OutlinedButton(
@@ -768,18 +847,22 @@ fun RouteView() {
                         selectedStartPlace.value
                     }
 
+
                     val stop: Place = if (startIsCurrentLocation.value) {
                         Place("Current Location", userLat, userLon, "", "")
                     } else {
                         selectedEndPlace.value
                     }
                     // CALCULATE ROUTE!
+                    /*
                     calcRoute(
                         start = start,
                         stop = stop,
                         time = selectedTime,
                         allowedAgencies = selectedAgencyIds
                     )
+                     */
+
 
                 },
                 colors = ButtonColors(
@@ -797,14 +880,15 @@ fun RouteView() {
                 Text(text = "Go")
             }
         }
-
     }
+
 
     // Dropdown menu for list of agencies
     DropdownMenu(
         expanded = filterAgenciesExpanded,
         onDismissRequest = { filterAgenciesExpanded = !filterAgenciesExpanded },
         modifier = Modifier.fillMaxWidth(0.65F),
+
 
         ) {
         // clear all button
@@ -818,6 +902,7 @@ fun RouteView() {
             }
         )
 
+
         agencies.forEach { agency ->
             val isSelected = agency.agencyName in selectedAgencyNames
             DropdownMenuItem(
@@ -828,6 +913,7 @@ fun RouteView() {
                     } else {
                         selectedAgencyNames.add(agency.agencyName)
                     }
+
 
                 },
                 leadingIcon = {
@@ -842,7 +928,10 @@ fun RouteView() {
     }
 
 
+
+
 }
+
 
 @SuppressLint("MissingPermission")
 private fun getLastLocation(fusedLocationClient: FusedLocationProviderClient) {
@@ -861,13 +950,15 @@ private fun getLastLocation(fusedLocationClient: FusedLocationProviderClient) {
         }
 }
 
+/*
 // Route is calculated here
 fun calcRoute(start: Place, stop: Place, time: String, allowedAgencies: Set<Int>) {
-    val logMessage = "Start: ${start.name}, Lat: ${start.lat}, Lon: ${start.lon}, " +
-            "Stop: ${stop.name}, Lat: ${stop.lat}, Lon: ${stop.lon}, " +
-            "Time: $time, Allowed Agencies: $allowedAgencies"
-    Log.i("calcRoute", logMessage)
+    var routePoints =
 }
+
+ */
+
+
 
 
 @Composable
