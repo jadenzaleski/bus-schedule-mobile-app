@@ -7,6 +7,7 @@
 
 package edu.miamioh.csi.capstone.busapp.backend
 
+
 import android.util.Log
 import edu.miamioh.csi.capstone.busapp.views.Place
 
@@ -34,35 +35,38 @@ object GraphTester {
         val agencies = CSVHandler.getAgencies()
 
         // Place agencyIDs you want to test in this Set.
-        val selectedAgencyIds = mutableSetOf(25)
+        //val selectedAgencyIds = mutableSetOf(25)
+        val selectedAgencyIds = mutableSetOf(33, 34, 8, 9, 10, 11, 12, 13, 7, 27, 28, 29, 30, 35,
+            32, 19, 21, 22, 24, 25, 26, 14, 15, 16, 17, 18)
 
+        /*
         // Test # of Stops, and print list of stopIDs for manual check with .CSV files.
         var validStopIDs = Graph.findAllValidStopIdByAgencyId(selectedAgencyIds, routes, trips,
             stopTimes)
         Log.i("# of Stops from Agency", "" + validStopIDs.size)
-        Log.i("List of stopIDs", "" + validStopIDs)
 
         // Test # of Nodes generated (should match # of stops from Agency number above).
-        var validNodes = Graph.generateNodes(validStopIDs, selectedAgencyIds, routes, trips, stops,
+        var tempValidNodes = Graph.generateNodes(validStopIDs, selectedAgencyIds, routes, trips, stops,
             stopTimes)
-        Log.i("# of Nodes Generated from Valid Stops", "" + validNodes.size)
+        Log.i("# of Nodes Generated from Valid Stops", "" + tempValidNodes.size)
 
         //var filteredNodes = Graph.filterRouteRecordsByTime(validNodes, )
 
         // Test # of Edges generated (unless another method gets written for testing purposes, you
         // do this check manually.
-        var adjacencyList = Graph.generateEdgesAndWeights(validNodes)
+        var adjacencyList = Graph.generateEdgesAndWeights(tempValidNodes)
         Log.i("# of Edges generated", "" + adjacencyList.values.flatten().size)
+         */
 
-        var start = Place("3101", 39.303718, 16.253402, "", "")
-        var end = Place("3110", 39.666626, 16.295893, "", "")
+        var start = Place("4165", 39.30709, 16.24726, "", "")
+        var end = Place("3110", 38.909297, 16.587267, "", "")
 
-
-        var finalRoute = Graph.optimalRouteGenerator(start, end, "07:10", selectedAgencyIds)
+        var finalRoute = Graph.optimalRouteGenerator(start, end, "00:00", selectedAgencyIds)
         Log.i("Final Route Size", "" + finalRoute.size)
 
         for (point in finalRoute) {
-            Log.i("Point in Route", "" + point.stopID + ", " + point.stopName)
+            Log.i("Point in Route", "" + point.stopID + ", " + point.stopLat + ", " + point.stopLon)
         }
+
     }
 }
