@@ -78,8 +78,8 @@ import com.google.maps.android.compose.MapUiSettings
 import com.google.maps.android.compose.MarkerInfoWindowContent
 import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
-import edu.miamioh.csi.capstone.busapp.backend.CSVHandler
 import edu.miamioh.csi.capstone.busapp.R
+import edu.miamioh.csi.capstone.busapp.backend.CSVHandler
 import edu.miamioh.csi.capstone.busapp.navigation.Screens
 import edu.miamioh.csi.capstone.busapp.ui.theme.Black
 import edu.miamioh.csi.capstone.busapp.ui.theme.Gray300
@@ -195,14 +195,14 @@ fun RouteView() {
             //Log.i("All Agencies Associated with Stops", "" + stopIdToAgencyIdMap[stop.stopId])
             //Log.i("All Agencies Selected by User", "" + selectedAgencyIds)
             agencyIdsForStop != null && agencyIdsForStop.any { it in selectedAgencyIds } &&
-                    calculateDistance(
+                    calculateSphericalDistance(
                         mapCenter.latitude,
                         mapCenter.longitude,
                         stop.stopLat,
                         stop.stopLon
                     ) <= 60
         }.sortedBy {
-            calculateDistance(
+            calculateSphericalDistance(
                 mapCenter.latitude,
                 mapCenter.longitude,
                 it.stopLat,
@@ -273,7 +273,7 @@ fun RouteView() {
                     searchResults.add(Place(name, lat, lon, formattedAddress, iconURL))
                     // sort by distance from the user
                     searchResults.sortBy { x ->
-                        calculateDistance(userLat, userLon, x.lat, x.lon)
+                        calculateSphericalDistance(userLat, userLon, x.lat, x.lon)
                     }
 
                 }
@@ -435,7 +435,6 @@ fun RouteView() {
                     )
                     Text(text = selectedTime)
                 }
-
             }
             // Row that holds the FROM: location button and text-field
             Row(
@@ -556,7 +555,7 @@ fun RouteView() {
                         DropdownMenuItem(
                             modifier = Modifier.padding(vertical = 8.dp),
                             text = {
-                                val dist = calculateDistance(
+                                val dist = calculateSphericalDistance(
                                     userLat,
                                     userLon,
                                     result.lat,
@@ -711,7 +710,7 @@ fun RouteView() {
                         DropdownMenuItem(
                             modifier = Modifier.padding(vertical = 8.dp),
                             text = {
-                                val dist = calculateDistance(
+                                val dist = calculateSphericalDistance(
                                     userLat,
                                     userLon,
                                     result.lat,
