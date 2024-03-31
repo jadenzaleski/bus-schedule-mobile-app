@@ -75,7 +75,10 @@ dependencies {
 
     // google maps util
     implementation("com.google.maps.android:android-maps-utils:3.7.0")
-//    implementation("com.google.maps.android:maps-ktx:5.0.0")
+    //implementation("com.google.maps.android:maps-ktx:5.0.0")
+
+    // Custom Preference (Settings Page) Library
+    implementation ("me.zhanghai.compose.preference:library:1.0.0")
 
     implementation("com.exyte:animated-navigation-bar:1.0.0")
     implementation("androidx.startup:startup-runtime:1.1.1")
