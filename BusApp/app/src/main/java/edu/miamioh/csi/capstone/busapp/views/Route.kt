@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -33,6 +34,7 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -64,23 +66,31 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.rememberNavController
 import coil.compose.AsyncImage
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
+import com.google.android.gms.maps.model.Polyline
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.MapProperties
 import com.google.maps.android.compose.MapUiSettings
+import com.google.maps.android.compose.MarkerInfoWindowContent
+import com.google.maps.android.compose.MarkerState
+import com.google.maps.android.compose.Polyline
 import com.google.maps.android.compose.rememberCameraPositionState
 import edu.miamioh.csi.capstone.busapp.R
 import edu.miamioh.csi.capstone.busapp.backend.CSVHandler
+import edu.miamioh.csi.capstone.busapp.backend.FinalRoutePoint
 import edu.miamioh.csi.capstone.busapp.backend.RouteGenerator
+import edu.miamioh.csi.capstone.busapp.navigation.Screens
 import edu.miamioh.csi.capstone.busapp.ui.theme.Black
 import edu.miamioh.csi.capstone.busapp.ui.theme.Gray300
 import edu.miamioh.csi.capstone.busapp.ui.theme.Green
 import edu.miamioh.csi.capstone.busapp.ui.theme.Light
+import edu.miamioh.csi.capstone.busapp.ui.theme.Red
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
@@ -105,12 +115,15 @@ data class Place(
     var address: String,
     var iconURL: String
 )
+data class SnappedPoint(val latitude: Double, val longitude: Double)
 
 
 // user location
 var userLon = 0.0
 var userLat = 0.0
 
+var currentRoute = mutableListOf(FinalRoutePoint(-1, "", 0.0, 0.0))
+val snappedPointsList = mutableListOf<SnappedPoint>()
 
 @Composable
 fun RouteView() {
@@ -145,7 +158,7 @@ fun RouteView() {
 
 
     var isLocationPermissionGranted by remember { mutableStateOf(false) }
-    val currentZoomLevel by remember { mutableStateOf(9f) } // Initial zoom level
+    var currentZoomLevel by remember { mutableStateOf(9f) } // Initial zoom level
 
 
     LaunchedEffect(key1 = context) {
@@ -166,7 +179,7 @@ fun RouteView() {
 
 
     val cameraPositionState = rememberCameraPositionState {
-        position = CameraPosition.fromLatLngZoom(initialPosition, currentZoomLevel)
+        position = CameraPosition.fromLatLngZoom(if(snappedPointsList.isNotEmpty()) LatLng(snappedPointsList.first().latitude, snappedPointsList.first().longitude) else initialPosition, currentZoomLevel)
     }
     // Agencies
     val defaultAgencyName = agencies.firstOrNull()?.agencyName ?: ""
@@ -220,7 +233,7 @@ fun RouteView() {
 
     // Allow for clearing of keyboard
     val focusManager = LocalFocusManager.current
-
+    var showForm = remember { mutableStateOf(true) }
 
     // +++ FORM +++
     // set initial date in form to current time
@@ -241,7 +254,6 @@ fun RouteView() {
     var searchResults = remember { mutableStateListOf(Place("", 0.0, 0.0, "", "")) }
     var selectedStartPlace = remember { mutableStateOf(Place("", 0.0, 0.0, "", "")) }
     var selectedEndPlace = remember { mutableStateOf(Place("", 0.0, 0.0, "", "")) }
-
 
     // Search function calls google API to find 20 results that match the users query.
     @OptIn(DelicateCoroutinesApi::class)
@@ -299,17 +311,22 @@ fun RouteView() {
     }
 
     @OptIn(DelicateCoroutinesApi::class)
-    fun googleSnapToRoads(query: String) {
+    fun googleSnapToRoads(places: List<FinalRoutePoint>) {
         GlobalScope.launch(Dispatchers.IO) {
             try {
                 val key = "&key=AIzaSyArxmzr9k53luII5xTXHT98rCV2dWEZU_E"
-                val location = "&location=" + mapCenter.latitude + "%2C" + mapCenter.longitude
-                val url =
-                    "https://maps.googleapis.com/maps/api/place/textsearch/json?query=" + query + location + key + "&rankby=distance"
+                var path = "&path="
+
+                places.forEach {
+                    path += it.stopLat.toString() + "," + it.stopLon.toString() + "|"
+                }
+
+                path = path.removeSuffix("|")
+
+                val url = "https://roads.googleapis.com/v1/snapToRoads?interpolate=true" + path +  key
                 val connection = URL(url).openConnection()
                 val reader = BufferedReader(InputStreamReader(connection.getInputStream()))
                 val jsonData = StringBuilder()
-
 
                 var line: String?
                 while (reader.readLine().also { line = it } != null) {
@@ -317,33 +334,26 @@ fun RouteView() {
                 }
                 reader.close()
 
-
                 val jsonObject = JSONObject(jsonData.toString())
 
+               Log.i("JSON", jsonObject.toString())
 
-//            Log.i("JSON", jsonObject.toString())
-                // and them to an array and go through the json pulling out the necessary values
-                // then adding them to a list Compose can use.
-                val resultsArray = jsonObject.getJSONArray("results")
-                searchResults.clear()
+                val resultsArray = jsonObject.getJSONArray("snappedPoints")
+
                 for (i in 0 until resultsArray.length()) {
-                    val resultObj = resultsArray.getJSONObject(i)
-                    val name = resultObj.getString("name")
-                    val formattedAddress = resultObj.getString("formatted_address")
-                    val iconURL = resultObj.getString("icon")
-                    val geometryObj = resultObj.getJSONObject("geometry")
-                    val locationObj = geometryObj.getJSONObject("location")
-                    val lat = locationObj.getDouble("lat")
-                    val lon = locationObj.getDouble("lng")
-//                    Log.i("PlaceInfo", "Name: $name, Address: $formattedAddress, Latitude: $lat, Longitude: $lon, Icon: $iconURL")
-                    searchResults.add(Place(name, lat, lon, formattedAddress, iconURL))
-                    // sort by distance from the user
-                    searchResults.sortBy { x ->
-                        calculateSphericalDistance(userLat, userLon, x.lat, x.lon)
-                    }
-
-
+                    val snappedPointJson = resultsArray.getJSONObject(i).getJSONObject("location")
+                    val latitude = snappedPointJson.getDouble("latitude")
+                    val longitude = snappedPointJson.getDouble("longitude")
+                    snappedPointsList.add(SnappedPoint(latitude, longitude))
                 }
+
+                // Use snappedPointsList as needed
+                snappedPointsList.forEach { point ->
+                    println("Point: Latitude = ${point.latitude}, Longitude = ${point.longitude}")
+                }
+                mapCenter = LatLng(snappedPointsList.first().latitude, snappedPointsList.first().longitude)
+                currentZoomLevel = 2f
+
             } catch (e: IOException) {
                 Log.i("Error", "Error occurred: ${e.message}")
             } catch (e: JSONException) {
@@ -363,7 +373,7 @@ fun RouteView() {
 
 
         GoogleMap(
-            modifier = Modifier.fillMaxHeight(0.6f),
+            modifier = Modifier.fillMaxHeight(if (showForm.value) 0.6f else 0.9f),
             cameraPositionState = cameraPositionState,
             uiSettings = MapUiSettings(
                 myLocationButtonEnabled = isLocationPermissionGranted,
@@ -374,510 +384,556 @@ fun RouteView() {
                 minZoomPreference = 5.0f
             )
         )
-        /*
+
         {
-            filteredStops.forEach { stop ->
-                // Using the custom MarkerInfoWindowContent instead of the standard Marker
-                MarkerInfoWindowContent(
-                    state = MarkerState(position = LatLng(stop.stopLat, stop.stopLon)),
-                    onInfoWindowClick = {
-                        // put into start or stop
-                        // TODO: FINISH
-                        navController.navigate(Screens.RouteScreen.name) {
-                            popUpTo(navController.graph.findStartDestination().id) {
-                                saveState = true
+            if (showForm.value) {
+                filteredStops.forEach { stop ->
+                    // Using the custom MarkerInfoWindowContent instead of the standard Marker
+                    MarkerInfoWindowContent(
+                        state = MarkerState(position = LatLng(stop.stopLat, stop.stopLon)),
+                        onInfoWindowClick = {
+                            // put into start or stop
+                            // TODO: FINISH
+                            navController.navigate(Screens.RouteScreen.name) {
+                                popUpTo(navController.graph.findStartDestination().id) {
+                                    saveState = true
+                                }
+                                launchSingleTop = true
+                                restoreState = true
                             }
-                            launchSingleTop = true
-                            restoreState = true
                         }
-                    }
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.fillMaxWidth(0.8f)
                     ) {
-                        Text(
-                            text = stop.stopName,
-                            modifier = Modifier.padding(top = 5.dp),
-                            style = TextStyle(
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Bold,
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.fillMaxWidth(0.8f)
+                        ) {
+                            Text(
+                                text = stop.stopName,
+                                modifier = Modifier.padding(top = 5.dp),
+                                style = TextStyle(
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold,
+                                )
                             )
-                        )
-                        HorizontalDivider(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 5.dp)
-                        )
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(text = "Lat: ${stop.stopLat}")
-                            Spacer(modifier = Modifier.width(5.dp)) // Replaced VerticalDivider with Spacer for simplicity
-                            Text(text = "Lon: ${stop.stopLon}")
+                            HorizontalDivider(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 5.dp)
+                            )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(text = "Lat: ${stop.stopLat}")
+                                Spacer(modifier = Modifier.width(5.dp)) // Replaced VerticalDivider with Spacer for simplicity
+                                Text(text = "Lon: ${stop.stopLon}")
+                            }
+                            Text(text = "Stop ID: ${stop.stopID}")
+                            Text(
+                                text = "Tap to plan",
+                                modifier = Modifier.padding(top = 10.dp, bottom = 5.dp),
+                                style = TextStyle(
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.Blue
+                                )
+                            )
                         }
-                        Text(text = "Stop ID: ${stop.stopID}")
-                        Text(
-                            text = "Tap to plan",
-                            modifier = Modifier.padding(top = 10.dp, bottom = 5.dp),
-                            style = TextStyle(
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.Blue
-                            )
-                        )
                     }
                 }
+            } else {
+               Polyline(points = snappedPointsList.map { LatLng(it.latitude, it.longitude) }, width = 100f, color = Red)
             }
         }
-         */
 
 
-        // Column to hold the Form.
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 15.dp)
-                .background(Light), verticalArrangement = Arrangement.SpaceEvenly
-        ) {
-
-
-            // Row that holds the agencies button and time button
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+        if (showForm.value) {
+            // Column to hold the Form.
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 15.dp)
+                    .background(Light), verticalArrangement = Arrangement.SpaceEvenly
             ) {
-                OutlinedButton(
-                    onClick = {
-                        filterAgenciesExpanded = !filterAgenciesExpanded
-                        focusManager.clearFocus()
-                    },
-                    colors = ButtonColors(
-                        containerColor = Color.Transparent,
-                        contentColor = Green,
-                        disabledContainerColor = Color.Gray,
-                        disabledContentColor = Color.Gray
-                    ),
-                    border = BorderStroke(1.dp, Green),
-                    modifier = Modifier
-                        .height(50.dp),
-                    shape = RoundedCornerShape(20)
+
+
+                // Row that holds the agencies button and time button
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        painterResource(id = R.drawable.baseline_filter_list_24),
-                        contentDescription = null,
-                        modifier = Modifier.padding(end = 6.dp)
-                    )
-                    Text(text = "${selectedAgencyNames.size}")
-                }
-
-
-                OutlinedButton(
-                    colors = ButtonColors(
-                        containerColor = Color.Transparent,
-                        contentColor = Green,
-                        disabledContainerColor = Color.Gray,
-                        disabledContentColor = Color.Gray
-                    ),
-                    onClick = {
-                        val calendar = Calendar.getInstance()
-                        TimePickerDialog(
-                            context, { _, hour, minute ->
-                                val time = Calendar.getInstance().apply {
-                                    set(Calendar.HOUR_OF_DAY, hour)
-                                    set(Calendar.MINUTE, minute)
-                                }
-                                selectedTime = SimpleDateFormat(
-                                    "HH:mm",
-                                    Locale.getDefault()
-                                ).format(time.time)
-                            },
-                            calendar.get(Calendar.HOUR_OF_DAY),
-                            calendar.get(Calendar.MINUTE),
-                            true
-                        ).show()
-                    },
-                    border = BorderStroke(1.dp, Green),
-                    modifier = Modifier
-                        .height(50.dp),
-                    shape = RoundedCornerShape(20)
-                ) {
-                    Icon(
-                        Icons.Filled.DateRange,
-                        contentDescription = null,
-                        modifier = Modifier.padding(end = 6.dp)
-                    )
-                    Text(text = selectedTime)
-                }
-            }
-            // Row that holds the FROM: location button and text-field
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "From:",
-                    style = TextStyle(fontSize = 24.sp, fontFamily = FontFamily.Monospace),
-                    modifier = Modifier.padding(end = 10.dp)
-                )
-                // current location button
-                OutlinedButton(
-                    onClick = {
-                        startIsCurrentLocation.value = startIsCurrentLocation.value.not()
-                        focusManager.clearFocus()
-                    },
-                    colors = ButtonColors(
-                        containerColor = if (startIsCurrentLocation.value) Green else Color.Transparent,
-                        contentColor = if (startIsCurrentLocation.value) Color.White else Color.Gray,
-                        disabledContainerColor = Color.Gray,
-                        disabledContentColor = Color.Gray
-                    ),
-                    border = BorderStroke(
-                        1.dp,
-                        if (startIsCurrentLocation.value) Green else Color.Gray
-                    ),
-                    modifier = Modifier
-                        .height(50.dp)
-                        .width(50.dp),
-                    shape = RoundedCornerShape(20),
-                    contentPadding = PaddingValues(horizontal = 1.dp)
-                ) {
-                    Icon(
-                        painterResource(id = R.drawable.baseline_my_location_24),
-                        contentDescription = null,
-                        Modifier.padding(horizontal = 1.dp)
-                    )
-                }
-                // search box for start
-                OutlinedTextField(
-                    value = startSearchString,
-                    enabled = startIsCurrentLocation.value.not(),
-                    onValueChange = { startSearchString = it },
-                    keyboardActions = KeyboardActions(
-                        onDone = {
-
-
-                            startSearchResultsExpanded = startSearchResultsExpanded.not()
-                            googleSearch(startSearchString)
+                    OutlinedButton(
+                        onClick = {
+                            filterAgenciesExpanded = !filterAgenciesExpanded
                             focusManager.clearFocus()
                         },
-                    ),
-                    placeholder = {
-                        Text(
-                            text = if (startIsCurrentLocation.value.not()) "Search Anything..." else "Current Location.",
-                            fontSize = 15.sp,
-                            lineHeight = 20.sp,
-                            color = Color.Gray
+                        colors = ButtonColors(
+                            containerColor = Color.Transparent,
+                            contentColor = Green,
+                            disabledContainerColor = Color.Gray,
+                            disabledContentColor = Color.Gray
+                        ),
+                        border = BorderStroke(1.dp, Green),
+                        modifier = Modifier
+                            .height(50.dp),
+                        shape = RoundedCornerShape(20)
+                    ) {
+                        Icon(
+                            painterResource(id = R.drawable.baseline_filter_list_24),
+                            contentDescription = null,
+                            modifier = Modifier.padding(end = 6.dp)
                         )
-                    },
-                    singleLine = true,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(50.dp)
-                        .padding(start = 10.dp),
-                    colors = TextFieldDefaults.colors(
-                        unfocusedIndicatorColor = Color.Gray,
-                        focusedIndicatorColor = Color.Gray,
-                        focusedTextColor = Black,
-                        focusedLabelColor = Color.DarkGray,
-                        unfocusedLabelColor = Color.DarkGray,
-                        unfocusedContainerColor = Color.Transparent,
-                        focusedContainerColor = Color.Transparent,
-                        cursorColor = Color.Gray,
-                        disabledContainerColor = Gray300,
-                    ),
-                    shape = RoundedCornerShape(20),
-                    trailingIcon = {
-                        // search button
-                        OutlinedButton(
-                            onClick = {
-                                startSearchResultsExpanded =
-                                    !startSearchResultsExpanded
+                        Text(text = "${selectedAgencyNames.size}")
+                    }
+
+
+                    OutlinedButton(
+                        colors = ButtonColors(
+                            containerColor = Color.Transparent,
+                            contentColor = Green,
+                            disabledContainerColor = Color.Gray,
+                            disabledContentColor = Color.Gray
+                        ),
+                        onClick = {
+                            val calendar = Calendar.getInstance()
+                            TimePickerDialog(
+                                context, { _, hour, minute ->
+                                    val time = Calendar.getInstance().apply {
+                                        set(Calendar.HOUR_OF_DAY, hour)
+                                        set(Calendar.MINUTE, minute)
+                                    }
+                                    selectedTime = SimpleDateFormat(
+                                        "HH:mm",
+                                        Locale.getDefault()
+                                    ).format(time.time)
+                                },
+                                calendar.get(Calendar.HOUR_OF_DAY),
+                                calendar.get(Calendar.MINUTE),
+                                true
+                            ).show()
+                        },
+                        border = BorderStroke(1.dp, Green),
+                        modifier = Modifier
+                            .height(50.dp),
+                        shape = RoundedCornerShape(20)
+                    ) {
+                        Icon(
+                            Icons.Filled.DateRange,
+                            contentDescription = null,
+                            modifier = Modifier.padding(end = 6.dp)
+                        )
+                        Text(text = selectedTime)
+                    }
+                }
+                // Row that holds the FROM: location button and text-field
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "From:",
+                        style = TextStyle(fontSize = 24.sp, fontFamily = FontFamily.Monospace),
+                        modifier = Modifier.padding(end = 10.dp)
+                    )
+                    // current location button
+                    OutlinedButton(
+                        onClick = {
+                            startIsCurrentLocation.value = startIsCurrentLocation.value.not()
+                            focusManager.clearFocus()
+                        },
+                        colors = ButtonColors(
+                            containerColor = if (startIsCurrentLocation.value) Green else Color.Transparent,
+                            contentColor = if (startIsCurrentLocation.value) Color.White else Color.Gray,
+                            disabledContainerColor = Color.Gray,
+                            disabledContentColor = Color.Gray
+                        ),
+                        border = BorderStroke(
+                            1.dp,
+                            if (startIsCurrentLocation.value) Green else Color.Gray
+                        ),
+                        modifier = Modifier
+                            .height(50.dp)
+                            .width(50.dp),
+                        shape = RoundedCornerShape(20),
+                        contentPadding = PaddingValues(horizontal = 1.dp)
+                    ) {
+                        Icon(
+                            painterResource(id = R.drawable.baseline_my_location_24),
+                            contentDescription = null,
+                            Modifier.padding(horizontal = 1.dp)
+                        )
+                    }
+                    // search box for start
+                    OutlinedTextField(
+                        value = startSearchString,
+                        enabled = startIsCurrentLocation.value.not(),
+                        onValueChange = { startSearchString = it },
+                        keyboardActions = KeyboardActions(
+                            onDone = {
+
+
+                                startSearchResultsExpanded = startSearchResultsExpanded.not()
                                 googleSearch(startSearchString)
                                 focusManager.clearFocus()
                             },
-                            enabled = startIsCurrentLocation.value.not(),
-                            colors = ButtonColors(
-                                containerColor = Color.Transparent,
-                                contentColor = Green,
-                                disabledContainerColor = Color.Transparent,
-                                disabledContentColor = Color.Gray
-                            ),
-                            border = BorderStroke(0.dp, Color.Transparent),
-                            contentPadding = PaddingValues(horizontal = 1.dp),
-                            shape = RoundedCornerShape(50)
-                        ) {
-                            Icon(
-                                Icons.Default.Search,
-                                contentDescription = null,
-                                modifier = Modifier
+                        ),
+                        placeholder = {
+                            Text(
+                                text = if (startIsCurrentLocation.value.not()) "Search Anything..." else "Current Location.",
+                                fontSize = 15.sp,
+                                lineHeight = 20.sp,
+                                color = Color.Gray
                             )
-                        }
-                    },
-                )
-
-
-                //Dropdown menu for start search results
-                DropdownMenu(
-                    expanded = startSearchResultsExpanded,
-                    onDismissRequest = { startSearchResultsExpanded = !startSearchResultsExpanded },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .fillMaxHeight(0.5f),
-
-
-                    ) {
-                    searchResults.forEach { result ->
-                        DropdownMenuItem(
-                            modifier = Modifier.padding(vertical = 8.dp),
-                            text = {
-                                val dist = calculateSphericalDistance(
-                                    userLat,
-                                    userLon,
-                                    result.lat,
-                                    result.lon
-                                )
-                                Column {
-                                    Text(result.name)
-                                    Text("${String.format("%.3f", dist)}km", fontSize = 12.sp)
-                                    Text(
-                                        result.address,
-                                        fontWeight = FontWeight.Light,
-                                        fontSize = 12.sp
-                                    )
-                                }
-                            },
-                            onClick = {
-                                selectedStartPlace.value = result
-                                startSearchResultsExpanded = !startSearchResultsExpanded
-                                startSearchString = selectedStartPlace.value.name
-                            },
-                            leadingIcon = {
-                                AsyncImage(
+                        },
+                        singleLine = true,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(50.dp)
+                            .padding(start = 10.dp),
+                        colors = TextFieldDefaults.colors(
+                            unfocusedIndicatorColor = Color.Gray,
+                            focusedIndicatorColor = Color.Gray,
+                            focusedTextColor = Black,
+                            focusedLabelColor = Color.DarkGray,
+                            unfocusedLabelColor = Color.DarkGray,
+                            unfocusedContainerColor = Color.Transparent,
+                            focusedContainerColor = Color.Transparent,
+                            cursorColor = Color.Gray,
+                            disabledContainerColor = Gray300,
+                        ),
+                        shape = RoundedCornerShape(20),
+                        trailingIcon = {
+                            // search button
+                            OutlinedButton(
+                                onClick = {
+                                    startSearchResultsExpanded =
+                                        !startSearchResultsExpanded
+                                    googleSearch(startSearchString)
+                                    focusManager.clearFocus()
+                                },
+                                enabled = startIsCurrentLocation.value.not(),
+                                colors = ButtonColors(
+                                    containerColor = Color.Transparent,
+                                    contentColor = Green,
+                                    disabledContainerColor = Color.Transparent,
+                                    disabledContentColor = Color.Gray
+                                ),
+                                border = BorderStroke(0.dp, Color.Transparent),
+                                contentPadding = PaddingValues(horizontal = 1.dp),
+                                shape = RoundedCornerShape(50)
+                            ) {
+                                Icon(
+                                    Icons.Default.Search,
+                                    contentDescription = null,
                                     modifier = Modifier
-                                        .width(24.dp)
-                                        .height(24.dp),
-                                    model = result.iconURL,
-                                    contentDescription = "Place Image",
-                                    colorFilter = ColorFilter.colorMatrix(ColorMatrix().apply {
-                                        setToSaturation(0f) // grayscale
-                                    })
                                 )
-                            })
-                    }
-                }
-
-
-            }
-            // Row that holds the TO: location button and text-field
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "To:  ",
-                    style = TextStyle(fontSize = 24.sp, fontFamily = FontFamily.Monospace),
-                    modifier = Modifier.padding(end = 10.dp)
-                )
-                // current location button
-                OutlinedButton(
-                    onClick = {
-                        endIsCurrentLocation.value = endIsCurrentLocation.value.not()
-                        focusManager.clearFocus()
-                    },
-                    colors = ButtonColors(
-                        containerColor = if (endIsCurrentLocation.value) Green else Color.Transparent,
-                        contentColor = if (endIsCurrentLocation.value) Color.White else Color.Gray,
-                        disabledContainerColor = Color.Gray,
-                        disabledContentColor = Color.Gray
-                    ),
-                    border = BorderStroke(
-                        1.dp,
-                        if (endIsCurrentLocation.value) Green else Color.Gray
-                    ),
-                    modifier = Modifier
-                        .height(50.dp)
-                        .width(50.dp),
-                    shape = RoundedCornerShape(20),
-                    contentPadding = PaddingValues(horizontal = 1.dp)
-                ) {
-                    Icon(
-                        painterResource(id = R.drawable.baseline_my_location_24),
-                        contentDescription = null,
-                        Modifier.padding(horizontal = 1.dp)
+                            }
+                        },
                     )
+
+
+                    //Dropdown menu for start search results
+                    DropdownMenu(
+                        expanded = startSearchResultsExpanded,
+                        onDismissRequest = {
+                            startSearchResultsExpanded = !startSearchResultsExpanded
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .fillMaxHeight(0.5f),
+
+
+                        ) {
+                        searchResults.forEach { result ->
+                            DropdownMenuItem(
+                                modifier = Modifier.padding(vertical = 8.dp),
+                                text = {
+                                    val dist = calculateSphericalDistance(
+                                        userLat,
+                                        userLon,
+                                        result.lat,
+                                        result.lon
+                                    )
+                                    Column {
+                                        Text(result.name)
+                                        Text("${String.format("%.3f", dist)}km", fontSize = 12.sp)
+                                        Text(
+                                            result.address,
+                                            fontWeight = FontWeight.Light,
+                                            fontSize = 12.sp
+                                        )
+                                    }
+                                },
+                                onClick = {
+                                    selectedStartPlace.value = result
+                                    startSearchResultsExpanded = !startSearchResultsExpanded
+                                    startSearchString = selectedStartPlace.value.name
+                                },
+                                leadingIcon = {
+                                    AsyncImage(
+                                        modifier = Modifier
+                                            .width(24.dp)
+                                            .height(24.dp),
+                                        model = result.iconURL,
+                                        contentDescription = "Place Image",
+                                        colorFilter = ColorFilter.colorMatrix(ColorMatrix().apply {
+                                            setToSaturation(0f) // grayscale
+                                        })
+                                    )
+                                })
+                        }
+                    }
+
+
                 }
-                // search text box
-                OutlinedTextField(
-                    value = endSearchString,
-                    onValueChange = { endSearchString = it },
-                    enabled = endIsCurrentLocation.value.not(),
-                    keyboardActions = KeyboardActions(
-                        onDone = {
-                            endSearchResultsExpanded = !endSearchResultsExpanded
-                            googleSearch(endSearchString)
+                // Row that holds the TO: location button and text-field
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "To:  ",
+                        style = TextStyle(fontSize = 24.sp, fontFamily = FontFamily.Monospace),
+                        modifier = Modifier.padding(end = 10.dp)
+                    )
+                    // current location button
+                    OutlinedButton(
+                        onClick = {
+                            endIsCurrentLocation.value = endIsCurrentLocation.value.not()
                             focusManager.clearFocus()
                         },
-                    ),
-                    placeholder = {
-                        Text(
-                            text = if (endIsCurrentLocation.value.not()) "Search Anything..." else "Current Location.",
-                            fontSize = 15.sp,
-                            lineHeight = 20.sp,
-                            color = Color.Gray
+                        colors = ButtonColors(
+                            containerColor = if (endIsCurrentLocation.value) Green else Color.Transparent,
+                            contentColor = if (endIsCurrentLocation.value) Color.White else Color.Gray,
+                            disabledContainerColor = Color.Gray,
+                            disabledContentColor = Color.Gray
+                        ),
+                        border = BorderStroke(
+                            1.dp,
+                            if (endIsCurrentLocation.value) Green else Color.Gray
+                        ),
+                        modifier = Modifier
+                            .height(50.dp)
+                            .width(50.dp),
+                        shape = RoundedCornerShape(20),
+                        contentPadding = PaddingValues(horizontal = 1.dp)
+                    ) {
+                        Icon(
+                            painterResource(id = R.drawable.baseline_my_location_24),
+                            contentDescription = null,
+                            Modifier.padding(horizontal = 1.dp)
                         )
-                    },
-                    singleLine = true,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(50.dp)
-                        .padding(start = 10.dp),
-                    colors = TextFieldDefaults.colors(
-                        unfocusedIndicatorColor = Color.Gray,
-                        focusedIndicatorColor = Color.Gray,
-                        focusedTextColor = Black,
-                        focusedLabelColor = Color.DarkGray,
-                        unfocusedLabelColor = Color.DarkGray,
-                        unfocusedContainerColor = Color.Transparent,
-                        focusedContainerColor = Color.Transparent,
-                        cursorColor = Color.Gray,
-                        disabledContainerColor = Gray300
-                    ),
-                    shape = RoundedCornerShape(20),
-                    trailingIcon = {
-                        // search button
-                        OutlinedButton(
-                            onClick = {
-                                endSearchResultsExpanded =
-                                    !endSearchResultsExpanded
+                    }
+                    // search text box
+                    OutlinedTextField(
+                        value = endSearchString,
+                        onValueChange = { endSearchString = it },
+                        enabled = endIsCurrentLocation.value.not(),
+                        keyboardActions = KeyboardActions(
+                            onDone = {
+                                endSearchResultsExpanded = !endSearchResultsExpanded
                                 googleSearch(endSearchString)
                                 focusManager.clearFocus()
                             },
-                            enabled = endIsCurrentLocation.value.not(),
-                            colors = ButtonColors(
-                                containerColor = Color.Transparent,
-                                contentColor = Green,
-                                disabledContainerColor = Color.Transparent,
-                                disabledContentColor = Color.Gray
-                            ),
-                            border = BorderStroke(0.dp, Color.Transparent),
-                            contentPadding = PaddingValues(horizontal = 1.dp),
-                            shape = RoundedCornerShape(50)
-                        ) {
-                            Icon(
-                                Icons.Default.Search,
-                                contentDescription = null,
-                                modifier = Modifier
+                        ),
+                        placeholder = {
+                            Text(
+                                text = if (endIsCurrentLocation.value.not()) "Search Anything..." else "Current Location.",
+                                fontSize = 15.sp,
+                                lineHeight = 20.sp,
+                                color = Color.Gray
                             )
-                        }
-                    },
-                )
-
-
-                //Dropdown menu for search Results
-                DropdownMenu(
-                    expanded = endSearchResultsExpanded,
-                    onDismissRequest = { endSearchResultsExpanded = !endSearchResultsExpanded },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .fillMaxHeight(0.5f),
-
-
-                    ) {
-                    searchResults.forEach { result ->
-                        DropdownMenuItem(
-                            modifier = Modifier.padding(vertical = 8.dp),
-                            text = {
-                                val dist = calculateSphericalDistance(
-                                    userLat,
-                                    userLon,
-                                    result.lat,
-                                    result.lon
-                                )
-                                Column {
-                                    Text(result.name)
-                                    Text("${String.format("%.3f", dist)}km", fontSize = 12.sp)
-                                    Text(
-                                        result.address,
-                                        fontWeight = FontWeight.Light,
-                                        fontSize = 12.sp
-                                    )
-                                }
-                            },
-                            onClick = {
-                                selectedEndPlace.value = result
-                                endSearchResultsExpanded = !endSearchResultsExpanded
-                                endSearchString = selectedEndPlace.value.name
-                            },
-                            leadingIcon = {
-                                AsyncImage(
+                        },
+                        singleLine = true,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(50.dp)
+                            .padding(start = 10.dp),
+                        colors = TextFieldDefaults.colors(
+                            unfocusedIndicatorColor = Color.Gray,
+                            focusedIndicatorColor = Color.Gray,
+                            focusedTextColor = Black,
+                            focusedLabelColor = Color.DarkGray,
+                            unfocusedLabelColor = Color.DarkGray,
+                            unfocusedContainerColor = Color.Transparent,
+                            focusedContainerColor = Color.Transparent,
+                            cursorColor = Color.Gray,
+                            disabledContainerColor = Gray300
+                        ),
+                        shape = RoundedCornerShape(20),
+                        trailingIcon = {
+                            // search button
+                            OutlinedButton(
+                                onClick = {
+                                    endSearchResultsExpanded =
+                                        !endSearchResultsExpanded
+                                    googleSearch(endSearchString)
+                                    focusManager.clearFocus()
+                                },
+                                enabled = endIsCurrentLocation.value.not(),
+                                colors = ButtonColors(
+                                    containerColor = Color.Transparent,
+                                    contentColor = Green,
+                                    disabledContainerColor = Color.Transparent,
+                                    disabledContentColor = Color.Gray
+                                ),
+                                border = BorderStroke(0.dp, Color.Transparent),
+                                contentPadding = PaddingValues(horizontal = 1.dp),
+                                shape = RoundedCornerShape(50)
+                            ) {
+                                Icon(
+                                    Icons.Default.Search,
+                                    contentDescription = null,
                                     modifier = Modifier
-                                        .width(24.dp)
-                                        .height(24.dp),
-                                    model = result.iconURL,
-                                    contentDescription = "Place Image",
-                                    colorFilter = ColorFilter.colorMatrix(ColorMatrix().apply {
-                                        setToSaturation(0f) // grayscale
-                                    })
                                 )
-                            })
+                            }
+                        },
+                    )
+
+
+                    //Dropdown menu for search Results
+                    DropdownMenu(
+                        expanded = endSearchResultsExpanded,
+                        onDismissRequest = { endSearchResultsExpanded = !endSearchResultsExpanded },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .fillMaxHeight(0.5f),
+
+
+                        ) {
+                        searchResults.forEach { result ->
+                            DropdownMenuItem(
+                                modifier = Modifier.padding(vertical = 8.dp),
+                                text = {
+                                    val dist = calculateSphericalDistance(
+                                        userLat,
+                                        userLon,
+                                        result.lat,
+                                        result.lon
+                                    )
+                                    Column {
+                                        Text(result.name)
+                                        Text("${String.format("%.3f", dist)}km", fontSize = 12.sp)
+                                        Text(
+                                            result.address,
+                                            fontWeight = FontWeight.Light,
+                                            fontSize = 12.sp
+                                        )
+                                    }
+                                },
+                                onClick = {
+                                    selectedEndPlace.value = result
+                                    endSearchResultsExpanded = !endSearchResultsExpanded
+                                    endSearchString = selectedEndPlace.value.name
+                                },
+                                leadingIcon = {
+                                    AsyncImage(
+                                        modifier = Modifier
+                                            .width(24.dp)
+                                            .height(24.dp),
+                                        model = result.iconURL,
+                                        contentDescription = "Place Image",
+                                        colorFilter = ColorFilter.colorMatrix(ColorMatrix().apply {
+                                            setToSaturation(0f) // grayscale
+                                        })
+                                    )
+                                })
+                        }
                     }
                 }
+
+
+                // make sure at least one thing from each row is checked and one agency
+                var valid =
+                    (startIsCurrentLocation.value || (selectedStartPlace.value.lat > 0 && selectedStartPlace.value.lon > 0))
+                            &&
+                            (endIsCurrentLocation.value || (selectedEndPlace.value.lat > 0 && selectedEndPlace.value.lon > 0))
+                            &&
+                            selectedAgencyIds.isNotEmpty()
+
+
+                // EXECUTE button
+                OutlinedButton(
+                    enabled = if (valid) true else false,
+                    onClick = {
+                        // get the start and stop place object if its current location
+                        val start: Place = if (startIsCurrentLocation.value) {
+                            Place("Current Location", userLat, userLon, "", "")
+                        } else {
+                            selectedStartPlace.value
+                        }
+
+
+                        val stop: Place = if (startIsCurrentLocation.value) {
+                            Place("Current Location", userLat, userLon, "", "")
+                        } else {
+                            selectedEndPlace.value
+                        }
+                        // CALCULATE ROUTE!
+                        calcRoute(
+                            start = start,
+                            end = stop,
+                            time = selectedTime,
+                            allowedAgencies = selectedAgencyIds
+                        )
+                        googleSnapToRoads(currentRoute)
+                        showForm.value = !showForm.value
+
+                    },
+                    colors = ButtonColors(
+                        containerColor = Color.Transparent,
+                        contentColor = Green,
+                        disabledContainerColor = Gray300,
+                        disabledContentColor = Color.Gray
+                    ),
+                    border = BorderStroke(2.dp, if (valid) Green else Color.Gray),
+                    modifier = Modifier
+                        .height(50.dp)
+                        .fillMaxWidth(),
+                    shape = RoundedCornerShape(20)
+                ) {
+                    Text(text = "Go")
+                }
             }
-
-
-            // make sure at least one thing from each row is checked and one agency
-            var valid =
-                (startIsCurrentLocation.value || (selectedStartPlace.value.lat > 0 && selectedStartPlace.value.lon > 0))
-                        &&
-                        (endIsCurrentLocation.value || (selectedEndPlace.value.lat > 0 && selectedEndPlace.value.lon > 0))
-                        &&
-                        selectedAgencyIds.isNotEmpty()
-
-
-            // EXECUTE button
-            OutlinedButton(
-                enabled = if (valid) true else false,
-                onClick = {
-                    // get the start and stop place object if its current location
-                    val start: Place = if (startIsCurrentLocation.value) {
-                        Place("Current Location", userLat, userLon, "", "")
-                    } else {
-                        selectedStartPlace.value
-                    }
-
-
-                    val stop: Place = if (startIsCurrentLocation.value) {
-                        Place("Current Location", userLat, userLon, "", "")
-                    } else {
-                        selectedEndPlace.value
-                    }
-                    // CALCULATE ROUTE!
-                    /*
-                    calcRoute(
-                        start = start,
-                        stop = stop,
-                        time = selectedTime,
-                        allowedAgencies = selectedAgencyIds
-                    )
-                     */
-
-
-                },
-                colors = ButtonColors(
-                    containerColor = Color.Transparent,
-                    contentColor = Green,
-                    disabledContainerColor = Gray300,
-                    disabledContentColor = Color.Gray
-                ),
-                border = BorderStroke(2.dp, if (valid) Green else Color.Gray),
+        } else {
+            Column(
                 modifier = Modifier
-                    .height(50.dp)
-                    .fillMaxWidth(),
-                shape = RoundedCornerShape(20)
+                    .fillMaxSize()
+                    .padding(horizontal = 15.dp)
+                    .background(Light), verticalArrangement = Arrangement.SpaceEvenly
             ) {
-                Text(text = "Go")
+                OutlinedButton(
+                    onClick = {
+                        // get the start and stop place object if its current location
+                        val start: Place = if (startIsCurrentLocation.value) {
+                            Place("Current Location", userLat, userLon, "", "")
+                        } else {
+                            selectedStartPlace.value
+                        }
+
+
+                        val stop: Place = if (startIsCurrentLocation.value) {
+                            Place("Current Location", userLat, userLon, "", "")
+                        } else {
+                            selectedEndPlace.value
+                        }
+                        showForm.value = !showForm.value
+
+                    },
+                    colors = ButtonColors(
+                        containerColor = Color.Transparent,
+                        contentColor = Red,
+                        disabledContainerColor = Gray300,
+                        disabledContentColor = Color.Gray
+                    ),
+                    border = BorderStroke(2.dp, Red),
+                    modifier = Modifier
+                        .height(50.dp)
+                        .fillMaxWidth(),
+                    shape = RoundedCornerShape(20)
+                ) {
+                    Text(text = "Cancel")
+                }
             }
         }
     }
@@ -928,8 +984,6 @@ fun RouteView() {
     }
 
 
-
-
 }
 
 
@@ -950,13 +1004,22 @@ private fun getLastLocation(fusedLocationClient: FusedLocationProviderClient) {
         }
 }
 
-/*
 // Route is calculated here
-fun calcRoute(start: Place, stop: Place, time: String, allowedAgencies: Set<Int>) {
-    var routePoints =
+fun calcRoute(start: Place, end: Place, time: String, allowedAgencies: Set<Int>) {
+    val Cstart = Place("4490", 39.331681, 16.184743, "", "")
+    val Cend = Place("4365", 39.333011, 16.202143, "", "")
+    val CallowedAgencies = mutableSetOf(33, 34, 8, 9, 10, 11, 12, 13, 7, 27, 28, 29, 30, 35,
+        32, 19, 21, 22, 24, 25, 26, 14, 15, 16, 17, 18)
+    val logMessage = "Start: ${start.name}, Lat: ${start.lat}, Lon: ${start.lon}, " +
+            "Stop: ${end.name}, Lat: ${end.lat}, Lon: ${end.lon}, " +
+            "Time: $time, Allowed Agencies: $allowedAgencies"
+    Log.i("calcRoute", logMessage)
+
+    currentRoute = RouteGenerator.routeWorkhorse(Cstart, Cend, "00:00", CallowedAgencies).toMutableList()
+
+
 }
 
- */
 
 
 
