@@ -61,6 +61,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -71,6 +72,8 @@ import androidx.navigation.compose.rememberNavController
 import coil.compose.AsyncImage
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
+import com.google.android.gms.maps.CameraUpdateFactory
+import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.Polyline
@@ -88,7 +91,9 @@ import edu.miamioh.csi.capstone.busapp.backend.FinalRoutePoint
 import edu.miamioh.csi.capstone.busapp.backend.RouteGenerator
 import edu.miamioh.csi.capstone.busapp.navigation.Screens
 import edu.miamioh.csi.capstone.busapp.ui.theme.Black
+import edu.miamioh.csi.capstone.busapp.ui.theme.Blue
 import edu.miamioh.csi.capstone.busapp.ui.theme.Gray300
+import edu.miamioh.csi.capstone.busapp.ui.theme.Gray700
 import edu.miamioh.csi.capstone.busapp.ui.theme.Green
 import edu.miamioh.csi.capstone.busapp.ui.theme.Light
 import edu.miamioh.csi.capstone.busapp.ui.theme.Red
@@ -105,7 +110,11 @@ import java.net.URL
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
+import kotlin.math.atan2
+import kotlin.math.cos
 import kotlin.math.min
+import kotlin.math.sin
+import kotlin.math.sqrt
 
 
 // struct for places that we get from api
@@ -116,6 +125,7 @@ data class Place(
     var address: String,
     var iconURL: String
 )
+
 data class SnappedPoint(val latitude: Double, val longitude: Double)
 
 
@@ -175,12 +185,12 @@ fun RouteView() {
      * The initial starting coordinates to center upon when the map is first loaded
      * The initial zoom level of the map
      */
-    val initialPosition = LatLng(39.2, 16.25) // Cosenza
+    var initialPosition = LatLng(39.2, 16.25) // Cosenza
     var mapCenter by remember { mutableStateOf(initialPosition) }
 
 
-    val cameraPositionState = rememberCameraPositionState {
-        position = CameraPosition.fromLatLngZoom(if(snappedPointsList.isNotEmpty()) LatLng(snappedPointsList.first().latitude, snappedPointsList.first().longitude) else initialPosition, currentZoomLevel)
+    var cameraPositionState = rememberCameraPositionState {
+        position = CameraPosition.fromLatLngZoom(initialPosition, currentZoomLevel)
     }
     // Agencies
     val defaultAgencyName = agencies.firstOrNull()?.agencyName ?: ""
@@ -313,18 +323,49 @@ fun RouteView() {
 
     @OptIn(DelicateCoroutinesApi::class)
     fun googleSnapToRoads(places: List<FinalRoutePoint>) {
+        snappedPointsList.clear()
         GlobalScope.launch(Dispatchers.IO) {
             try {
                 val key = "&key=AIzaSyArxmzr9k53luII5xTXHT98rCV2dWEZU_E"
                 var path = "&path="
 
-                places.forEach {
-                    path += it.stopLat.toString() + "," + it.stopLon.toString() + "|"
+                for (i in places.indices) {
+                    // Add current point to path
+                    val current = places[i]
+                    path += "${current.stopLat},${current.stopLon}"
+
+                    if (i < places.size - 1) {
+                        val next = places[i + 1]
+
+                        // Calculate distance to next point
+                        val distance =
+                            calculateSphericalDistance(
+                                current.stopLat,
+                                current.stopLon,
+                                next.stopLat,
+                                next.stopLon
+                            )
+
+                        if (distance > .3) {
+                            // Calculate and add midpoint
+                            val midPoint = midpoint(
+                                current.stopLat,
+                                current.stopLon,
+                                next.stopLat,
+                                next.stopLon
+                            )
+                            path += "|${midPoint.stopLat},${midPoint.stopLon}"
+                        }
+                    }
+
+                    // Append separator for next point if not last
+                    if (i < places.size - 1) {
+                        path += "|"
+                    }
                 }
 
-                path = path.removeSuffix("|")
-
-                val url = "https://roads.googleapis.com/v1/snapToRoads?interpolate=true" + path + key
+                val url =
+                    "https://roads.googleapis.com/v1/snapToRoads?interpolate=true" + path + key
                 val connection = URL(url).openConnection()
                 val reader = BufferedReader(InputStreamReader(connection.getInputStream()))
                 val jsonData = StringBuilder()
@@ -337,7 +378,7 @@ fun RouteView() {
 
                 val jsonObject = JSONObject(jsonData.toString())
 
-               Log.i("JSON", jsonObject.toString())
+                Log.i("JSON", jsonObject.toString())
 
                 val resultsArray = jsonObject.getJSONArray("snappedPoints")
 
@@ -352,7 +393,6 @@ fun RouteView() {
                 snappedPointsList.forEach { point ->
                     println("Point: Latitude = ${point.latitude}, Longitude = ${point.longitude}")
                 }
-
             } catch (e: IOException) {
                 Log.i("Error", "Error occurred: ${e.message}")
             } catch (e: JSONException) {
@@ -372,7 +412,7 @@ fun RouteView() {
 
 
         GoogleMap(
-            modifier = Modifier.fillMaxHeight(if (showForm.value) 0.6f else 0.9f),
+            modifier = Modifier.fillMaxHeight(if (showForm.value) 0.6f else 0.75f),
             cameraPositionState = cameraPositionState,
             uiSettings = MapUiSettings(
                 myLocationButtonEnabled = isLocationPermissionGranted,
@@ -438,28 +478,47 @@ fun RouteView() {
                     }
                 }
             } else {
-               Polyline(points = snappedPointsList.map { LatLng(it.latitude, it.longitude) }, width = 10f, color = Red)
-                currentRoute.forEach {
-                    currentRoute.forEach { stop ->
-                        // Using the custom MarkerInfoWindowContent instead of the standard Marker
+                Polyline(
+                    points = snappedPointsList.map { LatLng(it.latitude, it.longitude) },
+                    width = 15f,
+                    color = Blue
+                )
+                for (i in currentRoute.indices) {
+                    val stop = currentRoute[i]
+                    if (i == 0 || (i == currentRoute.size - 1)) {
                         MarkerInfoWindowContent(
                             state = MarkerState(position = LatLng(stop.stopLat, stop.stopLon)),
-                            onInfoWindowClick = {
-                                // put into start or stop
-                                // TODO: FINISH
-//                                navController.navigate(Screens.RouteScreen.name) {
-//                                    popUpTo(navController.graph.findStartDestination().id) {
-//                                        saveState = true
-//                                    }
-//                                    launchSingleTop = true
-//                                    restoreState = true
-//                                }
-                            }
+                            icon = if (i == 0) {
+                                BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN)
+                            } else {
+                                BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED)
+                            },
                         ) {
                             Column(
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 modifier = Modifier.fillMaxWidth(0.8f)
                             ) {
+                                if (i == 0) {
+                                    Text(
+                                        text = "Start",
+                                        modifier = Modifier.padding(top = 5.dp),
+                                        style = TextStyle(
+                                            fontSize = 20.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Green
+                                        )
+                                    )
+                                } else {
+                                    Text(
+                                        text = "End",
+                                        modifier = Modifier.padding(top = 5.dp),
+                                        style = TextStyle(
+                                            fontSize = 20.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Red
+                                        )
+                                    )
+                                }
                                 Text(
                                     text = stop.stopName,
                                     modifier = Modifier.padding(top = 5.dp),
@@ -479,18 +538,22 @@ fun RouteView() {
                                     Text(text = "Lon: ${stop.stopLon}")
                                 }
                                 Text(text = "Stop ID: ${stop.stopID}")
-                                Text(
-                                    text = "Tap to plan",
-                                    modifier = Modifier.padding(top = 10.dp, bottom = 5.dp),
-                                    style = TextStyle(
-                                        fontSize = 16.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = Color.Blue
-                                    )
-                                )
                             }
                         }
                     }
+                }
+
+                LaunchedEffect(key1 = snappedPointsList) {
+                    cameraPositionState.animate(
+                        CameraUpdateFactory.newCameraPosition(
+                            CameraPosition(
+                                LatLng(currentRoute.first().stopLat, currentRoute.first().stopLon),
+                                14f, // Zoom level
+                                0f,  // Tilt angle
+                                0f   // Bearing
+                            )
+                        )
+                    )
                 }
             }
         }
@@ -583,7 +646,7 @@ fun RouteView() {
                 ) {
                     Text(
                         text = "From:",
-                        style = TextStyle(fontSize = 24.sp, fontFamily = FontFamily.Monospace),
+                        style = TextStyle(fontSize = 20.sp, fontFamily = FontFamily.Monospace),
                         modifier = Modifier.padding(end = 10.dp)
                     )
                     // current location button
@@ -745,7 +808,7 @@ fun RouteView() {
                 ) {
                     Text(
                         text = "To:  ",
-                        style = TextStyle(fontSize = 24.sp, fontFamily = FontFamily.Monospace),
+                        style = TextStyle(fontSize = 20.sp, fontFamily = FontFamily.Monospace),
                         modifier = Modifier.padding(end = 10.dp)
                     )
                     // current location button
@@ -954,6 +1017,35 @@ fun RouteView() {
                     .padding(horizontal = 15.dp)
                     .background(Light), verticalArrangement = Arrangement.SpaceEvenly
             ) {
+                Row {
+                    Text(text = "Get On: ", style = TextStyle(
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Green
+                    ))
+                    Text(text = currentRoute.first().stopName, style = TextStyle(
+                        fontSize = 18.sp,
+                        fontStyle = FontStyle.Italic
+                    ))
+                }
+
+                Row {
+                    Text(text = "Get Off: ", style = TextStyle(
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Red
+                    ))
+                    Text(text = currentRoute.last().stopName, style = TextStyle(
+                        fontSize = 18.sp,
+                        fontStyle = FontStyle.Italic
+                    ))
+                }
+                Text(text = "(After ${currentRoute[currentRoute.size - 2].stopName})", style = TextStyle(
+                    fontSize = 18.sp,
+                    fontStyle = FontStyle.Italic,
+                    color = Gray700
+                )
+                )
                 OutlinedButton(
                     onClick = {
                         // get the start and stop place object if its current location
@@ -1060,20 +1152,39 @@ private fun getLastLocation(fusedLocationClient: FusedLocationProviderClient) {
 fun calcRoute(start: Place, end: Place, time: String, allowedAgencies: Set<Int>) {
     val Cstart = Place("4490", 39.331681, 16.184743, "", "")
     val Cend = Place("4365", 39.333011, 16.202143, "", "")
-    val CallowedAgencies = mutableSetOf(33, 34, 8, 9, 10, 11, 12, 13, 7, 27, 28, 29, 30, 35,
-        32, 19, 21, 22, 24, 25, 26, 14, 15, 16, 17, 18)
+    val CallowedAgencies = mutableSetOf(
+        33, 34, 8, 9, 10, 11, 12, 13, 7, 27, 28, 29, 30, 35,
+        32, 19, 21, 22, 24, 25, 26, 14, 15, 16, 17, 18
+    )
     val logMessage = "Start: ${start.name}, Lat: ${start.lat}, Lon: ${start.lon}, " +
             "Stop: ${end.name}, Lat: ${end.lat}, Lon: ${end.lon}, " +
             "Time: $time, Allowed Agencies: $allowedAgencies"
     Log.i("calcRoute", logMessage)
 
-    currentRoute = RouteGenerator.routeWorkhorse(Cstart, Cend, "00:00", CallowedAgencies).toMutableList()
+    currentRoute =
+        RouteGenerator.routeWorkhorse(Cstart, Cend, "00:00", CallowedAgencies).toMutableList()
 
 
 }
 
+// Function to calculate the midpoint between two points
+fun midpoint(lat1: Double, lon1: Double, lat2: Double, lon2: Double): FinalRoutePoint {
+    val dLon = Math.toRadians(lon2 - lon1)
 
+    // Convert to radians
+    val rlat1 = Math.toRadians(lat1)
+    val rlat2 = Math.toRadians(lat2)
+    val rlon1 = Math.toRadians(lon1)
 
+    val bx = cos(rlat2) * cos(dLon)
+    val by = cos(rlat2) * sin(dLon)
+    val latMid =
+        atan2(sin(rlat1) + sin(rlat2), sqrt((cos(rlat1) + bx) * (cos(rlat1) + bx) + by * by))
+    val lonMid = rlon1 + atan2(by, cos(rlat1) + bx)
+
+    // Convert back to degrees
+    return FinalRoutePoint(-1, "DUMMY", Math.toDegrees(latMid), Math.toDegrees(lonMid))
+}
 
 
 @Composable
