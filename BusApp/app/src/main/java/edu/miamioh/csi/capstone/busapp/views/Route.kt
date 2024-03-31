@@ -77,6 +77,7 @@ import com.google.android.gms.maps.model.Polyline
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.MapProperties
 import com.google.maps.android.compose.MapUiSettings
+import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerInfoWindowContent
 import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.Polyline
@@ -323,7 +324,7 @@ fun RouteView() {
 
                 path = path.removeSuffix("|")
 
-                val url = "https://roads.googleapis.com/v1/snapToRoads?interpolate=true" + path +  key
+                val url = "https://roads.googleapis.com/v1/snapToRoads?interpolate=true" + path + key
                 val connection = URL(url).openConnection()
                 val reader = BufferedReader(InputStreamReader(connection.getInputStream()))
                 val jsonData = StringBuilder()
@@ -351,8 +352,6 @@ fun RouteView() {
                 snappedPointsList.forEach { point ->
                     println("Point: Latitude = ${point.latitude}, Longitude = ${point.longitude}")
                 }
-                mapCenter = LatLng(snappedPointsList.first().latitude, snappedPointsList.first().longitude)
-                currentZoomLevel = 2f
 
             } catch (e: IOException) {
                 Log.i("Error", "Error occurred: ${e.message}")
@@ -439,7 +438,60 @@ fun RouteView() {
                     }
                 }
             } else {
-               Polyline(points = snappedPointsList.map { LatLng(it.latitude, it.longitude) }, width = 100f, color = Red)
+               Polyline(points = snappedPointsList.map { LatLng(it.latitude, it.longitude) }, width = 10f, color = Red)
+                currentRoute.forEach {
+                    currentRoute.forEach { stop ->
+                        // Using the custom MarkerInfoWindowContent instead of the standard Marker
+                        MarkerInfoWindowContent(
+                            state = MarkerState(position = LatLng(stop.stopLat, stop.stopLon)),
+                            onInfoWindowClick = {
+                                // put into start or stop
+                                // TODO: FINISH
+//                                navController.navigate(Screens.RouteScreen.name) {
+//                                    popUpTo(navController.graph.findStartDestination().id) {
+//                                        saveState = true
+//                                    }
+//                                    launchSingleTop = true
+//                                    restoreState = true
+//                                }
+                            }
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier.fillMaxWidth(0.8f)
+                            ) {
+                                Text(
+                                    text = stop.stopName,
+                                    modifier = Modifier.padding(top = 5.dp),
+                                    style = TextStyle(
+                                        fontSize = 16.sp,
+                                        fontWeight = FontWeight.Bold,
+                                    )
+                                )
+                                HorizontalDivider(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 5.dp)
+                                )
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(text = "Lat: ${stop.stopLat}")
+                                    Spacer(modifier = Modifier.width(5.dp)) // Replaced VerticalDivider with Spacer for simplicity
+                                    Text(text = "Lon: ${stop.stopLon}")
+                                }
+                                Text(text = "Stop ID: ${stop.stopID}")
+                                Text(
+                                    text = "Tap to plan",
+                                    modifier = Modifier.padding(top = 10.dp, bottom = 5.dp),
+                                    style = TextStyle(
+                                        fontSize = 16.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.Blue
+                                    )
+                                )
+                            }
+                        }
+                    }
+                }
             }
         }
 
