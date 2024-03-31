@@ -1,289 +1,211 @@
 package edu.miamioh.csi.capstone.busapp.views
 
-
-import android.view.View
-import android.widget.RadioGroup
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
+import android.app.Activity
+import android.graphics.drawable.ColorDrawable
+import android.os.Build
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
+import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.RadioButton
-import androidx.compose.material3.RadioButtonColors
-import androidx.compose.material3.RadioButtonDefaults
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.contentColorFor
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.dynamicDarkColorScheme
+import androidx.compose.material3.dynamicLightColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.VerticalAlignmentLine
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Popup
-import org.intellij.lang.annotations.JdkConstants.HorizontalAlignment
+import androidx.core.view.WindowCompat
+import me.zhanghai.compose.preference.ListPreferenceType
+import me.zhanghai.compose.preference.ProvidePreferenceLocals
+import me.zhanghai.compose.preference.checkboxPreference
+import me.zhanghai.compose.preference.footerPreference
+import me.zhanghai.compose.preference.listPreference
+import me.zhanghai.compose.preference.multiSelectListPreference
+import me.zhanghai.compose.preference.preference
+import me.zhanghai.compose.preference.radioButtonPreference
+import me.zhanghai.compose.preference.sliderPreference
+import me.zhanghai.compose.preference.switchPreference
+import me.zhanghai.compose.preference.textFieldPreference
+import me.zhanghai.compose.preference.twoTargetIconButtonPreference
+import me.zhanghai.compose.preference.twoTargetSwitchPreference
 
 @Composable
 fun SettingsView() {
-    Column(modifier = Modifier
-        .fillMaxSize(),
-        horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(text = "Settings", fontWeight = FontWeight.Bold, fontSize = 32.sp, textAlign = TextAlign.Center)
-        Row(
-            modifier = Modifier
-                .padding(5.dp)
-                .fillMaxWidth()
-                .border(BorderStroke(2.dp, Color.Black)),
-            // horizontalArrangement = Arrangement.Start,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(text = "Settings Appearance:", modifier = Modifier.padding(4.dp), fontSize = 18.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Left)
-            ThemeSelector(onThemeSelected = { /* Handle selected theme option */ })
-        }
-
-        Row(
-            modifier = Modifier
-                .padding(5.dp)
-                .fillMaxWidth()
-                .border(BorderStroke(2.dp, Color.Black)),
-            // horizontalArrangement = Arrangement.Start,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(text = "Units: ", modifier = Modifier.padding(4.dp), fontSize = 18.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Left)
-            MeasurementSelector(onMeasurementSelected = { /* */ })
-
-        }
-
-        Row(
-            modifier = Modifier
-                .padding(5.dp)
-                .fillMaxWidth()
-                .border(BorderStroke(2.dp, Color.Black)),
-            // horizontalArrangement = Arrangement.Start,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(text = "Timezone: ", modifier = Modifier.padding(4.dp), fontSize = 18.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Left)
-
-        }
-
-        Row(
-            modifier = Modifier
-                .padding(5.dp)
-                .fillMaxWidth()
-                .border(BorderStroke(2.dp, Color.Black)),
-            // horizontalArrangement = Arrangement.Start,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(text = "Font size:", modifier = Modifier.padding(4.dp), fontSize = 18.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Left)
-            TextSizeChoice(onSizeSelected = { /* */ })
-
-        }
-
-        Row(
-            modifier = Modifier
-                .padding(5.dp)
-                .fillMaxWidth()
-                .border(BorderStroke(2.dp, Color.Black)),
-            // horizontalArrangement = Arrangement.Start,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(text = "About: ", modifier = Modifier.padding(4.dp), fontSize = 18.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Left)
-
-        }
-
-        Row(
-            modifier = Modifier
-                .padding(5.dp)
-                .fillMaxWidth()
-                .border(BorderStroke(2.dp, Color.Black)),
-            // horizontalArrangement = Arrangement.Start,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(text = "Help: ", modifier = Modifier.padding(4.dp), fontSize = 18.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Left)
-
-        }
-    }
+    SetTheme { ProvidePreferenceLocals { SettingScreen() } }
 }
 
-
 @Composable
-fun ThemeSelector(
-    onThemeSelected: (ThemeOption) -> Unit
-) {
-    // Remembering the selected theme option
-    val (selectedOption, setSelectedOption) = remember { mutableStateOf(ThemeOption.DeviceDefault) }
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(0.dp),
-        horizontalAlignment = Alignment.End
-
-    ) {
-        Row(modifier = Modifier.padding(0.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
-            Text(text = "Light Mode", textAlign = TextAlign.Center)
-            RadioButtonOption(
-                text = "",
-                selected = selectedOption == ThemeOption.Light,
-                onSelect = { setSelectedOption(ThemeOption.Light); onThemeSelected(ThemeOption.Light) }
-            )
-        }
-        Row(modifier = Modifier.padding(0.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
-            Text(text = "Dark Mode", textAlign = TextAlign.Center)
-            RadioButtonOption(
-                text = "",
-                selected = selectedOption == ThemeOption.Dark,
-                onSelect = { setSelectedOption(ThemeOption.Dark); onThemeSelected(ThemeOption.Dark) }
-            )
-        }
-        Row (modifier = Modifier.padding(0.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
-            Text(text = "Default", textAlign = TextAlign.Center)
-            RadioButtonOption(
-                text = "",
-                selected = selectedOption == ThemeOption.DeviceDefault,
-                onSelect = {
-                    setSelectedOption(ThemeOption.DeviceDefault); onThemeSelected(
-                    ThemeOption.DeviceDefault)
+@OptIn(ExperimentalMaterial3Api::class)
+fun SettingScreen() {
+    val windowInsets = WindowInsets.safeDrawing
+    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
+    Scaffold(
+        modifier = Modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
+        topBar = {
+            val context = LocalContext.current
+            val appLabel =
+                if (LocalView.current.isInEditMode) {
+                    "Sample"
+                } else {
+                    context.applicationInfo.loadLabel(context.packageManager).toString()
                 }
+            TopAppBar(
+                title = { Text(text = appLabel) },
+                modifier = Modifier.fillMaxWidth(),
+                windowInsets =
+                windowInsets.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Top),
+                scrollBehavior = scrollBehavior
             )
-        }
-    }
-}
-
-@Composable
-fun MeasurementSelector(
-    onMeasurementSelected: (MeasurementType) -> Unit
-) {
-    // Remembering the selected theme option
-    val (selectedMeasurement, setselectedMeasurement) = remember { mutableStateOf(MeasurementType.Kilometers) }
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(0.dp),
-        horizontalAlignment = Alignment.End
-
-    ) {
-        Row(modifier = Modifier.padding(0.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
-            Text(text = "Kilometers", textAlign = TextAlign.Center)
-            RadioButtonOption(
-                text = "",
-                selected = selectedMeasurement == MeasurementType.Kilometers,
-                onSelect = { setselectedMeasurement(MeasurementType.Kilometers); onMeasurementSelected(MeasurementType.Kilometers) }
+        },
+        containerColor = Color.Transparent,
+        contentColor = contentColorFor(MaterialTheme.colorScheme.background),
+        contentWindowInsets = windowInsets
+    ) { contentPadding ->
+        LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = contentPadding) {
+            preference(
+                key = "preference",
+                title = { Text(text = "Preference") },
+                summary = { Text(text = "Summary") }
+            ) {}
+            checkboxPreference(
+                key = "checkbox_preference",
+                defaultValue = false,
+                title = { Text(text = "Checkbox preference") },
+                summary = { Text(text = if (it) "On" else "Off") }
             )
-        }
-        Row(modifier = Modifier.padding(0.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
-            Text(text = "Miles", textAlign = TextAlign.Center)
-            RadioButtonOption(
-                text = "",
-                selected = selectedMeasurement == MeasurementType.Miles,
-                onSelect = { setselectedMeasurement(MeasurementType.Miles); onMeasurementSelected(MeasurementType.Miles) }
+            switchPreference(
+                key = "switch_preference",
+                defaultValue = false,
+                title = { Text(text = "Switch preference") },
+                summary = { Text(text = if (it) "On" else "Off") }
             )
-        }
-    }
-}
-
-@Composable
-fun TextSizeChoice(
-    onSizeSelected: (TextSize) -> Unit
-) {
-    // Remembering the selected theme option
-    val (selectedSize, setSelectedSize) = remember { mutableStateOf(TextSize.Medium) }
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(0.dp),
-        horizontalAlignment = Alignment.End
-
-    ) {
-        Row(modifier = Modifier.padding(0.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
-            Text(text = "Small",  fontSize = 14.sp,  textAlign = TextAlign.Center)
-            RadioButtonOption(
-                text = "",
-                selected = selectedSize == TextSize.Small,
-                onSelect = { setSelectedSize(TextSize.Small); onSizeSelected(TextSize.Small) }
-            )
-        }
-        Row(modifier = Modifier.padding(0.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
-            Text(text = "Medium", textAlign = TextAlign.Center)
-            RadioButtonOption(
-                text = "",
-                selected = selectedSize == TextSize.Medium,
-                onSelect = { setSelectedSize(TextSize.Medium); onSizeSelected(TextSize.Medium) }
-            )
-        }
-        Row (modifier = Modifier.padding(0.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
-            Text(text = "Large", fontSize = 22.sp, textAlign = TextAlign.Center)
-            RadioButtonOption(
-                text = "",
-                selected = selectedSize == TextSize.Large,
-                onSelect = {
-                    setSelectedSize(TextSize.Large); onSizeSelected(
-                    TextSize.Large)
+            twoTargetSwitchPreference(
+                key = "two_target_switch_preference",
+                defaultValue = false,
+                title = { Text(text = "Two target switch preference") },
+                summary = { Text(text = if (it) "On" else "Off") }
+            ) {}
+            twoTargetIconButtonPreference(
+                key = "two_target_icon_button_preference",
+                title = { Text(text = "Two target icon button preference") },
+                summary = { Text(text = "Summary") },
+                onClick = {},
+                iconButtonIcon = {
+                    Icon(imageVector = Icons.Outlined.Settings, contentDescription = "Settings")
                 }
+            ) {}
+            sliderPreference(
+                key = "slider_preference",
+                defaultValue = 0f,
+                title = { Text(text = "Slider preference") },
+                valueRange = 0f..5f,
+                valueSteps = 9,
+                summary = { Text(text = "Summary") },
+                valueText = { Text(text = "%.1f".format(it)) }
+            )
+            listPreference(
+                key = "list_alert_dialog_preference",
+                defaultValue = "Alpha",
+                values = listOf("Alpha", "Beta", "Canary"),
+                title = { Text(text = "List preference (alert dialog)") },
+                summary = { Text(text = it) }
+            )
+            listPreference(
+                key = "list_dropdown_menu_preference",
+                defaultValue = "Alpha",
+                values = listOf("Alpha", "Beta", "Canary"),
+                title = { Text(text = "List preference (dropdown menu)") },
+                summary = { Text(text = it) },
+                type = ListPreferenceType.DROPDOWN_MENU
+            )
+            multiSelectListPreference(
+                key = "multi_select_list_preference",
+                defaultValue = setOf("Alpha", "Beta"),
+                values = listOf("Alpha", "Beta", "Canary"),
+                title = { Text(text = "Multi-select list preference") },
+                summary = { Text(text = it.sorted().joinToString(", ")) }
+            )
+            textFieldPreference(
+                key = "text_field_preference",
+                defaultValue = "Value",
+                title = { Text(text = "Text field preference") },
+                textToValue = { it },
+                summary = { Text(text = it) }
+            )
+            radioButtonPreference(
+                key = "radio_button_preference",
+                selected = true,
+                title = { Text(text = "Radio button preference") },
+                summary = { Text(text = "Summary") }
+            ) {}
+            footerPreference(
+                key = "footer_preference",
+                summary = { Text(text = "Footer preference summary") }
             )
         }
     }
 }
 
 @Composable
-fun RadioButtonOption(
-    text: String,
-    selected: Boolean,
-    onSelect: () -> Unit
+fun SetTheme(
+    darkTheme: Boolean = isSystemInDarkTheme(),
+    dynamicColor: Boolean = true,
+    content: @Composable () -> Unit
 ) {
-    RadioButton(
-        selected = selected,
-        onClick = onSelect,
-        colors = RadioButtonDefaults.colors(selectedColor = androidx.compose.ui.graphics.Color.Blue)
-    )
-    Text(
-        text = text,
-        fontWeight = FontWeight.Bold,
-        modifier = Modifier.padding(start = 8.dp)
-    )
-}
+    val context = LocalContext.current
+    val colorScheme =
+        when {
+            dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
+                if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+            }
+            darkTheme -> darkColorScheme()
+            else -> lightColorScheme()
+        }
 
-enum class MeasurementType {
-    Miles,
-    Kilometers
-}
+    val view = LocalView.current
+    if (!view.isInEditMode) {
+        SideEffect {
+            val window = (context as Activity).window
+            WindowCompat.setDecorFitsSystemWindows(window, false)
+            val windowBackgroundColor = colorScheme.background.toArgb()
+            window.setBackgroundDrawable(ColorDrawable(windowBackgroundColor))
+            val insetsController = WindowCompat.getInsetsController(window, view)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                window.statusBarColor = Color.Transparent.toArgb()
+                insetsController.isAppearanceLightStatusBars = !darkTheme
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+                window.navigationBarColor = Color.Transparent.toArgb()
+                insetsController.isAppearanceLightNavigationBars = !darkTheme
+            }
+        }
+    }
 
-enum class ThemeOption {
-    Light,
-    Dark,
-    DeviceDefault
-}
-
-enum class TextSize {
-    Small,
-    Medium,
-    Large
+    MaterialTheme(colorScheme = colorScheme, content = content)
 }
 
 @Composable
-@Preview
-fun SettingsViewPreview() {
+@Preview(showBackground = true)
+fun SampleAppPreview() {
     SettingsView()
 }
