@@ -48,32 +48,31 @@ fun SettingsView() {
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
 fun SettingScreen() {
-    // Use MaterialTheme.colorScheme to adapt colors based on the theme
     val backgroundColor = MaterialTheme.colorScheme.background
     val onBackgroundColor = MaterialTheme.colorScheme.onBackground
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(backgroundColor) // Set the background color of the Column
+            .background(backgroundColor)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp), // Apply padding around the Row for better aesthetics
-            horizontalArrangement = Arrangement.SpaceBetween, // Space between the elements
-            verticalAlignment = Alignment.CenterVertically // Center items vertically in the Row
+                .padding(top = 32.dp, bottom = 24.dp, start = 20.dp, end = 20.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
                 text = "Settings",
-                style = MaterialTheme.typography.displaySmall, // Apply a text style; adjust as needed
-                modifier = Modifier.weight(1f), // Text takes up excess space, pushing the icon to the right
-                color = onBackgroundColor // Ensure text color contrasts well with the background
+                style = MaterialTheme.typography.displaySmall,
+                modifier = Modifier.weight(1f),
+                color = onBackgroundColor
             )
             Icon(
-                imageVector = Icons.Filled.Settings, // Settings gear icon
-                contentDescription = "Settings", // Accessibility description
-                tint = onBackgroundColor // Icon color
+                imageVector = Icons.Filled.Settings,
+                contentDescription = "Settings",
+                tint = onBackgroundColor
             )
         }
         LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(4.dp)) {
@@ -85,7 +84,7 @@ fun SettingScreen() {
             )
             sliderPreference(
                 key = "fontSize",
-                defaultValue = 1.0f,
+                defaultValue = 1f,
                 title = { Text(text = "Font Size") },
                 valueRange = 0f..2f,
                 valueSteps = 1,
@@ -93,7 +92,7 @@ fun SettingScreen() {
                 valueText = {
                     if (it == 0f) {
                         Text(text = "Small")
-                    } else if (it == 1.0f) {
+                    } else if (it == 1f) {
                         Text(text = "Medium")
                     } else {
                         Text(text = "Large")
