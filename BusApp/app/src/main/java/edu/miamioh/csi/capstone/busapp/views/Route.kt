@@ -390,9 +390,9 @@ fun RouteView() {
                 }
 
                 // Use snappedPointsList as needed
-                snappedPointsList.forEach { point ->
-                    println("Point: Latitude = ${point.latitude}, Longitude = ${point.longitude}")
-                }
+//                snappedPointsList.forEach { point ->
+//                    println("Point: Latitude = ${point.latitude}, Longitude = ${point.longitude}")
+//                }
             } catch (e: IOException) {
                 Log.i("Error", "Error occurred: ${e.message}")
             } catch (e: JSONException) {
@@ -540,6 +540,10 @@ fun RouteView() {
                                 Text(text = "Stop ID: ${stop.stopID}")
                             }
                         }
+                    }
+                    else {
+                        Marker(state = MarkerState(position = LatLng(stop.stopLat, stop.stopLon)),
+                            title = stop.stopName)
                     }
                 }
 
@@ -979,7 +983,7 @@ fun RouteView() {
                         }
 
 
-                        val stop: Place = if (startIsCurrentLocation.value) {
+                        val stop: Place = if (endIsCurrentLocation.value) {
                             Place("Current Location", userLat, userLon, "", "")
                         } else {
                             selectedEndPlace.value
@@ -1017,6 +1021,14 @@ fun RouteView() {
                     .padding(horizontal = 15.dp)
                     .background(Light), verticalArrangement = Arrangement.SpaceEvenly
             ) {
+                Text(
+                    text = "${currentRoute.size } Stops on route",
+                    style = TextStyle(
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+
+                    ))
+
                 Row {
                     Text(text = "Get On: ", style = TextStyle(
                         fontSize = 18.sp,
@@ -1040,12 +1052,16 @@ fun RouteView() {
                         fontStyle = FontStyle.Italic
                     ))
                 }
-                Text(text = "(After ${currentRoute[currentRoute.size - 2].stopName})", style = TextStyle(
-                    fontSize = 18.sp,
-                    fontStyle = FontStyle.Italic,
-                    color = Gray700
-                )
-                )
+                if (currentRoute.size >= 3) {
+                    Text(
+                        text = "(After ${currentRoute[currentRoute.size - 2].stopName})",
+                        style = TextStyle(
+                            fontSize = 18.sp,
+                            fontStyle = FontStyle.Italic,
+                            color = Gray700
+                        )
+                    )
+                }
                 OutlinedButton(
                     onClick = {
                         // get the start and stop place object if its current location
@@ -1161,9 +1177,7 @@ fun calcRoute(start: Place, end: Place, time: String, allowedAgencies: Set<Int>)
             "Time: $time, Allowed Agencies: $allowedAgencies"
     Log.i("calcRoute", logMessage)
 
-    currentRoute =
-        RouteGenerator.routeWorkhorse(Cstart, Cend, "00:00", CallowedAgencies).toMutableList()
-
+    currentRoute = RouteGenerator.routeWorkhorse(start, end, time, allowedAgencies).toMutableList()
 
 }
 
