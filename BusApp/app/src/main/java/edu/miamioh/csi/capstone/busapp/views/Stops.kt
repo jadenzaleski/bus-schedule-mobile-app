@@ -72,7 +72,6 @@ import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
 import edu.miamioh.csi.capstone.busapp.R
 import edu.miamioh.csi.capstone.busapp.backend.CSVHandler
-import edu.miamioh.csi.capstone.busapp.backend.RouteGeneratorTester
 import edu.miamioh.csi.capstone.busapp.navigation.Screens
 import edu.miamioh.csi.capstone.busapp.ui.theme.Black
 import edu.miamioh.csi.capstone.busapp.ui.theme.Gray400
@@ -88,7 +87,7 @@ import kotlin.math.sqrt
 @Composable
 fun StopsView() {
     StopsWorkhorse()
-    RouteGeneratorTester.runTests()
+    //RouteGeneratorTester.runTests()
 }
 
 /**
@@ -105,8 +104,17 @@ fun StopsWorkhorse() {
     val trips = CSVHandler.getTrips()
     val stopTimes = CSVHandler.getStopTimes()
     val agencies = CSVHandler.getAgencies()
+
+    Log.i("Check", "" + stops.size)
+    Log.i("Check", "" + routes.size)
+    Log.i("Check", "" + trips.size)
+    Log.i("Check", "" + stopTimes.size)
+    Log.i("Check", "" + agencies.size)
+
     val context = LocalContext.current
     val navController = rememberNavController()
+
+
 
     var isLocationPermissionGranted by remember { mutableStateOf(false) }
     val currentZoomLevel by remember { mutableStateOf(9f) } // Initial zoom level
@@ -142,6 +150,8 @@ fun StopsWorkhorse() {
     val stopIdToAgencyIdMap = remember {
         CSVHandler.getStopIdToAgencyIdMap(stops, routes, trips, stopTimes)
     }
+
+    Log.i("Stops Page", "" + stopIdToAgencyIdMap.size)
 
     /*
      * selectedAgencyIds identifies which agencies have been selected by the user to be displayed

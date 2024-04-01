@@ -1,14 +1,10 @@
 package edu.miamioh.csi.capstone.busapp.views
 
 
-import android.Manifest
 import android.annotation.SuppressLint
 import android.app.TimePickerDialog
-import android.content.pm.PackageManager
 import android.location.Location
 import android.util.Log
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -66,17 +62,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.content.ContextCompat
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.rememberNavController
 import coil.compose.AsyncImage
 import com.google.android.gms.location.FusedLocationProviderClient
-import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
-import com.google.android.gms.maps.model.Polyline
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.MapProperties
 import com.google.maps.android.compose.MapUiSettings
@@ -139,6 +132,7 @@ val snappedPointsList = mutableListOf<SnappedPoint>()
 @Composable
 fun RouteView() {
     val context = LocalContext.current
+    /*
     // location permissions
     val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
     val locationPermissionLauncher =
@@ -159,6 +153,8 @@ fun RouteView() {
         // Request location permissions
         locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
     }
+     */
+
     // csv
     val stops = CSVHandler.getStops()
     val routes = CSVHandler.getRoutes()
@@ -171,13 +167,13 @@ fun RouteView() {
     var isLocationPermissionGranted by remember { mutableStateOf(false) }
     var currentZoomLevel by remember { mutableStateOf(9f) } // Initial zoom level
 
-
+    /*
     LaunchedEffect(key1 = context) {
         isLocationPermissionGranted = ContextCompat.checkSelfPermission(
             context, Manifest.permission.ACCESS_FINE_LOCATION
         ) == PackageManager.PERMISSION_GRANTED
     }
-
+     */
 
     /*
      * Sets up initial map settings for when user first loads up the Routes page upon opening app.
