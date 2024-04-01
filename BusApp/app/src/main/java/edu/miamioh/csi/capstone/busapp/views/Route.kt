@@ -28,7 +28,9 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonColors
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
@@ -39,6 +41,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -55,6 +58,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
@@ -240,7 +244,6 @@ fun RouteView() {
         }.take(min(maxStops, 150))
     }
 
-
     // Allow for clearing of keyboard
     val focusManager = LocalFocusManager.current
     var showForm = remember { mutableStateOf(true) }
@@ -264,6 +267,15 @@ fun RouteView() {
     var searchResults = remember { mutableStateListOf(Place("", 0.0, 0.0, "", "")) }
     var selectedStartPlace = remember { mutableStateOf(Place("", 0.0, 0.0, "", "")) }
     var selectedEndPlace = remember { mutableStateOf(Place("", 0.0, 0.0, "", "")) }
+    val openAlertDialog = remember { mutableStateOf(false) }
+    var dialogType = remember { mutableIntStateOf(-1) }
+    when {
+        openAlertDialog.value -> {
+            AlertDialogExample(dialogType.intValue,
+                onConfirmation = { openAlertDialog.value = false },
+                onDismissRequest = { openAlertDialog.value = false})
+        }
+    }
 
     // Search function calls google API to find 20 results that match the users query.
     @OptIn(DelicateCoroutinesApi::class)
@@ -324,81 +336,129 @@ fun RouteView() {
     fun googleSnapToRoads(places: List<FinalRoutePoint>) {
         snappedPointsList.clear()
         GlobalScope.launch(Dispatchers.IO) {
-            try {
-                val key = "&key=AIzaSyArxmzr9k53luII5xTXHT98rCV2dWEZU_E"
-                var path = "&path="
-                val maxDistance = 0.4  // Maximum allowed distance between points
+            val apiKey = "AIzaSyArxmzr9k53luII5xTXHT98rCV2dWEZU_E"
+            val maxPoints = 100
+            val maxDistance = 0.2
 
-                for (i in places.indices) {
-                    val segmentPoints = mutableListOf(places[i])
+            // Step 1: Pre-process places to insert midpoints where necessary
+            val processedPlaces = mutableListOf<FinalRoutePoint>()
+            for (i in places.indices) {
+                processedPlaces.add(places[i])
+                if (i < places.size - 1) {
+                    var current = places[i]
+                    val next = places[i + 1]
+                    var distance = calculateSphericalDistance(current.stopLat, current.stopLon, next.stopLat, next.stopLon)
+                    while (distance > maxDistance) {
+                        val midPoint = midpoint(current.stopLat, current.stopLon, next.stopLat, next.stopLon)
+                        processedPlaces.add(midPoint)
+                        current = midPoint
+                        distance = calculateSphericalDistance(current.stopLat, current.stopLon, next.stopLat, next.stopLon)
+                    }
+                }
+            }
 
-                    // Process the segment between this point and the next, if there is a next point
-                    if (i < places.size - 1) {
-                        val next = places[i + 1]
-                        segmentPoints.add(next)
-
-                        // Iteratively add midpoints to the segment until all subsegments are within the maximum distance
-                        var j = 0
-                        while (j < segmentPoints.size - 1) {
-                            val current = segmentPoints[j]
-                            val segmentNext = segmentPoints[j + 1]
-
-                            val distance = calculateSphericalDistance(current.stopLat, current.stopLon, segmentNext.stopLat, segmentNext.stopLon)
-
-                            if (distance > maxDistance) {
-                                // Calculate and insert a midpoint directly into the segment
-                                val midPoint = midpoint(current.stopLat, current.stopLon, segmentNext.stopLat, segmentNext.stopLon)
-                                segmentPoints.add(j + 1, FinalRoutePoint(-1, "DUMMY", midPoint.stopLat, midPoint.stopLon))
-                                // No increment of j here because we want to check the newly created subsegment for further subdivision
-                            } else {
-                                // Move to the next subsegment
-                                j++
-                            }
+            // Step 2: Divide the processed list into batches and process each batch
+            processedPlaces.chunked(maxPoints).forEach { batch ->
+                try {
+                    val path = batch.joinToString("|") { "${it.stopLat},${it.stopLon}" }
+                    val url = "https://roads.googleapis.com/v1/snapToRoads?interpolate=true&path=$path&key=$apiKey"
+                    URL(url).openStream().use { input ->
+                        val response = input.bufferedReader().use(BufferedReader::readText)
+                        val jsonObject = JSONObject(response)
+                        val snappedPoints = jsonObject.getJSONArray("snappedPoints")
+                        for (i in 0 until snappedPoints.length()) {
+                            val location = snappedPoints.getJSONObject(i).getJSONObject("location")
+                            val latitude = location.getDouble("latitude")
+                            val longitude = location.getDouble("longitude")
+                            snappedPointsList.add(SnappedPoint(latitude, longitude))
                         }
                     }
-
-                    // Append the processed segment points to the path, except the last point which is the first point of the next segment
-                    segmentPoints.dropLast(1).forEach { point ->
-                        path += "${point.stopLat},${point.stopLon}|"
-                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
                 }
-
-                val url =
-                    "https://roads.googleapis.com/v1/snapToRoads?interpolate=true" + path + key
-                val connection = URL(url).openConnection()
-                val reader = BufferedReader(InputStreamReader(connection.getInputStream()))
-                val jsonData = StringBuilder()
-
-                var line: String?
-                while (reader.readLine().also { line = it } != null) {
-                    jsonData.append(line)
-                }
-                reader.close()
-
-                val jsonObject = JSONObject(jsonData.toString())
-
-                Log.i("JSON", jsonObject.toString())
-
-                val resultsArray = jsonObject.getJSONArray("snappedPoints")
-
-                for (i in 0 until resultsArray.length()) {
-                    val snappedPointJson = resultsArray.getJSONObject(i).getJSONObject("location")
-                    val latitude = snappedPointJson.getDouble("latitude")
-                    val longitude = snappedPointJson.getDouble("longitude")
-                    snappedPointsList.add(SnappedPoint(latitude, longitude))
-                }
-
-                // Use snappedPointsList as needed
-//                snappedPointsList.forEach { point ->
-//                    println("Point: Latitude = ${point.latitude}, Longitude = ${point.longitude}")
-//                }
-            } catch (e: IOException) {
-                Log.i("Error", "Error occurred: ${e.message}")
-            } catch (e: JSONException) {
-                Log.i("Error", "Error occurred while parsing JSON: ${e.message}")
             }
         }
     }
+
+
+
+//    @OptIn(DelicateCoroutinesApi::class)
+//    fun googleSnapToRoads(places: List<FinalRoutePoint>) {
+//        snappedPointsList.clear()
+//        GlobalScope.launch(Dispatchers.IO) {
+//            try {
+//                val key = "&key=AIzaSyArxmzr9k53luII5xTXHT98rCV2dWEZU_E"
+//                var path = "&path="
+//                val maxPoints = 100
+//                val maxDistance = 0.3
+//                val totalPointsAllowed = maxPoints - places.size // Reserve spots for original points
+//                var addedPoints = 0
+//                for (i in places.indices) {
+//                    val current = places[i]
+//                    path += "${current.stopLat},${current.stopLon}"
+//
+//                    if (i < places.size - 1 && addedPoints < totalPointsAllowed) {
+//                        val next = places[i + 1]
+//
+//                        var distance = calculateSphericalDistance(current.stopLat, current.stopLon, next.stopLat, next.stopLon)
+//                        var midPoint = midpoint(current.stopLat, current.stopLon, next.stopLat, next.stopLon)
+//
+//                        // Attempt to add midpoints while distance is too large and we have "slots" for additional points
+//                        while (distance > maxDistance && addedPoints < totalPointsAllowed) {
+//                            path += "|${midPoint.stopLat},${midPoint.stopLon}"
+//                            addedPoints++
+//
+//                            // Update the distance from the last added midpoint to the next original point
+//                            distance = calculateSphericalDistance(midPoint.stopLat, midPoint.stopLon, next.stopLat, next.stopLon)
+//
+//                            // Calculate new midpoint if needed again
+//                            if (distance > maxDistance && addedPoints < totalPointsAllowed) {
+//                                midPoint = midpoint(midPoint.stopLat, midPoint.stopLon, next.stopLat, next.stopLon)
+//                            }
+//                        }
+//                    }
+//
+//                    // Append separator for next point if not last and within point limit
+//                    if (i < places.size - 1) {
+//                        path += "|"
+//                    }
+//                }
+//
+//                val url = "https://roads.googleapis.com/v1/snapToRoads?interpolate=true" + path + key
+//                print(url)
+//                val connection = URL(url).openConnection()
+//                val reader = BufferedReader(InputStreamReader(connection.getInputStream()))
+//                val jsonData = StringBuilder()
+//                var line: String?
+//                while (reader.readLine().also { line = it } != null) {
+//                    jsonData.append(line)
+//                }
+//                reader.close()
+//
+//                val jsonObject = JSONObject(jsonData.toString())
+//
+//                Log.i("JSON", jsonObject.toString())
+//
+//                val resultsArray = jsonObject.getJSONArray("snappedPoints")
+//
+//                for (i in 0 until resultsArray.length()) {
+//                    val snappedPointJson = resultsArray.getJSONObject(i).getJSONObject("location")
+//                    val latitude = snappedPointJson.getDouble("latitude")
+//                    val longitude = snappedPointJson.getDouble("longitude")
+//                    snappedPointsList.add(SnappedPoint(latitude, longitude))
+//                }
+//
+//                // Use snappedPointsList as needed
+////                snappedPointsList.forEach { point ->
+////                    println("Point: Latitude = ${point.latitude}, Longitude = ${point.longitude}")
+////                }
+//            } catch (e: IOException) {
+//                Log.i("Error", "Error occurred: ${e.message}")
+//            } catch (e: JSONException) {
+//                Log.i("Error", "Error occurred while parsing JSON: ${e.message}")
+//            }
+//        }
+//    }
 
     // Column that holds the map
     Column(
@@ -482,6 +542,7 @@ fun RouteView() {
                     width = 15f,
                     color = Blue
                 )
+                Log.i("SNAPPED", "Snapped a total of ${snappedPointsList.size} points.")
                 for (i in currentRoute.indices) {
                     val stop = currentRoute[i]
                     if (i == 0 || (i == currentRoute.size - 1)) {
@@ -987,6 +1048,7 @@ fun RouteView() {
                         } else {
                             selectedEndPlace.value
                         }
+
                         // CALCULATE ROUTE!
                         calcRoute(
                             start = start,
@@ -994,8 +1056,22 @@ fun RouteView() {
                             time = selectedTime,
                             allowedAgencies = selectedAgencyIds
                         )
-                        googleSnapToRoads(currentRoute)
-                        showForm.value = !showForm.value
+                        print(currentRoute.size)
+                        if (currentRoute.size == 0) {
+                            // no route
+                            dialogType.intValue = 0
+                            openAlertDialog.value = true
+                        } else if (currentRoute.size == 1) {
+                            // faster to walk
+                            dialogType.intValue = 1
+                            openAlertDialog.value = true
+
+                        } else {
+                            // valid
+                            googleSnapToRoads(currentRoute)
+                            showForm.value = !showForm.value
+                        }
+
 
                     },
                     colors = ButtonColors(
@@ -1197,6 +1273,53 @@ fun midpoint(lat1: Double, lon1: Double, lat2: Double, lon2: Double): FinalRoute
 
     // Convert back to degrees
     return FinalRoutePoint(-1, "DUMMY", Math.toDegrees(latMid), Math.toDegrees(lonMid))
+}
+
+@Composable
+fun AlertDialogExample(size: Int, onDismissRequest: () -> Unit, onConfirmation: () -> Unit,) {
+    if (size == 0) {
+        // no Route
+        AlertDialog(
+            confirmButton = {
+                TextButton(onClick = { onConfirmation() }) {
+                    Text(text = "Okay", color = Blue)
+                }
+            },
+            onDismissRequest = { onDismissRequest() },
+            dismissButton = {},
+            icon = { Icon(Icons.Default.Clear, "", tint = Red) },
+            title = { Text(text = "No Available Route") },
+            text = { Text(text = "There is no available bus route from your selected start and end point.") },
+        )
+    } else if (size == 1) {
+        // faster to walk
+        AlertDialog(
+            confirmButton = {
+                TextButton(onClick = { onConfirmation() }) {
+                    Text(text = "Okay", color = Blue)
+                }
+            },
+            onDismissRequest = { onDismissRequest() },
+            dismissButton = {},
+            icon = { Icon(Icons.Default.Info, "") },
+            title = { Text(text = "Faster to walk") },
+            text = { Text(text = "Walking is faster from your starting point to your destination.") },
+            )
+    } else {
+        // too big
+        AlertDialog(
+            confirmButton = {
+                TextButton(onClick = { onConfirmation() }) {
+                    Text(text = "Okay", color = Blue)
+                }
+            },
+            onDismissRequest = { onDismissRequest() },
+            dismissButton = {},
+            icon = { Icon(Icons.Default.Clear, "", tint = Red) },
+            title = { Text(text = "No Available Route") },
+            text = { Text(text = "There is no available bus route from your selected start and end point.") },
+        )
+    }
 }
 
 
