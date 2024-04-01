@@ -20,6 +20,10 @@ import java.net.HttpURLConnection
 import java.net.MalformedURLException
 import java.net.SocketTimeoutException
 import java.net.URL
+import java.text.ParseException
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Locale
 
 
 /**
@@ -857,4 +861,81 @@ object CSVHandler {
         }
         return stopIdToAgencyId
     }
+
+//    fun getNextDepartureTimeForStop(stopId: Int, currentTime: String): String? {
+//        val dateFormat24Hr = SimpleDateFormat("HH:mm:ss", Locale.getDefault()) // 24-hour format
+//        val dateFormat12Hr = SimpleDateFormat("h:mm:ss a", Locale.getDefault()) // 12-hour format with AM/PM
+//        val currentDate = Date()
+//        var currentTimeParsed: Date? = null
+//
+//        try {
+//            // First, try to parse the current time in 24-hour format
+//            currentTimeParsed = dateFormat24Hr.parse(currentTime)
+//        } catch (e: ParseException) {
+//            // If it fails, try to parse it in 12-hour format
+//            try {
+//                currentTimeParsed = dateFormat12Hr.parse(currentTime)
+//            } catch (ignored: ParseException) {
+//            }
+//        }
+//
+//        if (currentTimeParsed == null) return "Invalid current time"
+//
+//        val departureTimes = stopTimes.filter { it.stopID == stopId }
+//            .mapNotNull { stopTime ->
+//                try {
+//                    dateFormat24Hr.parse(stopTime.departureTime)
+//                } catch (e: ParseException) {
+//                    try {
+//                        dateFormat12Hr.parse(stopTime.departureTime)
+//                    } catch (ignored: ParseException) {
+//                        null
+//                    }
+//                }
+//            }
+//            .filter { it.after(currentDate) }
+//            .sorted()
+//
+//        val nextDepartureTime = departureTimes.firstOrNull() ?: return "No more departures today"
+//        return dateFormat24Hr.format(nextDepartureTime) // You can adjust the output format as needed
+//    }
+    fun getNextDepartureTimeForStop(stopId: Int, currentTime: String): String {
+        val format = SimpleDateFormat("HH:mm:ss", Locale.getDefault()) // Use 24-hour format for simplicity.
+
+        // Parse the currentTime string to a Date object.
+        val now = Calendar.getInstance().apply {
+            time = try {
+                format.parse(currentTime) ?: return "Invalid current time"
+            } catch (e: ParseException) {
+                return "Invalid current time"
+            }
+        }
+
+        // Assuming all departure times are for today and focusing only on the time part.
+        val departureTimes = stopTimes.filter { it.stopID == stopId }
+            .mapNotNull { timeString ->
+                try {
+                    format.parse(timeString.departureTime)?.let { date ->
+                        // Convert the parsed date to a Calendar object to compare only the time part.
+                        Calendar.getInstance().apply {
+                            time = date
+                            set(Calendar.YEAR, now.get(Calendar.YEAR))
+                            set(Calendar.MONTH, now.get(Calendar.MONTH))
+                            set(Calendar.DAY_OF_MONTH, now.get(Calendar.DAY_OF_MONTH))
+                        }
+                    }
+                } catch (e: ParseException) {
+                    null // Ignore parse exceptions and proceed to the next item.
+                }
+            }.filter {
+                // Keep only future departure times.
+                it.after(now)
+            }.sortedBy { it.time } // Sort by time for ascending order.
+
+        // Select the first (earliest) future departure time, if any.
+        val nextDepartureTime = departureTimes.firstOrNull() ?: return "No more departures today"
+        // Format and return the next departure time as a string.
+        return format.format(nextDepartureTime.time)
+    }
+
 }
