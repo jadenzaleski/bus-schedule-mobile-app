@@ -76,7 +76,6 @@ import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
-import com.google.android.gms.maps.model.Polyline
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.MapProperties
 import com.google.maps.android.compose.MapUiSettings
@@ -328,39 +327,39 @@ fun RouteView() {
             try {
                 val key = "&key=AIzaSyArxmzr9k53luII5xTXHT98rCV2dWEZU_E"
                 var path = "&path="
+                val maxDistance = 0.4  // Maximum allowed distance between points
 
                 for (i in places.indices) {
-                    // Add current point to path
-                    val current = places[i]
-                    path += "${current.stopLat},${current.stopLon}"
+                    val segmentPoints = mutableListOf(places[i])
 
+                    // Process the segment between this point and the next, if there is a next point
                     if (i < places.size - 1) {
                         val next = places[i + 1]
+                        segmentPoints.add(next)
 
-                        // Calculate distance to next point
-                        val distance =
-                            calculateSphericalDistance(
-                                current.stopLat,
-                                current.stopLon,
-                                next.stopLat,
-                                next.stopLon
-                            )
+                        // Iteratively add midpoints to the segment until all subsegments are within the maximum distance
+                        var j = 0
+                        while (j < segmentPoints.size - 1) {
+                            val current = segmentPoints[j]
+                            val segmentNext = segmentPoints[j + 1]
 
-                        if (distance > .3) {
-                            // Calculate and add midpoint
-                            val midPoint = midpoint(
-                                current.stopLat,
-                                current.stopLon,
-                                next.stopLat,
-                                next.stopLon
-                            )
-                            path += "|${midPoint.stopLat},${midPoint.stopLon}"
+                            val distance = calculateSphericalDistance(current.stopLat, current.stopLon, segmentNext.stopLat, segmentNext.stopLon)
+
+                            if (distance > maxDistance) {
+                                // Calculate and insert a midpoint directly into the segment
+                                val midPoint = midpoint(current.stopLat, current.stopLon, segmentNext.stopLat, segmentNext.stopLon)
+                                segmentPoints.add(j + 1, FinalRoutePoint(-1, "DUMMY", midPoint.stopLat, midPoint.stopLon))
+                                // No increment of j here because we want to check the newly created subsegment for further subdivision
+                            } else {
+                                // Move to the next subsegment
+                                j++
+                            }
                         }
                     }
 
-                    // Append separator for next point if not last
-                    if (i < places.size - 1) {
-                        path += "|"
+                    // Append the processed segment points to the path, except the last point which is the first point of the next segment
+                    segmentPoints.dropLast(1).forEach { point ->
+                        path += "${point.stopLat},${point.stopLon}|"
                     }
                 }
 
