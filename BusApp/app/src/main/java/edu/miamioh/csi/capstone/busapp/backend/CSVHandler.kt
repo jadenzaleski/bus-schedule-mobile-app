@@ -1,14 +1,14 @@
-package edu.miamioh.csi.capstone.busapp
+package edu.miamioh.csi.capstone.busapp.backend
 
 import android.util.Log
-import edu.miamioh.csi.capstone.busapp.CSVHandler.agencies
-import edu.miamioh.csi.capstone.busapp.CSVHandler.calendar
-import edu.miamioh.csi.capstone.busapp.CSVHandler.info
-import edu.miamioh.csi.capstone.busapp.CSVHandler.routes
-import edu.miamioh.csi.capstone.busapp.CSVHandler.serviceDates
-import edu.miamioh.csi.capstone.busapp.CSVHandler.stopTimes
-import edu.miamioh.csi.capstone.busapp.CSVHandler.stops
-import edu.miamioh.csi.capstone.busapp.CSVHandler.trips
+import edu.miamioh.csi.capstone.busapp.backend.CSVHandler.agencies
+import edu.miamioh.csi.capstone.busapp.backend.CSVHandler.calendar
+import edu.miamioh.csi.capstone.busapp.backend.CSVHandler.info
+import edu.miamioh.csi.capstone.busapp.backend.CSVHandler.routes
+import edu.miamioh.csi.capstone.busapp.backend.CSVHandler.serviceDates
+import edu.miamioh.csi.capstone.busapp.backend.CSVHandler.stopTimes
+import edu.miamioh.csi.capstone.busapp.backend.CSVHandler.stops
+import edu.miamioh.csi.capstone.busapp.backend.CSVHandler.trips
 import java.io.BufferedReader
 import java.io.File
 import java.io.FileNotFoundException
@@ -33,8 +33,8 @@ import java.util.Locale
 data class Agency(
     val agencyID: Int,
     val agencyName: String,
-    val agencyUrl: String,
-    val agencyTimeZone: String,
+    val agencyURL: String,
+    val agencyTimezone: String,
     val agencyPhone: String
 )
 
@@ -71,7 +71,7 @@ data class ServiceDate(
  */
 data class Info(
     val feedPublisherName: String,
-    val feedPublisherUrl: String,
+    val feedPublisherURL: String,
     val feedLang: String,
     val feedStartDate: String,
     val feedEndDate: String,
@@ -111,7 +111,7 @@ data class StopTime(
  * [CORe](https://mobilita.regione.calabria.it/Informazioni/Informazioni)
  */
 data class Stop(
-    val stopId: Int,
+    val stopID: Int,
     val stopName: String,
     val stopLat: Double,
     val stopLon: Double,
@@ -149,7 +149,7 @@ object CSVHandler {
     private val serviceDates: MutableList<ServiceDate> = mutableListOf()
     private var info: Info = Info(
         feedPublisherName = "",
-        feedPublisherUrl = "",
+        feedPublisherURL = "",
         feedLang = "",
         feedStartDate = "",
         feedEndDate = "",
@@ -217,8 +217,8 @@ object CSVHandler {
                     val agency = Agency(
                         agencyID = parts[0].toInt(),
                         agencyName = parts[1],
-                        agencyUrl = parts[2],
-                        agencyTimeZone = parts[3],
+                        agencyURL = parts[2],
+                        agencyTimezone = parts[3],
                         agencyPhone = parts[5]
                     )
                     // add to main list
@@ -354,7 +354,7 @@ object CSVHandler {
                     // make object
                     info = Info(
                         feedPublisherName = parts[0],
-                        feedPublisherUrl = parts[1],
+                        feedPublisherURL = parts[1],
                         feedLang = parts[2],
                         feedStartDate = parts[3],
                         feedEndDate = parts[4],
@@ -489,7 +489,7 @@ object CSVHandler {
                 if (parts.size == 15) {
                     // make object
                     val s = Stop(
-                        stopId = parts[0].toInt(),
+                        stopID = parts[0].toInt(),
                         stopName = parts[1],
                         stopLat = parts[2].toDouble(),
                         stopLon = parts[3].toDouble(),

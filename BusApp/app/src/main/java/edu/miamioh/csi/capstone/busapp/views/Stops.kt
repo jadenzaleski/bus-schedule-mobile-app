@@ -9,6 +9,7 @@ package edu.miamioh.csi.capstone.busapp.views
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.util.Log
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -71,19 +72,24 @@ import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
 import edu.miamioh.csi.capstone.busapp.CSVHandler
 import edu.miamioh.csi.capstone.busapp.R
+import edu.miamioh.csi.capstone.busapp.backend.CSVHandler
+import edu.miamioh.csi.capstone.busapp.backend.RouteGeneratorTester
 import edu.miamioh.csi.capstone.busapp.navigation.Screens
 import edu.miamioh.csi.capstone.busapp.ui.theme.Black
 import edu.miamioh.csi.capstone.busapp.ui.theme.Gray400
 import edu.miamioh.csi.capstone.busapp.ui.theme.Green
 import edu.miamioh.csi.capstone.busapp.ui.theme.Light
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.min
 import kotlin.math.sin
 import kotlin.math.sqrt
+
+import edu.miamioh.csi.capstone.busapp.backend.CSVHandler
+import edu.miamioh.csi.capstone.busapp.backend.RouteGeneratorTester
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 
 @Composable
@@ -156,6 +162,8 @@ fun StopsWorkhorse() {
         }
     }.value
 
+    Log.i("Valid Agency IDs: ", "" + selectedAgencyIds)
+
     // Sets the initial number of stops displayed when the app is started.
     var maxStopsInput by remember { mutableStateOf("50") }
     var maxStops by remember { mutableIntStateOf(50) }
@@ -170,12 +178,12 @@ fun StopsWorkhorse() {
     val filteredStops = remember(mapCenter, selectedAgencyIds, maxStops) {
         maxStopsInput = min(maxStops, 150).toString()
         stops.filter { stop ->
-            val agencyIdsForStop = stopIdToAgencyIdMap[stop.stopId]
+            val agencyIdsForStop = stopIdToAgencyIdMap[stop.stopID]
             //Log.i("All Agencies Associated with Stops", "" + stopIdToAgencyIdMap[stop.stopId])
             //Log.i("All Agencies Selected by User", "" + selectedAgencyIds)
             agencyIdsForStop != null && agencyIdsForStop.any { it in selectedAgencyIds } &&
-                    calculateDistance(mapCenter.latitude, mapCenter.longitude, stop.stopLat, stop.stopLon) <= 60
-        }.sortedBy { calculateDistance(mapCenter.latitude, mapCenter.longitude, it.stopLat, it.stopLon) }
+                    calculateSphericalDistance(mapCenter.latitude, mapCenter.longitude, stop.stopLat, stop.stopLon) <= 60
+        }.sortedBy { calculateSphericalDistance(mapCenter.latitude, mapCenter.longitude, it.stopLat, it.stopLon) }
             .take(min(maxStops, 150))
     }
 
@@ -378,7 +386,6 @@ fun StopsWorkhorse() {
                                 color = Color.Blue
                             )
                         )
-
                     }
                 }
             }
@@ -395,7 +402,7 @@ fun StopsWorkhorse() {
  * @param lon2 - The longitude of the second set of coordinates
  * @return The distance between the two given coordinates
  */
-fun calculateDistance(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
+fun calculateSphericalDistance(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
     val earthRadius = 6371 // Radius of the earth in kilometers
     val latDistance = Math.toRadians(lat2 - lat1)
     val lonDistance = Math.toRadians(lon2 - lon1)

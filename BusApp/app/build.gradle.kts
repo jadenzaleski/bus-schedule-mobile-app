@@ -75,7 +75,10 @@ dependencies {
 
     // google maps util
     implementation("com.google.maps.android:android-maps-utils:3.7.0")
-//    implementation("com.google.maps.android:maps-ktx:5.0.0")
+    //implementation("com.google.maps.android:maps-ktx:5.0.0")
+
+    // Custom Preference (Settings Page) Library
+    implementation ("me.zhanghai.compose.preference:library:1.0.0")
 
     implementation("com.exyte:animated-navigation-bar:1.0.0")
     implementation("androidx.startup:startup-runtime:1.1.1")
@@ -88,4 +91,6 @@ dependencies {
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest:1.6.3")
+
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.0")
 }
