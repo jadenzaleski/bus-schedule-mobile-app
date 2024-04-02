@@ -1,46 +1,38 @@
 package edu.miamioh.csi.capstone.busapp
 
+import android.app.Application
 import android.app.ProgressDialog
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.viewModels
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
-import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
 import edu.miamioh.csi.capstone.busapp.backend.CSVHandler
 import edu.miamioh.csi.capstone.busapp.navigation.AppNavigation
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileInputStream
 import java.util.Calendar
 
-class MainActivity : ComponentActivity() {
-    companion object {
-        private const val LOCATION_PERMISSION_REQUEST_CODE = 999
-    }
+class MainViewModel(application: Application) : AndroidViewModel(application) {
+    private val _isDataInitialized = MutableStateFlow(false)
+    val isDataInitialized: StateFlow<Boolean> = _isDataInitialized
 
-    private lateinit var progressDialog: ProgressDialog
+    fun initializeData() {
+        viewModelScope.launch {
+            val url = "https://mobilita.regione.calabria.it/gtfs/otp_gtfs.zip"
+            val destinationFile = File(getApplication<Application>().getExternalFilesDir(null), "otp_gtfs.zip")
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        WindowCompat.setDecorFitsSystemWindows(window, false)
-
-        // Your initialization code...
-        val url = "https://mobilita.regione.calabria.it/gtfs/otp_gtfs.zip"
-        val destinationFile = File(applicationContext.getExternalFilesDir(null), "otp_gtfs.zip")
-
-        progressDialog = ProgressDialog(this).apply {
-            setMessage("Updating/Initializing Data, Please Wait...")
-            setCancelable(false)
-        }
-
-        lifecycleScope.launch {
-            showProgressDialog(true)
             if (shouldUpdateFiles()) {
                 try {
                     // Switch to Dispatchers.IO for network operation
@@ -81,15 +73,11 @@ class MainActivity : ComponentActivity() {
                     FileInputStream("/storage/emulated/0/Android/data/edu.miamioh.csi.capstone.busapp/files/core/trips.csv")
                 )
             }
-            showProgressDialog(false)
+
             Log.i("CSV", "CSV initialization complete!")
-        }
 
-        setContent {
-            AppNavigation()
+            _isDataInitialized.value = true
         }
-
-        checkAndRequestLocationPermissions()
     }
 
     private fun shouldUpdateFiles(): Boolean {
@@ -120,7 +108,7 @@ class MainActivity : ComponentActivity() {
 
         // Your existing last modified check can remain here for further refinement
         // Ensure you also update the `destinationFile` to match the actual zip file's directory if needed
-        val destinationFile = File(applicationContext.getExternalFilesDir(null), "otp_gtfs.zip")
+        val destinationFile = File(getApplication<Application>().getExternalFilesDir(null), "otp_gtfs.zip")
         if (!destinationFile.exists()) {
             Log.i("MainActivityMessage", "Update Required: Core directory doesn't exist.")
             return true // Update if the zip file doesn't exist
@@ -139,6 +127,28 @@ class MainActivity : ComponentActivity() {
 
         // Check if last modified date is before today's 4:00 AM and now is after today's 4:00 AM
         return lastModifiedDate.before(fourAmToday) && now.after(fourAmToday)
+    }
+}
+
+class MainActivity : ComponentActivity() {
+    companion object {
+        private const val LOCATION_PERMISSION_REQUEST_CODE = 999
+    }
+
+    private val mainViewModel by viewModels<MainViewModel>()
+    private lateinit var progressDialog: ProgressDialog
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+
+        mainViewModel.initializeData()
+
+        setContent {
+            AppNavigation(mainViewModel)
+        }
+
+        checkAndRequestLocationPermissions()
     }
 
     private fun showProgressDialog(show: Boolean) {
