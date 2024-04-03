@@ -1,7 +1,7 @@
 /**
  * Contributors: Jaden Zaleski, Daniel Tai, Ayo Obisesan
- * Last Modified: 3/27/2024
- * Description: Contains all the front-end and some back-end code for the Stops page. See individual
+ * Last Modified: 3/13/2024
+ * Description: Contains all the front-end and back-end code for the Stops page. See individual
  *              method documentation for further details
  */
 
@@ -72,12 +72,14 @@ import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
 import edu.miamioh.csi.capstone.busapp.R
 import edu.miamioh.csi.capstone.busapp.backend.CSVHandler
-import edu.miamioh.csi.capstone.busapp.backend.RouteGeneratorTester
 import edu.miamioh.csi.capstone.busapp.navigation.Screens
 import edu.miamioh.csi.capstone.busapp.ui.theme.Black
 import edu.miamioh.csi.capstone.busapp.ui.theme.Gray400
 import edu.miamioh.csi.capstone.busapp.ui.theme.Green
 import edu.miamioh.csi.capstone.busapp.ui.theme.Light
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.min
@@ -88,7 +90,6 @@ import kotlin.math.sqrt
 @Composable
 fun StopsView() {
     StopsWorkhorse()
-    RouteGeneratorTester.runTests()
 }
 
 /**
@@ -110,6 +111,7 @@ fun StopsWorkhorse() {
 
     var isLocationPermissionGranted by remember { mutableStateOf(false) }
     val currentZoomLevel by remember { mutableStateOf(9f) } // Initial zoom level
+    val currentTime = remember { SimpleDateFormat("h:mm:ss a", Locale.getDefault()).format(Date()) }
 
     LaunchedEffect(key1 = context) {
         isLocationPermissionGranted = ContextCompat.checkSelfPermission(
@@ -329,6 +331,7 @@ fun StopsWorkhorse() {
             properties = MapProperties(isMyLocationEnabled = isLocationPermissionGranted, minZoomPreference = 5.0f)
         ) {
             filteredStops.forEach { stop ->
+                val nextDepartureTime = CSVHandler.getNextDepartureTimeForStop(stop.stopID, currentTime) ?: "Unavailable"
                 // Using the custom MarkerInfoWindowContent instead of the standard Marker
                 MarkerInfoWindowContent(
                     state = MarkerState(position = LatLng(stop.stopLat, stop.stopLon)),
@@ -368,6 +371,7 @@ fun StopsWorkhorse() {
                             Text(text = "Lon: ${stop.stopLon}")
                         }
                         Text(text = "Stop ID: ${stop.stopID}")
+                        Text(text = "Next departure: $nextDepartureTime", style = TextStyle(fontSize = 16.sp))
                         Text(
                             text = "Tap to plan",
                             modifier = Modifier.padding(top = 10.dp, bottom = 5.dp),
