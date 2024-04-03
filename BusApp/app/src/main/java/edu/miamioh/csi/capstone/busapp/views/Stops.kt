@@ -70,26 +70,21 @@ import com.google.maps.android.compose.MapUiSettings
 import com.google.maps.android.compose.MarkerInfoWindowContent
 import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
-import edu.miamioh.csi.capstone.busapp.CSVHandler
 import edu.miamioh.csi.capstone.busapp.R
 import edu.miamioh.csi.capstone.busapp.backend.CSVHandler
-import edu.miamioh.csi.capstone.busapp.backend.RouteGeneratorTester
 import edu.miamioh.csi.capstone.busapp.navigation.Screens
 import edu.miamioh.csi.capstone.busapp.ui.theme.Black
 import edu.miamioh.csi.capstone.busapp.ui.theme.Gray400
 import edu.miamioh.csi.capstone.busapp.ui.theme.Green
 import edu.miamioh.csi.capstone.busapp.ui.theme.Light
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.min
 import kotlin.math.sin
 import kotlin.math.sqrt
-
-import edu.miamioh.csi.capstone.busapp.backend.CSVHandler
-import edu.miamioh.csi.capstone.busapp.backend.RouteGeneratorTester
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 
 @Composable
@@ -336,7 +331,7 @@ fun StopsWorkhorse() {
             properties = MapProperties(isMyLocationEnabled = isLocationPermissionGranted, minZoomPreference = 5.0f)
         ) {
             filteredStops.forEach { stop ->
-                val nextDepartureTime = CSVHandler.getNextDepartureTimeForStop(stop.stopId, currentTime) ?: "Unavailable"
+                val nextDepartureTime = CSVHandler.getNextDepartureTimeForStop(stop.stopID, currentTime) ?: "Unavailable"
                 // Using the custom MarkerInfoWindowContent instead of the standard Marker
                 MarkerInfoWindowContent(
                     state = MarkerState(position = LatLng(stop.stopLat, stop.stopLon)),
@@ -375,7 +370,7 @@ fun StopsWorkhorse() {
                             Spacer(modifier = Modifier.width(5.dp))
                             Text(text = "Lon: ${stop.stopLon}")
                         }
-                        Text(text = "Stop ID: ${stop.stopId}")
+                        Text(text = "Stop ID: ${stop.stopID}")
                         Text(text = "Next departure: $nextDepartureTime", style = TextStyle(fontSize = 16.sp))
                         Text(
                             text = "Tap to plan",
