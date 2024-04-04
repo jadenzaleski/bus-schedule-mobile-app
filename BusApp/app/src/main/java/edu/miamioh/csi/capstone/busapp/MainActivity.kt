@@ -148,7 +148,7 @@ class MainActivity : ComponentActivity() {
             AppNavigation(mainViewModel)
         }
 
-        checkAndRequestLocationPermissions()
+//        checkAndRequestLocationPermissions()
     }
 
     private fun showProgressDialog(show: Boolean) {
