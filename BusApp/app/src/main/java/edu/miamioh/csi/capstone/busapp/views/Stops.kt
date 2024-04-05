@@ -90,6 +90,7 @@ import kotlin.math.sqrt
 @Composable
 fun StopsView() {
     StopsWorkhorse()
+    //RouteGeneratorTester.runTests()
 }
 
 /**
@@ -106,8 +107,17 @@ fun StopsWorkhorse() {
     val trips = CSVHandler.getTrips()
     val stopTimes = CSVHandler.getStopTimes()
     val agencies = CSVHandler.getAgencies()
+
+    Log.i("Check", "" + stops.size)
+    Log.i("Check", "" + routes.size)
+    Log.i("Check", "" + trips.size)
+    Log.i("Check", "" + stopTimes.size)
+    Log.i("Check", "" + agencies.size)
+
     val context = LocalContext.current
     val navController = rememberNavController()
+
+
 
     var isLocationPermissionGranted by remember { mutableStateOf(false) }
     val currentZoomLevel by remember { mutableStateOf(9f) } // Initial zoom level
@@ -144,6 +154,8 @@ fun StopsWorkhorse() {
     val stopIdToAgencyIdMap = remember {
         CSVHandler.getStopIdToAgencyIdMap(stops, routes, trips, stopTimes)
     }
+
+    Log.i("Stops Page", "" + stopIdToAgencyIdMap.size)
 
     /*
      * selectedAgencyIds identifies which agencies have been selected by the user to be displayed
