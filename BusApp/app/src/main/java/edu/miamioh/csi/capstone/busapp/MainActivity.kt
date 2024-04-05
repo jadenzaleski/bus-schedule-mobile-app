@@ -12,6 +12,9 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewModelScope
 import edu.miamioh.csi.capstone.busapp.backend.CSVHandler
 import edu.miamioh.csi.capstone.busapp.navigation.AppNavigation
@@ -142,12 +145,34 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
-        mainViewModel.initializeData()
-
-        setContent {
-            AppNavigation(mainViewModel)
+        // Initialize your ProgressDialog here
+        progressDialog = ProgressDialog(this).apply {
+            setMessage("Initializing CORe Bus Data...")
+            setCancelable(false)
         }
 
+        // Show the progress dialog immediately
+        showProgressDialog(true)
+
+        /*
+         * Essentially, runs a loop and checks to see constantly if data initialization process is
+         * complete. If YES, disable dialog and display interactive UI. If not, wait until process
+         * is done.
+         */
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                mainViewModel.isDataInitialized.collect { isInitialized ->
+                    if (isInitialized) {
+                        setContent {
+                            AppNavigation(mainViewModel)
+                        }
+                        showProgressDialog(false)
+                    }
+                }
+            }
+        }
+
+        mainViewModel.initializeData()
         checkAndRequestLocationPermissions()
     }
 
