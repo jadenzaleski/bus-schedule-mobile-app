@@ -182,16 +182,22 @@ fun RouteView(viewModel: MainViewModel) {
         val navController = rememberNavController()
 
 
-        var isLocationPermissionGranted by remember { mutableStateOf(false) }
+        // Check if location permission is granted
+        var isLocationPermissionGranted by remember {
+            mutableStateOf(
+                ContextCompat.checkSelfPermission(
+                    context, Manifest.permission.ACCESS_FINE_LOCATION
+                ) == PackageManager.PERMISSION_GRANTED
+            )
+        }
         var currentZoomLevel by remember { mutableStateOf(9f) } // Initial zoom level
 
-        /*
+
         LaunchedEffect(key1 = context) {
             isLocationPermissionGranted = ContextCompat.checkSelfPermission(
                 context, Manifest.permission.ACCESS_FINE_LOCATION
             ) == PackageManager.PERMISSION_GRANTED
         }
-         */
 
         /*
          * Sets up initial map settings for when user first loads up the Routes page upon opening app.
@@ -428,14 +434,8 @@ fun RouteView(viewModel: MainViewModel) {
             GoogleMap(
                 modifier = Modifier.fillMaxHeight(if (showForm.value) 0.6f else 0.75f),
                 cameraPositionState = cameraPositionState,
-                uiSettings = MapUiSettings(
-                    myLocationButtonEnabled = isLocationPermissionGranted,
-                    compassEnabled = true
-                ),
-                properties = MapProperties(
-                    isMyLocationEnabled = isLocationPermissionGranted,
-                    minZoomPreference = 5.0f
-                )
+                uiSettings = MapUiSettings(myLocationButtonEnabled = isLocationPermissionGranted, compassEnabled = true),
+                properties = MapProperties(isMyLocationEnabled = isLocationPermissionGranted, minZoomPreference = 5.0f)
             )
 
             {
