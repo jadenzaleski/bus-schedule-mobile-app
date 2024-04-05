@@ -110,6 +110,7 @@ import java.io.BufferedReader
 import java.io.IOException
 import java.io.InputStreamReader
 import java.net.URL
+import java.net.URLDecoder
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
@@ -140,7 +141,7 @@ var currentRoute = mutableListOf(FinalRoutePoint(-1, "", 0.0, 0.0))
 val snappedPointsList = mutableListOf<SnappedPoint>()
 
 @Composable
-fun RouteView() {
+fun RouteView(option: String, name: String, lat: Double, lon: Double) {
     val context = LocalContext.current
     // location permissions
     val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
@@ -275,6 +276,14 @@ fun RouteView() {
                 onConfirmation = { openAlertDialog.value = false },
                 onDismissRequest = { openAlertDialog.value = false})
         }
+    }
+    // set the passed in params to the correct vars
+    if (option == "start") {
+        startSearchString = URLDecoder.decode(name, "UTF-8")
+        selectedStartPlace.value = Place(URLDecoder.decode(name, "UTF-8"), lat, lon, "", "");
+    } else if (option == "end") {
+        endSearchString = URLDecoder.decode(name, "UTF-8")
+        selectedEndPlace.value = Place(URLDecoder.decode(name, "UTF-8"), lat, lon, "", "");
     }
 
     // Search function calls google API to find 20 results that match the users query.
@@ -1246,5 +1255,5 @@ fun AlertDialogExample(size: Int, onDismissRequest: () -> Unit, onConfirmation: 
 @Composable
 @Preview
 fun RouteViewPreview() {
-    RouteView()
+    RouteView("none", "blank",0.0, 0.0)
 }
