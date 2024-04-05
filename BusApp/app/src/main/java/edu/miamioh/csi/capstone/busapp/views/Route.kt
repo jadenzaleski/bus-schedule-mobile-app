@@ -1,10 +1,18 @@
 package edu.miamioh.csi.capstone.busapp.views
 
 
+import android.Manifest
 import android.annotation.SuppressLint
 import android.app.TimePickerDialog
+import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
 import android.location.Location
+import android.net.Uri
+import android.provider.Settings
 import android.util.Log
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -25,7 +33,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonColors
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.DropdownMenu
@@ -35,9 +45,11 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -49,6 +61,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusManager
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
@@ -62,6 +75,7 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.rememberNavController
 import coil.compose.AsyncImage
@@ -654,33 +668,45 @@ fun RouteView(viewModel: MainViewModel) {
                             modifier = Modifier.padding(end = 10.dp)
                         )
                         // current location button
-                        OutlinedButton(
-                            onClick = {
-                                startIsCurrentLocation.value = startIsCurrentLocation.value.not()
-                                focusManager.clearFocus()
+//                        OutlinedButton(
+//                            onClick = {
+//                                startIsCurrentLocation.value = startIsCurrentLocation.value.not()
+//                                focusManager.clearFocus()
+//                            },
+//                            colors = ButtonColors(
+//                                containerColor = if (startIsCurrentLocation.value) Green else Color.Transparent,
+//                                contentColor = if (startIsCurrentLocation.value) Color.White else Color.Gray,
+//                                disabledContainerColor = Color.Gray,
+//                                disabledContentColor = Color.Gray
+//                            ),
+//                            border = BorderStroke(
+//                                1.dp,
+//                                if (startIsCurrentLocation.value) Green else Color.Gray
+//                            ),
+//                            modifier = Modifier
+//                                .height(50.dp)
+//                                .width(50.dp),
+//                            shape = RoundedCornerShape(20),
+//                            contentPadding = PaddingValues(horizontal = 1.dp)
+//                        ) {
+//                            Icon(
+//                                painterResource(id = R.drawable.baseline_my_location_24),
+//                                contentDescription = null,
+//                                Modifier.padding(horizontal = 1.dp)
+//                            )
+//                        }
+                        // Using the custom CurrentLocationButton
+                        CurrentLocationButton(
+                            isCurrentLocation = startIsCurrentLocation,
+                            context = context,
+                            focusManager = focusManager,
+                            onLocationEnabled = {
+                                // Define what happens when location is enabled.
                             },
-                            colors = ButtonColors(
-                                containerColor = if (startIsCurrentLocation.value) Green else Color.Transparent,
-                                contentColor = if (startIsCurrentLocation.value) Color.White else Color.Gray,
-                                disabledContainerColor = Color.Gray,
-                                disabledContentColor = Color.Gray
-                            ),
-                            border = BorderStroke(
-                                1.dp,
-                                if (startIsCurrentLocation.value) Green else Color.Gray
-                            ),
-                            modifier = Modifier
-                                .height(50.dp)
-                                .width(50.dp),
-                            shape = RoundedCornerShape(20),
-                            contentPadding = PaddingValues(horizontal = 1.dp)
-                        ) {
-                            Icon(
-                                painterResource(id = R.drawable.baseline_my_location_24),
-                                contentDescription = null,
-                                Modifier.padding(horizontal = 1.dp)
-                            )
-                        }
+                            onLocationDisabled = {
+                                // Define what happens when location is disabled.
+                            }
+                        )
                         // search box for start
                         OutlinedTextField(
                             value = startSearchString,
@@ -816,33 +842,45 @@ fun RouteView(viewModel: MainViewModel) {
                             modifier = Modifier.padding(end = 10.dp)
                         )
                         // current location button
-                        OutlinedButton(
-                            onClick = {
-                                endIsCurrentLocation.value = endIsCurrentLocation.value.not()
-                                focusManager.clearFocus()
+//                        OutlinedButton(
+//                            onClick = {
+//                                endIsCurrentLocation.value = endIsCurrentLocation.value.not()
+//                                focusManager.clearFocus()
+//                            },
+//                            colors = ButtonColors(
+//                                containerColor = if (endIsCurrentLocation.value) Green else Color.Transparent,
+//                                contentColor = if (endIsCurrentLocation.value) Color.White else Color.Gray,
+//                                disabledContainerColor = Color.Gray,
+//                                disabledContentColor = Color.Gray
+//                            ),
+//                            border = BorderStroke(
+//                                1.dp,
+//                                if (endIsCurrentLocation.value) Green else Color.Gray
+//                            ),
+//                            modifier = Modifier
+//                                .height(50.dp)
+//                                .width(50.dp),
+//                            shape = RoundedCornerShape(20),
+//                            contentPadding = PaddingValues(horizontal = 1.dp)
+//                        ) {
+//                            Icon(
+//                                painterResource(id = R.drawable.baseline_my_location_24),
+//                                contentDescription = null,
+//                                Modifier.padding(horizontal = 1.dp)
+//                            )
+//                        }
+                        // Using the custom CurrentLocationButton
+                        CurrentLocationButton(
+                            isCurrentLocation = endIsCurrentLocation,
+                            context = context,
+                            focusManager = focusManager,
+                            onLocationEnabled = {
+                                // Define what happens when location is enabled.
                             },
-                            colors = ButtonColors(
-                                containerColor = if (endIsCurrentLocation.value) Green else Color.Transparent,
-                                contentColor = if (endIsCurrentLocation.value) Color.White else Color.Gray,
-                                disabledContainerColor = Color.Gray,
-                                disabledContentColor = Color.Gray
-                            ),
-                            border = BorderStroke(
-                                1.dp,
-                                if (endIsCurrentLocation.value) Green else Color.Gray
-                            ),
-                            modifier = Modifier
-                                .height(50.dp)
-                                .width(50.dp),
-                            shape = RoundedCornerShape(20),
-                            contentPadding = PaddingValues(horizontal = 1.dp)
-                        ) {
-                            Icon(
-                                painterResource(id = R.drawable.baseline_my_location_24),
-                                contentDescription = null,
-                                Modifier.padding(horizontal = 1.dp)
-                            )
-                        }
+                            onLocationDisabled = {
+                                // Define what happens when location is disabled.
+                            }
+                        )
                         // search text box
                         OutlinedTextField(
                             value = endSearchString,
@@ -1205,6 +1243,91 @@ fun midpoint(lat1: Double, lon1: Double, lat2: Double, lon2: Double): FinalRoute
     // Convert back to degrees
     return FinalRoutePoint(-1, "DUMMY", Math.toDegrees(latMid), Math.toDegrees(lonMid))
 }
+@Composable
+fun CurrentLocationButton(
+    isCurrentLocation: MutableState<Boolean>,
+    context: Context,
+    focusManager: FocusManager,
+    onLocationEnabled: () -> Unit,
+    onLocationDisabled: () -> Unit  // Callback when location is deselected
+) {
+    var showPermissionDeniedDialog by remember { mutableStateOf(false) }
+
+    // Permission launcher
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted: Boolean ->
+        if (isGranted) {
+            isCurrentLocation.value = true
+            onLocationEnabled()  // Call when permission is granted and location is enabled
+        } else {
+            // Show permission denied dialog only if permission was previously requested
+            showPermissionDeniedDialog = true
+        }
+    }
+
+    // Check permission status
+    val isLocationPermissionGranted = remember {
+        ContextCompat.checkSelfPermission(
+            context, Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+    }
+
+    // Button UI and click logic
+    OutlinedButton(
+        onClick = {
+            if (isCurrentLocation.value) {
+                // If currently selected, deselect and run the onLocationDisabled callback
+                isCurrentLocation.value = false
+                onLocationDisabled()
+            } else if (!isLocationPermissionGranted) {
+                // If permission not granted, request it
+                permissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+            } else {
+                // If permission is granted but location not currently selected, select it
+                isCurrentLocation.value = true
+                onLocationEnabled()
+            }
+            focusManager.clearFocus()  // Dismiss keyboard if open
+        },
+        colors = ButtonDefaults.buttonColors(
+            containerColor = if (isCurrentLocation.value) Green else Color.Transparent,
+            contentColor = if (isCurrentLocation.value) Color.White else Color.Gray
+        ),
+        border = BorderStroke(1.dp, if (isCurrentLocation.value) Green else Color.Gray),
+        modifier = Modifier.height(50.dp).width(50.dp),
+        shape = RoundedCornerShape(20),
+        contentPadding = PaddingValues(horizontal = 1.dp)
+    ) {
+        Icon(
+            painter = painterResource(id = R.drawable.baseline_my_location_24),
+            contentDescription = "Toggle Current Location",
+            tint = if (isCurrentLocation.value) Color.White else Color.Gray
+        )
+    }
+
+    // Permission Denied Dialog
+    if (showPermissionDeniedDialog) {
+        AlertDialog(
+            onDismissRequest = { showPermissionDeniedDialog = false },
+            title = { Text("Location Permission Denied") },
+            text = { Text("You need to enable location permissions in app settings.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showPermissionDeniedDialog = false
+                    val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                        data = Uri.fromParts("package", context.packageName, null)
+                    }
+                    context.startActivity(intent)
+                }) {
+                    Text("Open Settings")
+                }
+            }
+        )
+    }
+}
+
+
 
 /*
 @Composable

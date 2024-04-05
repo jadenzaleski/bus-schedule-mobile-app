@@ -130,7 +130,6 @@ fun StopsWorkhorse() {
     val navController = rememberNavController()
     var permissionDenied by remember { mutableStateOf(false) }
 
-
     // Check if location permission is granted
     var isLocationPermissionGranted by remember {
         mutableStateOf(
@@ -140,9 +139,9 @@ fun StopsWorkhorse() {
         )
     }
     val currentZoomLevel by remember { mutableStateOf(9f) } // Initial zoom level
-    val currentTime = remember { SimpleDateFormat("h:mm:ss a", Locale.getDefault()).format(Date()) }
 
-    // Dialog states
+
+    // Permission dialog states
     var showPermissionDeniedDialog by remember { mutableStateOf(false) }
     var showLocationActivatedDialog by remember { mutableStateOf(false) }
 
@@ -277,7 +276,6 @@ fun StopsWorkhorse() {
             }
 
             // Activate Location Button
-            // Modify the ActivateLocationButton composable to pass and use the new state
             ActivateLocationButton(
                 isLocationPermissionGranted = isLocationPermissionGranted,
                 permissionDenied = permissionDenied,
@@ -426,7 +424,8 @@ fun StopsWorkhorse() {
             properties = MapProperties(isMyLocationEnabled = isLocationPermissionGranted, minZoomPreference = 5.0f)
         ) {
             filteredStops.forEach { stop ->
-                val nextDepartureTime = CSVHandler.getNextDepartureTimeForStop(stop.stopID, currentTime) ?: "Unavailable"
+                val nextDepartureTime = CSVHandler.getNextDepartureTimeForStop(stop.stopID) ?: "Unavailable"
+                val currentTime = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date()) // Get current time in 24-hour format
                 // Using the custom MarkerInfoWindowContent instead of the standard Marker
                 MarkerInfoWindowContent(
                     state = MarkerState(position = LatLng(stop.stopLat, stop.stopLon)),
@@ -460,12 +459,14 @@ fun StopsWorkhorse() {
                                 .padding(vertical = 5.dp)
                         )
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(text = "Lat: ${stop.stopLat}")
+                            Text(text = "Lat: ${stop.stopLat}", style = TextStyle(fontSize = 16.sp))
                             // Replaced VerticalDivider with Spacer for simplicity
                             Spacer(modifier = Modifier.width(5.dp))
-                            Text(text = "Lon: ${stop.stopLon}")
+                            Text(text = "Lon: ${stop.stopLon}", style = TextStyle(fontSize = 16.sp))
                         }
-                        Text(text = "Stop ID: ${stop.stopID}")
+                        Text(text = "Stop ID: ${stop.stopID}", style = TextStyle(fontSize = 16.sp))
+                        // Text for current time:
+                        Text(text = "Current Time: $currentTime", style = TextStyle(fontSize = 16.sp)) // Added text for current time
                         Text(text = "Next departure: $nextDepartureTime", style = TextStyle(fontSize = 16.sp))
                         Text(
                             text = "Tap to plan",
@@ -488,7 +489,7 @@ fun ActivateLocationButton(
     isLocationPermissionGranted: Boolean,
     permissionDenied: Boolean,
     onPermissionRequest: () -> Unit,
-    onShowPermissionsDeniedDialog: () -> Unit, // Changed from onOpenAppSettings to reflect new functionality
+    onShowPermissionsDeniedDialog: () -> Unit,
     onShowLocationActivatedDialog: () -> Unit
 ) {
     val buttonText = if (isLocationPermissionGranted) "Location Activated" else "Activate Location"
@@ -517,7 +518,7 @@ fun ActivateLocationButton(
         modifier = Modifier
             .padding(start = 10.dp, end = 10.dp)
             .height(50.dp)
-            .width(100.dp), // Adjust width as needed
+            .width(100.dp),
         shape = RoundedCornerShape(20),
         contentPadding = PaddingValues(horizontal = 16.dp)
     ) {
