@@ -78,7 +78,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
 
             Log.i("CSV", "CSV initialization complete!")
-
             _isDataInitialized.value = true
         }
     }
@@ -148,7 +147,7 @@ class MainActivity : ComponentActivity() {
         // Initialize your ProgressDialog here
         progressDialog = ProgressDialog(this).apply {
             setMessage("Initializing CORe Bus Data...")
-            setCancelable(false)
+            setCancelable(false) // Optional: make it not cancellable
         }
 
         // Show the progress dialog immediately
@@ -156,8 +155,7 @@ class MainActivity : ComponentActivity() {
 
         /*
          * Essentially, runs a loop and checks to see constantly if data initialization process is
-         * complete. If YES, disable dialog and display interactive UI. If not, wait until process
-         * is done.
+         * complete. If YES, disable dialog and display UI - otherwise, keep dialog up and wait.
          */
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -166,7 +164,7 @@ class MainActivity : ComponentActivity() {
                         setContent {
                             AppNavigation(mainViewModel)
                         }
-                        showProgressDialog(false)
+                        showProgressDialog(false) // Hide the progress dialog once data is initialized
                     }
                 }
             }
