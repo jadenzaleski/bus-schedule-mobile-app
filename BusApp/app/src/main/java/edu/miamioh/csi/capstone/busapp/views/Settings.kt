@@ -1,6 +1,7 @@
 package edu.miamioh.csi.capstone.busapp.views
 
 import android.app.Activity
+import android.content.Context
 import android.graphics.drawable.ColorDrawable
 import android.os.Build
 import android.util.Log
@@ -45,7 +46,6 @@ import androidx.core.view.WindowCompat
 import edu.miamioh.csi.capstone.busapp.UnzipUtils
 import edu.miamioh.csi.capstone.busapp.backend.CSVHandler
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import me.zhanghai.compose.preference.ProvidePreferenceLocals
@@ -96,67 +96,10 @@ fun SettingScreen() {
                         isUpdating = true // Begin updating
 
                         coroutineScope.launch {
-                            try {
-                                // Perform operations in IO dispatcher
-                                withContext(Dispatchers.IO) {
-                                    val url = "https://mobilita.regione.calabria.it/gtfs/otp_gtfs.zip"
-                                    val destinationFile = File(context.getExternalFilesDir(null), "otp_gtfs.zip")
-
-                                    // Ensure the directory for extracted files is clear
-                                    val coreDir = File(context.getExternalFilesDir(null), "core")
-                                    if (deleteDirectoryWithContents(coreDir)) {
-                                        Log.i("DELETE", "Previous data deleted successfully.")
-                                    }
-
-                                    // Recreate directories
-                                    if (!coreDir.exists()) {
-                                        coreDir.mkdirs()
-                                    }
-
-                                    // Replace this with the actual download logic
-                                    CSVHandler.downloadFile(url, destinationFile)
-                                    Log.i("DOWNLOAD", "Download job is complete (Stage 1).")
-
-                                    // Add your other operations here
-                                    // Ensure you replace the placeholder operations with actual implementation
-                                    UnzipUtils.unzip(destinationFile, context.getExternalFilesDir(null)?.absolutePath + "/core/")
-                                    Log.i("UNZIP", "Unzip job is complete (Stage 2).")
-
-                                    CSVHandler.renameToCSV(context.getExternalFilesDir(null)?.absolutePath + "/core")
-                                    Log.i("RENAME", "Rename Job is complete (Stage 3).")
-
-                                    // Initialize CSVHandler with the correct paths
-                                    withContext(Dispatchers.IO) {
-                                        CSVHandler.initialize(
-                                            FileInputStream("/storage/emulated/0/Android/data/edu.miamioh.csi.capstone.busapp/files/core/agency.csv"),
-                                            FileInputStream("/storage/emulated/0/Android/data/edu.miamioh.csi.capstone.busapp/files/core/calendar.csv"),
-                                            FileInputStream("/storage/emulated/0/Android/data/edu.miamioh.csi.capstone.busapp/files/core/calendar_dates.csv"),
-                                            FileInputStream("/storage/emulated/0/Android/data/edu.miamioh.csi.capstone.busapp/files/core/feed_info.csv"),
-                                            FileInputStream("/storage/emulated/0/Android/data/edu.miamioh.csi.capstone.busapp/files/core/routes.csv"),
-                                            FileInputStream("/storage/emulated/0/Android/data/edu.miamioh.csi.capstone.busapp/files/core/stop_times.csv"),
-                                            FileInputStream("/storage/emulated/0/Android/data/edu.miamioh.csi.capstone.busapp/files/core/stops.csv"),
-                                            FileInputStream("/storage/emulated/0/Android/data/edu.miamioh.csi.capstone.busapp/files/core/trips.csv")
-                                        )
-                                    }
-
-                                    Log.i("CSV", "CSV initialization complete!")
-
-                                    // Simulate long-running task
-                                    delay(3000) // Remember to import kotlinx.coroutines.delay
-
-                                    // Update last update time on UI thread after success
-                                    withContext(Dispatchers.Main) {
-                                        val dateFormat = SimpleDateFormat("MMM dd, yyyy HH:mm:ss", Locale.getDefault())
-                                        lastUpdateTime = "${dateFormat.format(Date())}"
-                                        isUpdating = false
-                                    }
-                                }
-                            } catch (e: Exception) {
-                                Log.e("MainActivity", "Error in downloading or processing files: ${e.message}")
-                            } catch (e: Exception) {
-                                Log.e("UpdateError", "Error during update: ${e.message}")
-                            } finally {
-                                isUpdating = false // End updating
+                            updateData(context) {
+                                isUpdating = false // Update completion handler
+                                val dateFormat = SimpleDateFormat("MMM dd, yyyy HH:mm:ss", Locale.getDefault())
+                                lastUpdateTime = "${dateFormat.format(Date())}"
                             }
                         }
                     }
@@ -317,6 +260,61 @@ fun deleteDirectoryWithContents(directory: File): Boolean {
     return directory.delete()
 }
 
+suspend fun updateData(context: Context, onComplete: () -> Unit) {
+    try {
+        // Perform operations in IO dispatcher
+        withContext(Dispatchers.IO) {
+            val url = "https://mobilita.regione.calabria.it/gtfs/otp_gtfs.zip"
+            val destinationFile = File(context.getExternalFilesDir(null), "otp_gtfs.zip")
+
+            // Ensure the directory for extracted files is clear
+            val coreDir = File(context.getExternalFilesDir(null), "core")
+            if (deleteDirectoryWithContents(coreDir)) {
+                Log.i("DELETE", "Previous data deleted successfully.")
+            }
+
+            // Recreate directories
+            if (!coreDir.exists()) {
+                coreDir.mkdirs()
+            }
+
+            // Replace this with the actual download logic
+            CSVHandler.downloadFile(url, destinationFile)
+            Log.i("DOWNLOAD", "Download job is complete (Stage 1).")
+
+            // Add your other operations here
+            // Ensure you replace the placeholder operations with actual implementation
+            UnzipUtils.unzip(
+                destinationFile,
+                context.getExternalFilesDir(null)?.absolutePath + "/core/"
+            )
+            Log.i("UNZIP", "Unzip job is complete (Stage 2).")
+
+            CSVHandler.renameToCSV(context.getExternalFilesDir(null)?.absolutePath + "/core")
+            Log.i("RENAME", "Rename Job is complete (Stage 3).")
+
+            // Initialize CSVHandler with the correct paths
+            withContext(Dispatchers.IO) {
+                CSVHandler.initialize(
+                    FileInputStream("/storage/emulated/0/Android/data/edu.miamioh.csi.capstone.busapp/files/core/agency.csv"),
+                    FileInputStream("/storage/emulated/0/Android/data/edu.miamioh.csi.capstone.busapp/files/core/calendar.csv"),
+                    FileInputStream("/storage/emulated/0/Android/data/edu.miamioh.csi.capstone.busapp/files/core/calendar_dates.csv"),
+                    FileInputStream("/storage/emulated/0/Android/data/edu.miamioh.csi.capstone.busapp/files/core/feed_info.csv"),
+                    FileInputStream("/storage/emulated/0/Android/data/edu.miamioh.csi.capstone.busapp/files/core/routes.csv"),
+                    FileInputStream("/storage/emulated/0/Android/data/edu.miamioh.csi.capstone.busapp/files/core/stop_times.csv"),
+                    FileInputStream("/storage/emulated/0/Android/data/edu.miamioh.csi.capstone.busapp/files/core/stops.csv"),
+                    FileInputStream("/storage/emulated/0/Android/data/edu.miamioh.csi.capstone.busapp/files/core/trips.csv")
+                )
+            }
+
+            Log.i("CSV", "CSV initialization complete!")
+        }
+    } catch (e: Exception) {
+        Log.e("UpdateError", "Error during update: ${e.message}")
+    } finally {
+        onComplete() // Invoke the completion handler
+    }
+}
 
 @Composable
 @Preview(showBackground = true)

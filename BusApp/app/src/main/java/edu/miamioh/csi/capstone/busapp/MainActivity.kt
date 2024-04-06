@@ -9,6 +9,9 @@ import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewModelScope
 import edu.miamioh.csi.capstone.busapp.backend.CSVHandler
 import edu.miamioh.csi.capstone.busapp.navigation.AppNavigation
@@ -72,7 +75,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
 
             Log.i("CSV", "CSV initialization complete!")
-
             _isDataInitialized.value = true
         }
     }
@@ -139,12 +141,34 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
-        mainViewModel.initializeData()
-
-        setContent {
-            AppNavigation(mainViewModel)
+        // Initialize your ProgressDialog here
+        progressDialog = ProgressDialog(this).apply {
+            setMessage("Initializing CORe Bus Data...")
+            setCancelable(false) // Optional: make it not cancellable
         }
 
+        // Show the progress dialog immediately
+        showProgressDialog(true)
+
+        /*
+         * Essentially, runs a loop and checks to see constantly if data initialization process is
+         * complete. If YES, disable dialog and display UI - otherwise, keep dialog up and wait.
+         */
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                mainViewModel.isDataInitialized.collect { isInitialized ->
+                    if (isInitialized) {
+                        setContent {
+                            AppNavigation(mainViewModel)
+                        }
+                        showProgressDialog(false) // Hide the progress dialog once data is initialized
+                    }
+                }
+            }
+        }
+
+        mainViewModel.initializeData()
+//        checkAndRequestLocationPermissions()
     }
 
     private fun showProgressDialog(show: Boolean) {

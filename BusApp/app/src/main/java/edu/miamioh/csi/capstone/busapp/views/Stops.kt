@@ -82,7 +82,6 @@ import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
 import edu.miamioh.csi.capstone.busapp.R
 import edu.miamioh.csi.capstone.busapp.backend.CSVHandler
-import edu.miamioh.csi.capstone.busapp.backend.RouteGeneratorTester
 import edu.miamioh.csi.capstone.busapp.navigation.Screens
 import edu.miamioh.csi.capstone.busapp.ui.theme.Black
 import edu.miamioh.csi.capstone.busapp.ui.theme.Gray400
@@ -102,7 +101,7 @@ import kotlin.math.sqrt
 @Composable
 fun StopsView() {
     StopsWorkhorse()
-    RouteGeneratorTester.runTests()
+    //RouteGeneratorTester.runTests()
 }
 
 /**
