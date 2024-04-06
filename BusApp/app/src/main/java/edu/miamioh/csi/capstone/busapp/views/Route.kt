@@ -666,34 +666,6 @@ fun RouteView(viewModel: MainViewModel) {
                             style = TextStyle(fontSize = 20.sp, fontFamily = FontFamily.Monospace),
                             modifier = Modifier.padding(end = 10.dp)
                         )
-                        // current location button
-//                        OutlinedButton(
-//                            onClick = {
-//                                startIsCurrentLocation.value = startIsCurrentLocation.value.not()
-//                                focusManager.clearFocus()
-//                            },
-//                            colors = ButtonColors(
-//                                containerColor = if (startIsCurrentLocation.value) Green else Color.Transparent,
-//                                contentColor = if (startIsCurrentLocation.value) Color.White else Color.Gray,
-//                                disabledContainerColor = Color.Gray,
-//                                disabledContentColor = Color.Gray
-//                            ),
-//                            border = BorderStroke(
-//                                1.dp,
-//                                if (startIsCurrentLocation.value) Green else Color.Gray
-//                            ),
-//                            modifier = Modifier
-//                                .height(50.dp)
-//                                .width(50.dp),
-//                            shape = RoundedCornerShape(20),
-//                            contentPadding = PaddingValues(horizontal = 1.dp)
-//                        ) {
-//                            Icon(
-//                                painterResource(id = R.drawable.baseline_my_location_24),
-//                                contentDescription = null,
-//                                Modifier.padding(horizontal = 1.dp)
-//                            )
-//                        }
                         // Using the custom CurrentLocationButton
                         CurrentLocationButton(
                             isCurrentLocation = startIsCurrentLocation,
@@ -844,33 +816,6 @@ fun RouteView(viewModel: MainViewModel) {
                             modifier = Modifier.padding(end = 10.dp)
                         )
                         // current location button
-//                        OutlinedButton(
-//                            onClick = {
-//                                endIsCurrentLocation.value = endIsCurrentLocation.value.not()
-//                                focusManager.clearFocus()
-//                            },
-//                            colors = ButtonColors(
-//                                containerColor = if (endIsCurrentLocation.value) Green else Color.Transparent,
-//                                contentColor = if (endIsCurrentLocation.value) Color.White else Color.Gray,
-//                                disabledContainerColor = Color.Gray,
-//                                disabledContentColor = Color.Gray
-//                            ),
-//                            border = BorderStroke(
-//                                1.dp,
-//                                if (endIsCurrentLocation.value) Green else Color.Gray
-//                            ),
-//                            modifier = Modifier
-//                                .height(50.dp)
-//                                .width(50.dp),
-//                            shape = RoundedCornerShape(20),
-//                            contentPadding = PaddingValues(horizontal = 1.dp)
-//                        ) {
-//                            Icon(
-//                                painterResource(id = R.drawable.baseline_my_location_24),
-//                                contentDescription = null,
-//                                Modifier.padding(horizontal = 1.dp)
-//                            )
-//                        }
                         // Using the custom CurrentLocationButton
                         CurrentLocationButton(
                             isCurrentLocation = endIsCurrentLocation,
