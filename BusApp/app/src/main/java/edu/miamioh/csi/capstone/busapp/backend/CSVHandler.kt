@@ -862,7 +862,7 @@ object CSVHandler {
         return stopIdToAgencyId
     }
 
-    fun getNextDepartureTimeForStop(stopId: Int, currentTime: String): String {
+    fun getNextDepartureTimeForStop(stopId: Int): String {
         val format = SimpleDateFormat("HH:mm", Locale.UK) // Use 24-hour format for simplicity.
 
         // Gets time from local Calendar

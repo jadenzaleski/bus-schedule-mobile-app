@@ -19,6 +19,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import edu.miamioh.csi.capstone.busapp.MainViewModel
 import edu.miamioh.csi.capstone.busapp.views.RouteView
 import edu.miamioh.csi.capstone.busapp.views.SettingsView
 import edu.miamioh.csi.capstone.busapp.views.StopsView
@@ -29,7 +30,7 @@ import edu.miamioh.csi.capstone.busapp.views.StopsView
  * A function to populate the NavBar and direct navigational activity based on user input
  */
 @Composable
-fun AppNavigation() {
+fun AppNavigation(viewModel: MainViewModel) {
     val navController : NavHostController = rememberNavController()
 
     Scaffold (
@@ -80,6 +81,7 @@ fun AppNavigation() {
                 )
             ) { backStackEntry ->
                 RouteView(
+                    viewModel = viewModel,
                     option = backStackEntry.arguments?.getString("option") ?: "",
                     name = backStackEntry.arguments?.getString("name") ?: "",
                     lat = backStackEntry.arguments?.getFloat("lat")?.toDouble() ?: 0.0,
@@ -88,7 +90,7 @@ fun AppNavigation() {
             }
 
             composable(route = Screens.StopsScreen.name){
-                StopsView(navController)     // Calls StopsView(), which can be found in Stops.kt
+                StopsView(navController) // Calls StopsView(), which can be found in Stops.kt
             }
             composable(route = Screens.SettingsScreen.name){
                 SettingsView()  // Calls SettingsView(), which can be found in Settings.kt
