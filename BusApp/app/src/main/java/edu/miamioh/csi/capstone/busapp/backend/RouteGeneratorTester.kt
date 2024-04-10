@@ -66,7 +66,8 @@ object RouteGeneratorTester {
         Log.i("Final Route Size", "" + finalRoute.size)
 
         for (point in finalRoute) {
-            Log.i("Point in Route", "" + point.stopID + ", " + point.stopLat + ", " + point.stopLon)
+            Log.i("Point in Route", "" + point.node.stopID + ", " + point.node.stopLat +
+                    ", " + point.node.stopLon + ", " + point.edge?.startDepartureTime)
         }
     }
 }

@@ -85,7 +85,6 @@ import edu.miamioh.csi.capstone.busapp.MainViewModel
 import edu.miamioh.csi.capstone.busapp.R
 import edu.miamioh.csi.capstone.busapp.backend.CSVHandler
 import edu.miamioh.csi.capstone.busapp.backend.FinalRoutePoint
-import edu.miamioh.csi.capstone.busapp.backend.RouteGenerator
 import edu.miamioh.csi.capstone.busapp.navigation.Screens
 import edu.miamioh.csi.capstone.busapp.ui.theme.Black
 import edu.miamioh.csi.capstone.busapp.ui.theme.Blue
@@ -1211,7 +1210,7 @@ fun calcRoute(start: Place, end: Place, time: String, allowedAgencies: Set<Int>)
             "Time: $time, Allowed Agencies: $allowedAgencies"
     Log.i("calcRoute", logMessage)
 
-    currentRoute = RouteGenerator.routeWorkhorse(start, end, time, allowedAgencies).toMutableList()
+    //currentRoute = RouteGenerator.routeWorkhorse(start, end, time, allowedAgencies).toMutableList()
 
 }
 

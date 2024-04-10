@@ -68,6 +68,14 @@ data class FinalRoutePoint(
 )
 
 /**
+ * A data class meant to represent the objects returned as part of the final route.
+ */
+data class RouteSegment(
+    val node: FinalRoutePoint,
+    val edge: Edge? // This can be null for the first node where no incoming edge exists
+)
+
+/**
  * A custom PQ class created solely for the A* Algorithm implementation. Helps with the algorithm's
  * efficiency in dealing with potentially tens of thousand of edges in a given graph.
  */
@@ -116,7 +124,7 @@ object RouteGenerator {
         endLocation: Place,
         selectedTime: String,
         validAgencyIDs: Set<Int>
-    ): List<FinalRoutePoint> {
+    ): List<RouteSegment> {
         // Gets all the stopIDs associated with the selected AgencyIDs (no duplicates).
         val validStopIDs = findAllValidStopIdByAgencyId(validAgencyIDs, routes, trips, stopTimes)
         Log.i("Route Generation", "Valid Stop IDs Found: COMPLETE (Stage 1/8)")
@@ -168,12 +176,12 @@ object RouteGenerator {
         Log.i("# of Edges generated", "" + adjacencyList.values.flatten().size)
 
         // Generates the final route to be returned.
-        val finalRoute = generateOptimalRoute(potentialStartBusStops, potentialEndBusStops, adjacencyList,
-            finalFilteredNodes, selectedTime)
+        val finalRouteSegments = generateOptimalRoute(potentialStartBusStops, potentialEndBusStops,
+            adjacencyList, finalFilteredNodes, selectedTime)
         Log.i("Route Generation", "Final route with points generated (Stage 8/8)")
         Log.i("Route Generation", "Returning route now...")
 
-        return finalRoute
+        return finalRouteSegments
     }
 
     /**
@@ -193,7 +201,7 @@ object RouteGenerator {
         adjacencyList: HashMap<Int, MutableList<Edge>>,
         nodes: Set<Node>,
         selectedTime: String
-    ): List<FinalRoutePoint> {
+    ): List<RouteSegment> {
         // Initially filter edges based on the selected start time
         filterEdgesByTime(adjacencyList, selectedTime)
 
@@ -208,7 +216,7 @@ object RouteGenerator {
 
         // A map that holds how nodes that we've visited are related to our nodes, essentially
         // recording a trail.
-        val cameFrom = mutableMapOf<Int, Int>()
+        val cameFrom = mutableMapOf<Int, Pair<Int, Edge?>>()
 
         // Holds the cost of the cheapest path from the start node the current node.
         val gScore = mutableMapOf<Int, Long>().withDefault { Long.MAX_VALUE }
@@ -240,7 +248,7 @@ object RouteGenerator {
                 val tentativeGScore = gScore[current.stopID] ?: (Long.MAX_VALUE + edge.weight)
 
                 if (tentativeGScore < (gScore[neighbor.stopID] ?: Long.MAX_VALUE)) {
-                    cameFrom[neighbor.stopID] = current.stopID
+                    cameFrom[neighbor.stopID] = Pair(current.stopID, edge)
                     gScore[neighbor.stopID] = tentativeGScore
                     fScore[neighbor.stopID] = tentativeGScore + heuristic(
                         neighbor,
@@ -254,6 +262,7 @@ object RouteGenerator {
                             neighbor to fScore[neighbor.stopID]!!)
                     }
 
+                    Log.i("End Arrival Time", edge.endArrivalTime.toString())
                     // After moving to the neighbor, adjust the time boundary for subsequent edges
                     filterEdgesByTime(adjacencyList, edge.endArrivalTime.toString())
                 }
@@ -291,26 +300,38 @@ object RouteGenerator {
      * @return a list of FinalRoutePoint objects representing the route requested by the user
      */
     private fun reconstructRoute(
-        cameFrom: Map<Int, Int>,
+        cameFrom: Map<Int, Pair<Int, Edge?>>,
         current: Node,
         nodesMap: Map<Int, Node>
-    ): List<FinalRoutePoint> {
-        val totalPath = mutableListOf(current)
-        var tempCurrent = current
-        while (cameFrom.containsKey(tempCurrent.stopID)) {
-            tempCurrent = nodesMap[cameFrom[tempCurrent.stopID]]!!
-            totalPath.add(0, tempCurrent)
+    ): List<RouteSegment> {
+        val totalPath = mutableListOf<RouteSegment>()
+        var currentNode = current
+
+        while (cameFrom.containsKey(currentNode.stopID)) {
+            val (previousNodeId, edge) = cameFrom[currentNode.stopID]!!
+            currentNode = nodesMap[previousNodeId]!!
+
+            totalPath.add(0, RouteSegment(
+                node = FinalRoutePoint(
+                    stopID = currentNode.stopID,
+                    stopName = currentNode.stopName,
+                    stopLat = currentNode.stopLat,
+                    stopLon = currentNode.stopLon),
+                edge = edge
+            ))
         }
-        Log.i("totalPath size", "" + totalPath.size)
-        Log.i("totalPath contents", totalPath.toString())
-        return totalPath.map { node ->
-            FinalRoutePoint(
-                stopID = node.stopID,
-                stopName = node.stopName,
-                stopLat = node.stopLat,
-                stopLon = node.stopLon,
-            )
-        }
+
+        // Add the final destination node, which does not have an outgoing edge
+        totalPath.add(RouteSegment(
+            node = FinalRoutePoint(
+                stopID = current.stopID,
+                stopName = current.stopName,
+                stopLat = current.stopLat,
+                stopLon = current.stopLon),
+            edge = null
+        ))
+
+        return totalPath
     }
 
     /**
