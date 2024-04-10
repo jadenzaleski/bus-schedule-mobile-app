@@ -58,7 +58,6 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -77,7 +76,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
-import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.rememberNavController
 import coil.compose.AsyncImage
 import com.google.android.gms.location.FusedLocationProviderClient
@@ -99,7 +97,6 @@ import edu.miamioh.csi.capstone.busapp.R
 import edu.miamioh.csi.capstone.busapp.backend.CSVHandler
 import edu.miamioh.csi.capstone.busapp.backend.FinalRoutePoint
 import edu.miamioh.csi.capstone.busapp.backend.RouteGenerator
-import edu.miamioh.csi.capstone.busapp.navigation.Screens
 import edu.miamioh.csi.capstone.busapp.ui.theme.Black
 import edu.miamioh.csi.capstone.busapp.ui.theme.Blue
 import edu.miamioh.csi.capstone.busapp.ui.theme.Gray300
@@ -120,7 +117,9 @@ import java.net.URL
 import java.net.URLDecoder
 import java.text.SimpleDateFormat
 import java.util.Calendar
+import java.util.Date
 import java.util.Locale
+import kotlin.math.absoluteValue
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.min
@@ -262,8 +261,8 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
         }
         var startIsCurrentLocation = remember { mutableStateOf(false) }
         var endIsCurrentLocation = remember { mutableStateOf(false) }
-        var startSearchString by rememberSaveable { mutableStateOf("") }
-        var endSearchString by rememberSaveable { mutableStateOf("") }
+        var startSearchString by remember { mutableStateOf("") }
+        var endSearchString by remember { mutableStateOf("") }
         var startSearchResultsExpanded by remember { mutableStateOf(false) }
         var endSearchResultsExpanded by remember { mutableStateOf(false) }
         var searchResults = remember { mutableStateListOf(Place("", 0.0, 0.0, "", "")) }
@@ -279,14 +278,15 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
             }
         }
         // set the passed in params to the correct vars
-        if (option == "start") {
-            startSearchString = URLDecoder.decode(name, "UTF-8")
-            selectedStartPlace.value = Place(URLDecoder.decode(name, "UTF-8"), lat, lon, "", "");
-        } else if (option == "end") {
-            endSearchString = URLDecoder.decode(name, "UTF-8")
-            selectedEndPlace.value = Place(URLDecoder.decode(name, "UTF-8"), lat, lon, "", "");
+        LaunchedEffect(key1 = "init") {
+            if (option == "start") {
+                startSearchString = URLDecoder.decode(name, "UTF-8")
+                selectedStartPlace.value = Place(URLDecoder.decode(name, "UTF-8"), lat, lon, "", "")
+            } else if (option == "end") {
+                endSearchString = URLDecoder.decode(name, "UTF-8")
+                selectedEndPlace.value = Place(URLDecoder.decode(name, "UTF-8"), lat, lon, "", "")
+            }
         }
-
 
         // Search function calls google API to find 20 results that match the users query.
         @OptIn(DelicateCoroutinesApi::class)
@@ -471,9 +471,29 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
                         color = Blue
                     )
                     Log.i("SNAPPED", "Snapped a total of ${snappedPointsList.size} points.")
+                    val format = SimpleDateFormat("HH:mm", Locale.getDefault())
+
+                    val departureTimeFirstStop = CSVHandler.getNextDepartureTimeForStop(currentRoute.first().stopID)
+                    val departureTimeLastStop = CSVHandler.getNextDepartureTimeForStop(currentRoute.last().stopID)
+
+                    // Parse the departure times into Date objects
+                    val dateFirstStop = format.parse(departureTimeFirstStop)
+                    val dateLastStop = format.parse(departureTimeLastStop)
+                    val currentTime = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
+                    var differenceInMinutes = "Could not calculate estimated travel time."
+
+                    if (dateFirstStop != null && dateLastStop != null) {
+                        // Calculate the difference in minutes
+                        differenceInMinutes = "" + ((dateLastStop.time - dateFirstStop.time) / (1000 * 60)).absoluteValue
+                    } else {
+                        println("Could not calculate estimated travel time.")
+                    }
+
                     for (i in currentRoute.indices) {
                         val stop = currentRoute[i]
                         if (i == 0 || (i == currentRoute.size - 1)) {
+                            val nextDepartureTime = CSVHandler.getNextDepartureTimeForStop(stop.stopID) ?: "Unavailable"
+
                             MarkerInfoWindowContent(
                                 state = MarkerState(position = LatLng(stop.stopLat, stop.stopLon)),
                                 icon = if (i == 0) {
@@ -520,6 +540,23 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
                                             .fillMaxWidth()
                                             .padding(vertical = 5.dp)
                                     )
+                                    Row {
+                                        Text(text = "Next departure: ", style = TextStyle(fontSize = 16.sp))
+                                        Text(text = nextDepartureTime, style = TextStyle(fontWeight = FontWeight.Bold, fontSize = 16.sp))
+                                    }
+                                    Row {
+                                        Text(text = "Current Time: ", style = TextStyle(fontSize = 16.sp)) // Added text for current time
+                                        Text(text = currentTime, style = TextStyle(fontWeight = FontWeight.Bold, fontSize = 16.sp))
+                                    }
+                                    HorizontalDivider(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(vertical = 5.dp)
+                                    )
+                                    Row {
+                                        Text(text = "Estimated Travel Time: ", style = TextStyle(fontSize = 16.sp)) // Added text for current time
+                                        Text(text = "$differenceInMinutes minutes", style = TextStyle(fontWeight = FontWeight.Bold, fontSize = 16.sp))
+                                    }
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         Text(text = "Lat: ${stop.stopLat}")
                                         Spacer(modifier = Modifier.width(5.dp)) // Replaced VerticalDivider with Spacer for simplicity
@@ -530,9 +567,11 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
                             }
                         } else {
                             // TODO: Remove Marker below when done verifying routes
+                            // Why remove this marker? - Ayo, it's helpful information for a user
                             Marker(
                                 state = MarkerState(position = LatLng(stop.stopLat, stop.stopLon)),
-                                title = stop.stopName
+                                title = stop.stopName,
+                                icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_YELLOW)
                             )
                         }
                     }
@@ -1142,7 +1181,6 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
         }
     }
 }
-
 
 @SuppressLint("MissingPermission")
 private fun getLastLocation(fusedLocationClient: FusedLocationProviderClient) {
