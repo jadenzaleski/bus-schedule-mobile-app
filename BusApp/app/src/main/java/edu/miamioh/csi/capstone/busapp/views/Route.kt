@@ -81,6 +81,7 @@ import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.rememberNavController
 import coil.compose.AsyncImage
 import com.google.android.gms.location.FusedLocationProviderClient
+import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.CameraPosition
@@ -148,16 +149,15 @@ val snappedPointsList = mutableListOf<SnappedPoint>()
 @Composable
 fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Double, lon: Double) {
     val isDataInitialized by viewModel.isDataInitialized.collectAsState()
-
     if (isDataInitialized) {
         val context = LocalContext.current
-    // csv
-    val stops = CSVHandler.getStops()
-    val routes = CSVHandler.getRoutes()
-    val trips = CSVHandler.getTrips()
-    val stopTimes = CSVHandler.getStopTimes()
-    val agencies = CSVHandler.getAgencies()
-    val navController = rememberNavController()
+        // csv
+        val stops = CSVHandler.getStops()
+        val routes = CSVHandler.getRoutes()
+        val trips = CSVHandler.getTrips()
+        val stopTimes = CSVHandler.getStopTimes()
+        val agencies = CSVHandler.getAgencies()
+        val navController = rememberNavController()
 
 
         // Check if location permission is granted
@@ -168,6 +168,12 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
                 ) == PackageManager.PERMISSION_GRANTED
             )
         }
+
+        val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
+
+        if (isLocationPermissionGranted)
+            getLastLocation(fusedLocationClient)
+
         var currentZoomLevel by remember { mutableStateOf(9f) } // Initial zoom level
 
 
@@ -244,42 +250,42 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
         val focusManager = LocalFocusManager.current
         var showForm = remember { mutableStateOf(true) }
 
-    // +++ FORM +++
-    // set initial date in form to current time
-    var selectedTime by remember {
-        mutableStateOf(
-            SimpleDateFormat(
-                "HH:mm",
-                Locale.getDefault()
-            ).format(Calendar.getInstance().time)
-        )
-    }
-    var startIsCurrentLocation = remember { mutableStateOf(false) }
-    var endIsCurrentLocation = remember { mutableStateOf(false) }
-    var startSearchString by rememberSaveable { mutableStateOf("") }
-    var endSearchString by rememberSaveable { mutableStateOf("") }
-    var startSearchResultsExpanded by remember { mutableStateOf(false) }
-    var endSearchResultsExpanded by remember { mutableStateOf(false) }
-    var searchResults = remember { mutableStateListOf(Place("", 0.0, 0.0, "", "")) }
-    var selectedStartPlace = remember { mutableStateOf(Place("", 0.0, 0.0, "", "")) }
-    var selectedEndPlace = remember { mutableStateOf(Place("", 0.0, 0.0, "", "")) }
-    val openAlertDialog = remember { mutableStateOf(false) }
-    var dialogType = remember { mutableIntStateOf(-1) }
-    when {
-        openAlertDialog.value -> {
-            AlertDialogExample(dialogType.intValue,
-                onConfirmation = { openAlertDialog.value = false },
-                onDismissRequest = { openAlertDialog.value = false})
+        // +++ FORM +++
+        // set initial date in form to current time
+        var selectedTime by remember {
+            mutableStateOf(
+                SimpleDateFormat(
+                    "HH:mm",
+                    Locale.getDefault()
+                ).format(Calendar.getInstance().time)
+            )
         }
-    }
-    // set the passed in params to the correct vars
-    if (option == "start") {
-        startSearchString = URLDecoder.decode(name, "UTF-8")
-        selectedStartPlace.value = Place(URLDecoder.decode(name, "UTF-8"), lat, lon, "", "");
-    } else if (option == "end") {
-        endSearchString = URLDecoder.decode(name, "UTF-8")
-        selectedEndPlace.value = Place(URLDecoder.decode(name, "UTF-8"), lat, lon, "", "");
-    }
+        var startIsCurrentLocation = remember { mutableStateOf(false) }
+        var endIsCurrentLocation = remember { mutableStateOf(false) }
+        var startSearchString by rememberSaveable { mutableStateOf("") }
+        var endSearchString by rememberSaveable { mutableStateOf("") }
+        var startSearchResultsExpanded by remember { mutableStateOf(false) }
+        var endSearchResultsExpanded by remember { mutableStateOf(false) }
+        var searchResults = remember { mutableStateListOf(Place("", 0.0, 0.0, "", "")) }
+        var selectedStartPlace = remember { mutableStateOf(Place("", 0.0, 0.0, "", "")) }
+        var selectedEndPlace = remember { mutableStateOf(Place("", 0.0, 0.0, "", "")) }
+        val openAlertDialog = remember { mutableStateOf(false) }
+        var dialogType = remember { mutableIntStateOf(-1) }
+        when {
+            openAlertDialog.value -> {
+                AlertDialogExample(dialogType.intValue,
+                    onConfirmation = { openAlertDialog.value = false },
+                    onDismissRequest = { openAlertDialog.value = false })
+            }
+        }
+        // set the passed in params to the correct vars
+        if (option == "start") {
+            startSearchString = URLDecoder.decode(name, "UTF-8")
+            selectedStartPlace.value = Place(URLDecoder.decode(name, "UTF-8"), lat, lon, "", "");
+        } else if (option == "end") {
+            endSearchString = URLDecoder.decode(name, "UTF-8")
+            selectedEndPlace.value = Place(URLDecoder.decode(name, "UTF-8"), lat, lon, "", "");
+        }
 
 
         // Search function calls google API to find 20 results that match the users query.
@@ -415,8 +421,14 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
             GoogleMap(
                 modifier = Modifier.fillMaxHeight(if (showForm.value) 0.6f else 0.75f),
                 cameraPositionState = cameraPositionState,
-                uiSettings = MapUiSettings(myLocationButtonEnabled = isLocationPermissionGranted, compassEnabled = true),
-                properties = MapProperties(isMyLocationEnabled = isLocationPermissionGranted, minZoomPreference = 5.0f)
+                uiSettings = MapUiSettings(
+                    myLocationButtonEnabled = isLocationPermissionGranted,
+                    compassEnabled = true
+                ),
+                properties = MapProperties(
+                    isMyLocationEnabled = isLocationPermissionGranted,
+                    minZoomPreference = 5.0f
+                )
             )
 
             {
@@ -426,8 +438,6 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
                         MarkerInfoWindowContent(
                             state = MarkerState(position = LatLng(stop.stopLat, stop.stopLon)),
                             onInfoWindowClick = {
-                                // put into start or stop
-                                // TODO: FINISH
                                 navController.navigate(Screens.RouteScreen.name) {
                                     popUpTo(navController.graph.findStartDestination().id) {
                                         saveState = true
@@ -658,7 +668,8 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
                             context = context,
                             focusManager = focusManager,
                             onLocationEnabled = {
-                                // Define what happens when location is enabled.
+                                if (isLocationPermissionGranted)
+                                    getLastLocation(fusedLocationClient);
                             },
                             onLocationDisabled = {
                                 // Define what happens when location is disabled.
@@ -808,7 +819,8 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
                             context = context,
                             focusManager = focusManager,
                             onLocationEnabled = {
-                                // Define what happens when location is enabled.
+                                if (isLocationPermissionGranted)
+                                    getLastLocation(fusedLocationClient)
                             },
                             onLocationDisabled = {
                                 // Define what happens when location is disabled.
@@ -951,6 +963,9 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
                     OutlinedButton(
                         enabled = if (valid) true else false,
                         onClick = {
+                            // update last location if
+                            if (isLocationPermissionGranted)
+                                getLastLocation(fusedLocationClient);
                             // get the start and stop place object if its current location
                             val start: Place = if (startIsCurrentLocation.value) {
                                 Place("Current Location", userLat, userLon, "", "")
@@ -1146,7 +1161,6 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
 }
 
 
-
 @SuppressLint("MissingPermission")
 private fun getLastLocation(fusedLocationClient: FusedLocationProviderClient) {
     fusedLocationClient.lastLocation
@@ -1160,7 +1174,7 @@ private fun getLastLocation(fusedLocationClient: FusedLocationProviderClient) {
             }
         }
         .addOnFailureListener { e ->
-            // Handle failure to get location
+            Log.e("LOCATION", "Error getting location in getLastLocation")
         }
 }
 
@@ -1201,7 +1215,7 @@ fun midpoint(lat1: Double, lon1: Double, lat2: Double, lon2: Double): FinalRoute
 }
 
 @Composable
-fun AlertDialogExample(size: Int, onDismissRequest: () -> Unit, onConfirmation: () -> Unit,) {
+fun AlertDialogExample(size: Int, onDismissRequest: () -> Unit, onConfirmation: () -> Unit) {
     if (size == 0) {
         // no Route
         AlertDialog(
@@ -1299,7 +1313,9 @@ fun CurrentLocationButton(
             contentColor = if (isCurrentLocation.value) Color.White else Color.Gray
         ),
         border = BorderStroke(1.dp, if (isCurrentLocation.value) Green else Color.Gray),
-        modifier = Modifier.height(50.dp).width(50.dp),
+        modifier = Modifier
+            .height(50.dp)
+            .width(50.dp),
         shape = RoundedCornerShape(20),
         contentPadding = PaddingValues(horizontal = 1.dp)
     ) {
