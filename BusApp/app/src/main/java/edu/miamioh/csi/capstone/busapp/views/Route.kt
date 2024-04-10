@@ -436,16 +436,7 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
                     filteredStops.forEach { stop ->
                         // Using the custom MarkerInfoWindowContent instead of the standard Marker
                         MarkerInfoWindowContent(
-                            state = MarkerState(position = LatLng(stop.stopLat, stop.stopLon)),
-                            onInfoWindowClick = {
-                                navController.navigate(Screens.RouteScreen.name) {
-                                    popUpTo(navController.graph.findStartDestination().id) {
-                                        saveState = true
-                                    }
-                                    launchSingleTop = true
-                                    restoreState = true
-                                }
-                            }
+                            state = MarkerState(position = LatLng(stop.stopLat, stop.stopLon))
                         ) {
                             Column(
                                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -470,15 +461,6 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
                                     Text(text = "Lon: ${stop.stopLon}")
                                 }
                                 Text(text = "Stop ID: ${stop.stopID}")
-                                Text(
-                                    text = "Tap to plan",
-                                    modifier = Modifier.padding(top = 10.dp, bottom = 5.dp),
-                                    style = TextStyle(
-                                        fontSize = 16.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = Color.Blue
-                                    )
-                                )
                             }
                         }
                     }
@@ -547,6 +529,7 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
                                 }
                             }
                         } else {
+                            // TODO: Remove Marker below when done verifying routes
                             Marker(
                                 state = MarkerState(position = LatLng(stop.stopLat, stop.stopLon)),
                                 title = stop.stopName
