@@ -7,7 +7,6 @@
 
 package edu.miamioh.csi.capstone.busapp.backend
 
-
 import android.util.Log
 import edu.miamioh.csi.capstone.busapp.views.Place
 
@@ -34,32 +33,34 @@ object RouteGeneratorTester {
         val stopTimes = CSVHandler.getStopTimes()
         val agencies = CSVHandler.getAgencies()
 
+
         // Place agencyIDs you want to test in this Set.
-        //val selectedAgencyIds = mutableSetOf(25)
-        val selectedAgencyIds = mutableSetOf(33, 34, 8, 9, 10, 11, 12, 13, 7, 27, 28, 29, 30, 35,
-            32, 19, 21, 22, 24, 25, 26, 14, 15, 16, 17, 18)
+        val selectedAgencyIds = mutableSetOf(33)
 
         /*
         // Test # of Stops, and print list of stopIDs for manual check with .CSV files.
-        var validStopIDs = Graph.findAllValidStopIdByAgencyId(selectedAgencyIds, routes, trips,
+        var validStopIDs = RouteGenerator.findAllValidStopIdByAgencyId(selectedAgencyIds, routes, trips,
             stopTimes)
         Log.i("# of Stops from Agency", "" + validStopIDs.size)
 
+
         // Test # of Nodes generated (should match # of stops from Agency number above).
-        var tempValidNodes = Graph.generateNodes(validStopIDs, selectedAgencyIds, routes, trips, stops,
+        var tempValidNodes = RouteGenerator.generateNodes(validStopIDs, selectedAgencyIds, routes, trips, stops,
             stopTimes)
         Log.i("# of Nodes Generated from Valid Stops", "" + tempValidNodes.size)
 
+
         //var filteredNodes = Graph.filterRouteRecordsByTime(validNodes, )
+
 
         // Test # of Edges generated (unless another method gets written for testing purposes, you
         // do this check manually.
-        var adjacencyList = Graph.generateEdgesAndWeights(tempValidNodes)
+        var adjacencyList = RouteGenerator.generateEdgesAndWeights(tempValidNodes)
         Log.i("# of Edges generated", "" + adjacencyList.values.flatten().size)
          */
 
-        var start = Place("4490", 39.331681, 16.184743, "", "")
-        var end = Place("4365", 39.333011, 16.202143, "", "")
+        var start = Place("Domus Hotel", 39.352986978817455, 16.240970535302434, "", "")
+        var end = Place("University", 39.36197761102033, 16.226076505252237, "", "")
 
         var finalRoute = RouteGenerator.routeWorkhorse(start, end, "00:00", selectedAgencyIds)
         Log.i("Final Route Size", "" + finalRoute.size)
@@ -67,6 +68,6 @@ object RouteGeneratorTester {
         for (point in finalRoute) {
             Log.i("Point in Route", "" + point.stopID + ", " + point.stopLat + ", " + point.stopLon)
         }
-
     }
 }
+

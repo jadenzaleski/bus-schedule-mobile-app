@@ -1,6 +1,6 @@
 /**
  * Contributors: Daniel Tai
- * Last Modified: 3/30/2024
+ * Last Modified: 4/9/2024
  * Description: Contains the back-end code for creating a route based on the CORe website
  *              information and some user input taken from our UI. Creates a Graph, and using
  *              the A* algorithm, generates an optimal route under certain criteria.
@@ -64,7 +64,7 @@ data class FinalRoutePoint(
     val stopID: Int,
     val stopName: String,
     val stopLat: Double,
-    val stopLon: Double,
+    val stopLon: Double
 )
 
 /**
@@ -125,19 +125,19 @@ object RouteGenerator {
         val graphNodes = generateNodes(validStopIDs, validAgencyIDs, routes, trips,
             stops, stopTimes)
         Log.i("Route Generation", "Nodes created from stopIDs: COMPLETE (Stage 2/8)")
-        //Log.i("# of Nodes Generated from Valid Stops", "" + graphNodes.size)
+        Log.i("# of Nodes Generated from Valid Stops", "" + graphNodes.size)
 
         // Finds (up to) the 3 closest bus stops from the designated startLocation.
         val potentialStartBusStops = getNearbyNodesByLocation(startLocation, graphNodes)
         Log.i("Route Generation",
             "Potential starting stops identified: COMPLETE (Stage 3/8)")
-        Log.i("# of Starting Stops", "" + potentialStartBusStops)
+        Log.i("# of Starting Stops", "" + potentialStartBusStops.size)
 
         // Finds (up to) the 3 closest bus stops from the designated endLocation.
         val potentialEndBusStops = getNearbyNodesByLocation(endLocation, graphNodes)
         Log.i("Route Generation",
             "Potential ending stops identified: COMPLETE (Stage 4/8)")
-        //Log.i("# of Ending Stops", "" + potentialEndBusStops)
+        Log.i("# of Ending Stops", "" + potentialEndBusStops.size)
 
         /*
          * Eliminates all nodes that are not within a certain distance either from either
@@ -150,8 +150,8 @@ object RouteGenerator {
         val distanceBoundary = calculateSphericalDistance(startPt.stopLat, startPt.stopLon,
             endPt.stopLat, endPt.stopLon)
         val tempFilteredNodes = filterNodesByDistance(startPt, endPt, graphNodes,
-            distanceBoundary / 2)
-        //Log.i("# of Distance-Filtered Nodes", "" + tempFilteredNodes.size)
+            distanceBoundary)
+        Log.i("# of Distance-Filtered Nodes", "" + tempFilteredNodes.size)
         Log.i("Route Generation", "Nodes filtered by distance: COMPLETE (Stage 5/8)")
 
         /*
@@ -165,11 +165,11 @@ object RouteGenerator {
         // Generates the adjacency list for the graph.
         val adjacencyList = generateEdgesAndWeights(finalFilteredNodes)
         Log.i("Route Generation", "Adjacency List created: COMPLETE (Stage 7/8)")
-        //Log.i("# of Edges generated", "" + adjacencyList.values.flatten().size)
+        Log.i("# of Edges generated", "" + adjacencyList.values.flatten().size)
 
         // Generates the final route to be returned.
         val finalRoute = generateOptimalRoute(potentialStartBusStops, potentialEndBusStops, adjacencyList,
-            finalFilteredNodes)
+            finalFilteredNodes, selectedTime)
         Log.i("Route Generation", "Final route with points generated (Stage 8/8)")
         Log.i("Route Generation", "Returning route now...")
 
@@ -191,8 +191,12 @@ object RouteGenerator {
         startPoints: List<Node>,
         endPoints: List<Node>,
         adjacencyList: HashMap<Int, MutableList<Edge>>,
-        nodes: Set<Node>
+        nodes: Set<Node>,
+        selectedTime: String
     ): List<FinalRoutePoint> {
+        // Initially filter edges based on the selected start time
+        filterEdgesByTime(adjacencyList, selectedTime)
+
         // Allows for O(1) access to a node by referencing its associated stopID.
         val nodesMap = nodes.associateBy { it.stopID }
 
@@ -249,6 +253,9 @@ object RouteGenerator {
                         openSet.updatePriority(neighbor to fScore[neighbor.stopID]!!,
                             neighbor to fScore[neighbor.stopID]!!)
                     }
+
+                    // After moving to the neighbor, adjust the time boundary for subsequent edges
+                    filterEdgesByTime(adjacencyList, edge.endArrivalTime.toString())
                 }
             }
         }
@@ -285,7 +292,8 @@ object RouteGenerator {
      */
     private fun reconstructRoute(
         cameFrom: Map<Int, Int>,
-        current: Node, nodesMap: Map<Int, Node>
+        current: Node,
+        nodesMap: Map<Int, Node>
     ): List<FinalRoutePoint> {
         val totalPath = mutableListOf(current)
         var tempCurrent = current
@@ -322,9 +330,14 @@ object RouteGenerator {
                 // Compare the startDepartureTime of each edge with the time boundary
                 if (edge.startDepartureTime.isBefore(timeBoundary)) {
                     edge.isActive = false
+                } else {
+                    edge.isActive = true
                 }
             }
         }
+
+        val activeEdgesCount = adjacencyList.values.flatten().count { it.isActive }
+        Log.i("ActiveEdges", "Number of active edges after filtering by time $selectedTime: $activeEdgesCount")
     }
 
     /**
@@ -339,7 +352,7 @@ object RouteGenerator {
      * @param stopTimes - A list of StopTime objects (processed via the CSVHandler)
      * @return a list of all StopIds that are associated with the agencies selected
      */
-    private fun findAllValidStopIdByAgencyId(
+    fun findAllValidStopIdByAgencyId(
         agencyIDList: Set<Int>,
         routes: List<Route>,
         trips: List<Trip>,
@@ -375,7 +388,7 @@ object RouteGenerator {
      * @param stopTimes - A list of StopTime objects (processed via the CSVHandler)
      * @return a list of all StopIds that are associated with the agencies selected
      */
-    private fun generateNodes(
+    fun generateNodes(
         validStopIDs: Set<Int>,
         agencyIDList: Set<Int>,
         routes: List<Route>,
@@ -549,7 +562,7 @@ object RouteGenerator {
      * @return a HashMap with the stopID of each node as the key, and a list of EdgeWeightRelation
      *         objects containing edge and weight details as the value
      */
-    private fun generateEdgesAndWeights(nodes: Set<Node>): HashMap<Int, MutableList<Edge>> {
+    fun generateEdgesAndWeights(nodes: Set<Node>): HashMap<Int, MutableList<Edge>> {
         val adjacencyList = HashMap<Int, MutableList<Edge>>()
 
         // Allows for O(1) access to a particular node by referencing its stopID.
