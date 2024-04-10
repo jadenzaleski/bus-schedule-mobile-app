@@ -1,20 +1,26 @@
 /**
  * Contributors: Jaden Zaleski, Daniel Tai, Ayo Obisesan
- * Last Modified: 3/13/2024
- * Description: Contains all the front-end and back-end code for the Stops page. See individual
+ * Last Modified: 3/27/2024
+ * Description: Contains all the front-end and some back-end code for the Stops page. See individual
  *              method documentation for further details
  */
 
 package edu.miamioh.csi.capstone.busapp.views
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
+import android.provider.Settings
 import android.util.Log
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -25,7 +31,13 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Place
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonColors
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.DropdownMenu
@@ -35,6 +47,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -55,11 +68,12 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
-import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
@@ -74,9 +88,12 @@ import edu.miamioh.csi.capstone.busapp.R
 import edu.miamioh.csi.capstone.busapp.backend.CSVHandler
 import edu.miamioh.csi.capstone.busapp.navigation.Screens
 import edu.miamioh.csi.capstone.busapp.ui.theme.Black
+import edu.miamioh.csi.capstone.busapp.ui.theme.Blue
 import edu.miamioh.csi.capstone.busapp.ui.theme.Gray400
 import edu.miamioh.csi.capstone.busapp.ui.theme.Green
 import edu.miamioh.csi.capstone.busapp.ui.theme.Light
+import edu.miamioh.csi.capstone.busapp.ui.theme.Red
+import java.net.URLEncoder
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -85,12 +102,13 @@ import kotlin.math.cos
 import kotlin.math.min
 import kotlin.math.sin
 import kotlin.math.sqrt
+import kotlin.system.exitProcess
 
 
 @Composable
-fun StopsView() {
-    StopsWorkhorse()
-    //RouteGeneratorTester.runTests()
+fun StopsView(navController: NavHostController) {
+
+    StopsWorkhorse(navController)
 }
 
 /**
@@ -101,27 +119,44 @@ fun StopsView() {
  * 4) Calls the "trackMapInteraction" function to detect changes via user gestures
  */
 @Composable
-fun StopsWorkhorse() {
+fun StopsWorkhorse(navController: NavHostController) {
     val stops = CSVHandler.getStops()
     val routes = CSVHandler.getRoutes()
     val trips = CSVHandler.getTrips()
     val stopTimes = CSVHandler.getStopTimes()
     val agencies = CSVHandler.getAgencies()
-
-    Log.i("Check", "" + stops.size)
-    Log.i("Check", "" + routes.size)
-    Log.i("Check", "" + trips.size)
-    Log.i("Check", "" + stopTimes.size)
-    Log.i("Check", "" + agencies.size)
-
     val context = LocalContext.current
-    val navController = rememberNavController()
+    var permissionDenied by remember { mutableStateOf(false) }
 
-
-
-    var isLocationPermissionGranted by remember { mutableStateOf(false) }
+    // Check if location permission is granted
+    var isLocationPermissionGranted by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(
+                context, Manifest.permission.ACCESS_FINE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
+        )
+    }
     val currentZoomLevel by remember { mutableStateOf(9f) } // Initial zoom level
-    val currentTime = remember { SimpleDateFormat("h:mm:ss a", Locale.getDefault()).format(Date()) }
+
+
+    // Permission dialog states
+    var showPermissionDeniedDialog by remember { mutableStateOf(false) }
+    var showLocationActivatedDialog by remember { mutableStateOf(false) }
+
+    // Permission request launcher
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+        onResult = { isGranted: Boolean ->
+            if (isGranted) {
+                isLocationPermissionGranted = true
+                permissionDenied = false
+            } else {
+                permissionDenied = true
+                isLocationPermissionGranted = false
+                showPermissionDeniedDialog = true // Show dialog if permission is denied
+            }
+        }
+    )
 
     LaunchedEffect(key1 = context) {
         isLocationPermissionGranted = ContextCompat.checkSelfPermission(
@@ -154,8 +189,6 @@ fun StopsWorkhorse() {
     val stopIdToAgencyIdMap = remember {
         CSVHandler.getStopIdToAgencyIdMap(stops, routes, trips, stopTimes)
     }
-
-    Log.i("Stops Page", "" + stopIdToAgencyIdMap.size)
 
     /*
      * selectedAgencyIds identifies which agencies have been selected by the user to be displayed
@@ -195,6 +228,42 @@ fun StopsWorkhorse() {
     }
 
     val focusManager = LocalFocusManager.current
+
+    var showDialog by remember { mutableStateOf(false) }
+    var selectedStop by remember { mutableStateOf<Place?>(null) }
+    // called when info marker content is tapped
+    fun navigateToRoutes(option: String, stop: Place?, navController: NavHostController) {
+        if (stop != null) {
+            val route = "${Screens.RouteScreen.name}?option=${option}&name=${URLEncoder.encode(stop.name, "UTF-8")}&lat=${stop.lat}&lon=${stop.lon}"
+            navController.navigate(route)
+        }
+    }
+    // show the alert when the info mark content is tapped
+    if (showDialog) {
+        AlertDialog(
+            onDismissRequest = { showDialog = false },
+            title = { Text("Start or End?") },
+            text = { Text("Would you like to set this stop as your starting or ending point?:") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showDialog = false
+                        navigateToRoutes("start", selectedStop, navController)
+                    }
+                ) { Text("Start Here", color = Blue) }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showDialog = false
+                        navigateToRoutes("end", selectedStop, navController) // "from" for start point
+                    }
+                ) { Text("End Here", color = Blue) }
+            },
+            icon = { Icon(Icons.Default.Place, "") }
+        )
+    }
+
 
     /*
      * Code for the top bar of the Stops page. Contains various fields that the user can manipulate
@@ -238,7 +307,51 @@ fun StopsWorkhorse() {
                 Text(text = "${selectedAgencyNames.size}")
             }
 
-            Spacer(modifier = Modifier.weight(1f))
+            // Activate Location Button
+            ActivateLocationButton(
+                isLocationPermissionGranted = isLocationPermissionGranted,
+                permissionDenied = permissionDenied,
+                onPermissionRequest = { permissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION) },
+                onShowPermissionsDeniedDialog = {
+                    // Logic to show permissions denied dialog
+                    showPermissionDeniedDialog = true
+                },
+                onShowLocationActivatedDialog = { showLocationActivatedDialog = true }
+            )
+
+            // Permission Denied Dialog
+            if (showPermissionDeniedDialog) {
+                AlertDialog(
+                    onDismissRequest = { showPermissionDeniedDialog = false },
+                    title = { Text("Location Permission Denied") },
+                    text = { Text("You need to enable location permissions in app settings.") },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            showPermissionDeniedDialog = false
+                            val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                data = Uri.fromParts("package", context.packageName, null)
+                            }
+                            context.startActivity(intent)
+                        }) {
+                            Text("Open Settings")
+                        }
+                    }
+                )
+            }
+
+            // Location Activated Dialog
+            if (showLocationActivatedDialog) {
+                AlertDialog(
+                    onDismissRequest = { showLocationActivatedDialog = false },
+                    title = { Text("Location Activated") },
+                    text = { Text("Your location is already activated.") },
+                    confirmButton = {
+                        TextButton(onClick = { showLocationActivatedDialog = false }) {
+                            Text("OK")
+                        }
+                    }
+                )
+            }
 
             // Creates a text field where the user can input the max number of stops they want
             // displayed at a certain moment in time.
@@ -257,7 +370,7 @@ fun StopsWorkhorse() {
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 modifier = Modifier
-                    .width(120.dp)
+                    .width(100.dp)
                     .height(50.dp),
                 colors = TextFieldDefaults.colors(
                     unfocusedIndicatorColor = Gray400,
@@ -343,20 +456,14 @@ fun StopsWorkhorse() {
             properties = MapProperties(isMyLocationEnabled = isLocationPermissionGranted, minZoomPreference = 5.0f)
         ) {
             filteredStops.forEach { stop ->
-                val nextDepartureTime = CSVHandler.getNextDepartureTimeForStop(stop.stopID, currentTime) ?: "Unavailable"
+                val nextDepartureTime = CSVHandler.getNextDepartureTimeForStop(stop.stopID) ?: "Unavailable"
+                val currentTime = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date()) // Get current time in 24-hour format
                 // Using the custom MarkerInfoWindowContent instead of the standard Marker
                 MarkerInfoWindowContent(
                     state = MarkerState(position = LatLng(stop.stopLat, stop.stopLon)),
                     onInfoWindowClick = {
-                        // Should navigate to another screen on info window click
-                        // TODO: FINISH
-                        navController.navigate(Screens.RouteScreen.name) {
-                            popUpTo(navController.graph.findStartDestination().id) {
-                                saveState = true
-                            }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
+                        selectedStop = Place(stop.stopName, stop.stopLat, stop.stopLon, "", "")
+                        showDialog = true
                     }
                 ) {
                     Column(
@@ -376,14 +483,22 @@ fun StopsWorkhorse() {
                                 .fillMaxWidth()
                                 .padding(vertical = 5.dp)
                         )
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                        Row {
+                            Text(text = "Next departure: ", style = TextStyle(fontSize = 16.sp))
+                            Text(text = nextDepartureTime, style = TextStyle(fontWeight = FontWeight.Bold, fontSize = 16.sp))
+                        }
+                        Row {
+                            Text(text = "Current Time: ", style = TextStyle(fontSize = 16.sp)) // Added text for current time
+                            Text(text = currentTime, style = TextStyle(fontWeight = FontWeight.Bold, fontSize = 16.sp))
+                        }
+                        Column(horizontalAlignment = Alignment.Start, modifier = Modifier.padding(top = 5.dp)) {
                             Text(text = "Lat: ${stop.stopLat}")
                             // Replaced VerticalDivider with Spacer for simplicity
                             Spacer(modifier = Modifier.width(5.dp))
                             Text(text = "Lon: ${stop.stopLon}")
                         }
-                        Text(text = "Stop ID: ${stop.stopID}")
-                        Text(text = "Next departure: $nextDepartureTime", style = TextStyle(fontSize = 16.sp))
+                        Text(text = "Stop ID: ${stop.stopID}", style = TextStyle(fontSize = 16.sp))
+                        // Text for current time:
                         Text(
                             text = "Tap to plan",
                             modifier = Modifier.padding(top = 10.dp, bottom = 5.dp),
@@ -397,6 +512,48 @@ fun StopsWorkhorse() {
                 }
             }
         }
+    }
+}
+
+@Composable
+fun ActivateLocationButton(
+    isLocationPermissionGranted: Boolean,
+    permissionDenied: Boolean,
+    onPermissionRequest: () -> Unit,
+    onShowPermissionsDeniedDialog: () -> Unit,
+    onShowLocationActivatedDialog: () -> Unit
+) {
+    val buttonText = if (isLocationPermissionGranted) "Location Activated" else "Activate Location"
+    val buttonColor = if (isLocationPermissionGranted) Green else Red
+    val onClickAction = {
+        when {
+            isLocationPermissionGranted -> {
+                // Show dialog indicating location is already activated
+                onShowLocationActivatedDialog()
+            }
+            permissionDenied -> {
+                // Instead of opening app settings directly, show dialog to explain the need to enable permissions in settings
+                onShowPermissionsDeniedDialog()
+            }
+            else -> {
+                // Request permission if not previously denied and not granted
+                onPermissionRequest()
+            }
+        }
+    }
+
+    OutlinedButton(
+        onClick = onClickAction,
+        colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent, contentColor = buttonColor),
+        border = BorderStroke(2.dp, buttonColor),
+        modifier = Modifier
+            .padding(start = 10.dp, end = 10.dp)
+            .height(50.dp)
+            .width(100.dp),
+        shape = RoundedCornerShape(20),
+        contentPadding = PaddingValues(horizontal = 16.dp)
+    ) {
+        Text(text = buttonText, color = buttonColor, textAlign = TextAlign.Center)
     }
 }
 
@@ -466,8 +623,8 @@ fun trackMapInteraction(
     }
 }
 
-@Composable
-@Preview
-fun StopsViewPreview() {
-    StopsView()
-}
+//@Composable
+//@Preview
+//fun StopsViewPreview() {
+//    StopsView()
+//}
