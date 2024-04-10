@@ -32,9 +32,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Place
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonColors
 import androidx.compose.material3.ButtonDefaults
@@ -69,12 +67,10 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.navigation.NavHostController
-import androidx.navigation.compose.rememberNavController
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.CameraPositionState
@@ -102,7 +98,6 @@ import kotlin.math.cos
 import kotlin.math.min
 import kotlin.math.sin
 import kotlin.math.sqrt
-import kotlin.system.exitProcess
 
 
 @Composable
@@ -492,10 +487,10 @@ fun StopsWorkhorse(navController: NavHostController) {
                             Text(text = currentTime, style = TextStyle(fontWeight = FontWeight.Bold, fontSize = 16.sp))
                         }
                         Column(horizontalAlignment = Alignment.Start, modifier = Modifier.padding(top = 5.dp)) {
-                            Text(text = "Lat: ${stop.stopLat}")
+                            Text(text = "Lat: ${stop.stopLat}", style = TextStyle(fontSize = 16.sp))
                             // Replaced VerticalDivider with Spacer for simplicity
                             Spacer(modifier = Modifier.width(5.dp))
-                            Text(text = "Lon: ${stop.stopLon}")
+                            Text(text = "Lon: ${stop.stopLon}", style = TextStyle(fontSize = 16.sp))
                         }
                         Text(text = "Stop ID: ${stop.stopID}", style = TextStyle(fontSize = 16.sp))
                         // Text for current time:
