@@ -1,10 +1,18 @@
 package edu.miamioh.csi.capstone.busapp.views
 
 
+import android.Manifest
 import android.annotation.SuppressLint
 import android.app.TimePickerDialog
+import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
 import android.location.Location
+import android.net.Uri
+import android.provider.Settings
 import android.util.Log
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -28,6 +36,7 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonColors
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.DropdownMenu
@@ -41,6 +50,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -52,6 +62,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusManager
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
@@ -65,10 +76,12 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.rememberNavController
 import coil.compose.AsyncImage
 import com.google.android.gms.location.FusedLocationProviderClient
+import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.CameraPosition
@@ -103,6 +116,7 @@ import java.io.BufferedReader
 import java.io.IOException
 import java.io.InputStreamReader
 import java.net.URL
+import java.net.URLDecoder
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
@@ -132,34 +146,10 @@ var currentRoute = mutableListOf(FinalRoutePoint(-1, "", 0.0, 0.0))
 val snappedPointsList = mutableListOf<SnappedPoint>()
 
 @Composable
-fun RouteView(viewModel: MainViewModel) {
+fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Double, lon: Double) {
     val isDataInitialized by viewModel.isDataInitialized.collectAsState()
-
     if (isDataInitialized) {
         val context = LocalContext.current
-        /*
-        // location permissions
-        val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
-        val locationPermissionLauncher =
-            rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
-                if (isGranted) {
-                    getLastLocation(fusedLocationClient)
-                }
-            }
-        // Check for location permissions
-        if (ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.ACCESS_FINE_LOCATION
-            ) == PackageManager.PERMISSION_GRANTED
-        ) {
-            // If permissions granted, get the last known location
-            getLastLocation(fusedLocationClient)
-        } else {
-            // Request location permissions
-            locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
-        }
-         */
-
         // csv
         val stops = CSVHandler.getStops()
         val routes = CSVHandler.getRoutes()
@@ -169,16 +159,28 @@ fun RouteView(viewModel: MainViewModel) {
         val navController = rememberNavController()
 
 
-        var isLocationPermissionGranted by remember { mutableStateOf(false) }
+        // Check if location permission is granted
+        var isLocationPermissionGranted by remember {
+            mutableStateOf(
+                ContextCompat.checkSelfPermission(
+                    context, Manifest.permission.ACCESS_FINE_LOCATION
+                ) == PackageManager.PERMISSION_GRANTED
+            )
+        }
+
+        val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
+
+        if (isLocationPermissionGranted)
+            getLastLocation(fusedLocationClient)
+
         var currentZoomLevel by remember { mutableStateOf(9f) } // Initial zoom level
 
-        /*
+
         LaunchedEffect(key1 = context) {
             isLocationPermissionGranted = ContextCompat.checkSelfPermission(
                 context, Manifest.permission.ACCESS_FINE_LOCATION
             ) == PackageManager.PERMISSION_GRANTED
         }
-         */
 
         /*
          * Sets up initial map settings for when user first loads up the Routes page upon opening app.
@@ -274,6 +276,14 @@ fun RouteView(viewModel: MainViewModel) {
                     onConfirmation = { openAlertDialog.value = false },
                     onDismissRequest = { openAlertDialog.value = false })
             }
+        }
+        // set the passed in params to the correct vars
+        if (option == "start") {
+            startSearchString = URLDecoder.decode(name, "UTF-8")
+            selectedStartPlace.value = Place(URLDecoder.decode(name, "UTF-8"), lat, lon, "", "");
+        } else if (option == "end") {
+            endSearchString = URLDecoder.decode(name, "UTF-8")
+            selectedEndPlace.value = Place(URLDecoder.decode(name, "UTF-8"), lat, lon, "", "");
         }
 
 
@@ -397,7 +407,6 @@ fun RouteView(viewModel: MainViewModel) {
             }
         }
 
-
         // Column that holds the map
         Column(
             verticalArrangement = Arrangement.Top,
@@ -426,18 +435,7 @@ fun RouteView(viewModel: MainViewModel) {
                     filteredStops.forEach { stop ->
                         // Using the custom MarkerInfoWindowContent instead of the standard Marker
                         MarkerInfoWindowContent(
-                            state = MarkerState(position = LatLng(stop.stopLat, stop.stopLon)),
-                            onInfoWindowClick = {
-                                // put into start or stop
-                                // TODO: FINISH
-                                navController.navigate(Screens.RouteScreen.name) {
-                                    popUpTo(navController.graph.findStartDestination().id) {
-                                        saveState = true
-                                    }
-                                    launchSingleTop = true
-                                    restoreState = true
-                                }
-                            }
+                            state = MarkerState(position = LatLng(stop.stopLat, stop.stopLon))
                         ) {
                             Column(
                                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -462,15 +460,6 @@ fun RouteView(viewModel: MainViewModel) {
                                     Text(text = "Lon: ${stop.stopLon}")
                                 }
                                 Text(text = "Stop ID: ${stop.stopID}")
-                                Text(
-                                    text = "Tap to plan",
-                                    modifier = Modifier.padding(top = 10.dp, bottom = 5.dp),
-                                    style = TextStyle(
-                                        fontSize = 16.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = Color.Blue
-                                    )
-                                )
                             }
                         }
                     }
@@ -539,6 +528,7 @@ fun RouteView(viewModel: MainViewModel) {
                                 }
                             }
                         } else {
+                            // TODO: Remove Marker below when done verifying routes
                             Marker(
                                 state = MarkerState(position = LatLng(stop.stopLat, stop.stopLon)),
                                 title = stop.stopName
@@ -654,34 +644,19 @@ fun RouteView(viewModel: MainViewModel) {
                             style = TextStyle(fontSize = 20.sp, fontFamily = FontFamily.Monospace),
                             modifier = Modifier.padding(end = 10.dp)
                         )
-                        // current location button
-                        OutlinedButton(
-                            onClick = {
-                                startIsCurrentLocation.value = startIsCurrentLocation.value.not()
-                                focusManager.clearFocus()
+                        // Using the custom CurrentLocationButton
+                        CurrentLocationButton(
+                            isCurrentLocation = startIsCurrentLocation,
+                            context = context,
+                            focusManager = focusManager,
+                            onLocationEnabled = {
+                                if (isLocationPermissionGranted)
+                                    getLastLocation(fusedLocationClient);
                             },
-                            colors = ButtonColors(
-                                containerColor = if (startIsCurrentLocation.value) Green else Color.Transparent,
-                                contentColor = if (startIsCurrentLocation.value) Color.White else Color.Gray,
-                                disabledContainerColor = Color.Gray,
-                                disabledContentColor = Color.Gray
-                            ),
-                            border = BorderStroke(
-                                1.dp,
-                                if (startIsCurrentLocation.value) Green else Color.Gray
-                            ),
-                            modifier = Modifier
-                                .height(50.dp)
-                                .width(50.dp),
-                            shape = RoundedCornerShape(20),
-                            contentPadding = PaddingValues(horizontal = 1.dp)
-                        ) {
-                            Icon(
-                                painterResource(id = R.drawable.baseline_my_location_24),
-                                contentDescription = null,
-                                Modifier.padding(horizontal = 1.dp)
-                            )
-                        }
+                            onLocationDisabled = {
+                                // Define what happens when location is disabled.
+                            }
+                        )
                         // search box for start
                         OutlinedTextField(
                             value = startSearchString,
@@ -820,33 +795,19 @@ fun RouteView(viewModel: MainViewModel) {
                             modifier = Modifier.padding(end = 10.dp)
                         )
                         // current location button
-                        OutlinedButton(
-                            onClick = {
-                                endIsCurrentLocation.value = endIsCurrentLocation.value.not()
-                                focusManager.clearFocus()
+                        // Using the custom CurrentLocationButton
+                        CurrentLocationButton(
+                            isCurrentLocation = endIsCurrentLocation,
+                            context = context,
+                            focusManager = focusManager,
+                            onLocationEnabled = {
+                                if (isLocationPermissionGranted)
+                                    getLastLocation(fusedLocationClient)
                             },
-                            colors = ButtonColors(
-                                containerColor = if (endIsCurrentLocation.value) Green else Color.Transparent,
-                                contentColor = if (endIsCurrentLocation.value) Color.White else Color.Gray,
-                                disabledContainerColor = Color.Gray,
-                                disabledContentColor = Color.Gray
-                            ),
-                            border = BorderStroke(
-                                1.dp,
-                                if (endIsCurrentLocation.value) Green else Color.Gray
-                            ),
-                            modifier = Modifier
-                                .height(50.dp)
-                                .width(50.dp),
-                            shape = RoundedCornerShape(20),
-                            contentPadding = PaddingValues(horizontal = 1.dp)
-                        ) {
-                            Icon(
-                                painterResource(id = R.drawable.baseline_my_location_24),
-                                contentDescription = null,
-                                Modifier.padding(horizontal = 1.dp)
-                            )
-                        }
+                            onLocationDisabled = {
+                                // Define what happens when location is disabled.
+                            }
+                        )
                         // search text box
                         OutlinedTextField(
                             value = endSearchString,
@@ -984,6 +945,9 @@ fun RouteView(viewModel: MainViewModel) {
                     OutlinedButton(
                         enabled = if (valid) true else false,
                         onClick = {
+                            // update last location if
+                            if (isLocationPermissionGranted)
+                                getLastLocation(fusedLocationClient);
                             // get the start and stop place object if its current location
                             val start: Place = if (startIsCurrentLocation.value) {
                                 Place("Current Location", userLat, userLon, "", "")
@@ -1179,7 +1143,6 @@ fun RouteView(viewModel: MainViewModel) {
 }
 
 
-
 @SuppressLint("MissingPermission")
 private fun getLastLocation(fusedLocationClient: FusedLocationProviderClient) {
     fusedLocationClient.lastLocation
@@ -1193,7 +1156,7 @@ private fun getLastLocation(fusedLocationClient: FusedLocationProviderClient) {
             }
         }
         .addOnFailureListener { e ->
-            // Handle failure to get location
+            Log.e("LOCATION", "Error getting location in getLastLocation")
         }
 }
 
@@ -1234,7 +1197,7 @@ fun midpoint(lat1: Double, lon1: Double, lat2: Double, lon2: Double): FinalRoute
 }
 
 @Composable
-fun AlertDialogExample(size: Int, onDismissRequest: () -> Unit, onConfirmation: () -> Unit,) {
+fun AlertDialogExample(size: Int, onDismissRequest: () -> Unit, onConfirmation: () -> Unit) {
     if (size == 0) {
         // no Route
         AlertDialog(
@@ -1276,6 +1239,92 @@ fun AlertDialogExample(size: Int, onDismissRequest: () -> Unit, onConfirmation: 
             icon = { Icon(Icons.Default.Clear, "", tint = Red) },
             title = { Text(text = "No Available Route") },
             text = { Text(text = "There is no available bus route from your selected start and end point.") },
+        )
+    }
+}
+
+@Composable
+fun CurrentLocationButton(
+    isCurrentLocation: MutableState<Boolean>,
+    context: Context,
+    focusManager: FocusManager,
+    onLocationEnabled: () -> Unit,
+    onLocationDisabled: () -> Unit  // Callback when location is deselected
+) {
+    var showPermissionDeniedDialog by remember { mutableStateOf(false) }
+
+    // Permission launcher
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted: Boolean ->
+        if (isGranted) {
+            isCurrentLocation.value = true
+            onLocationEnabled()  // Call when permission is granted and location is enabled
+        } else {
+            // Show permission denied dialog only if permission was previously requested
+            showPermissionDeniedDialog = true
+        }
+    }
+
+    // Check permission status
+    val isLocationPermissionGranted = remember {
+        ContextCompat.checkSelfPermission(
+            context, Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+    }
+
+    // Button UI and click logic
+    OutlinedButton(
+        onClick = {
+            if (isCurrentLocation.value) {
+                // If currently selected, deselect and run the onLocationDisabled callback
+                isCurrentLocation.value = false
+                onLocationDisabled()
+            } else if (!isLocationPermissionGranted) {
+                // If permission not granted, request it
+                permissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+            } else {
+                // If permission is granted but location not currently selected, select it
+                isCurrentLocation.value = true
+                onLocationEnabled()
+            }
+            focusManager.clearFocus()  // Dismiss keyboard if open
+        },
+        colors = ButtonDefaults.buttonColors(
+            containerColor = if (isCurrentLocation.value) Green else Color.Transparent,
+            contentColor = if (isCurrentLocation.value) Color.White else Color.Gray
+        ),
+        border = BorderStroke(1.dp, if (isCurrentLocation.value) Green else Color.Gray),
+        modifier = Modifier
+            .height(50.dp)
+            .width(50.dp),
+        shape = RoundedCornerShape(20),
+        contentPadding = PaddingValues(horizontal = 1.dp)
+    ) {
+        Icon(
+            painter = painterResource(id = R.drawable.baseline_my_location_24),
+            contentDescription = "Toggle Current Location",
+            tint = if (isCurrentLocation.value) Color.White else Color.Gray
+        )
+    }
+
+    // Permission Denied Dialog
+    if (showPermissionDeniedDialog) {
+        AlertDialog(
+            onDismissRequest = { showPermissionDeniedDialog = false },
+            title = { Text("Location Permission Denied") },
+            text = { Text("You need to enable location permissions in app settings.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showPermissionDeniedDialog = false
+                    val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                        data = Uri.fromParts("package", context.packageName, null)
+                    }
+                    context.startActivity(intent)
+                }) {
+                    Text("Open Settings")
+                }
+            }
         )
     }
 }

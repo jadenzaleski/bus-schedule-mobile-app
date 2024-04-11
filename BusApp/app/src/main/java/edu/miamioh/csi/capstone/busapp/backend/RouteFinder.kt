@@ -91,13 +91,7 @@ object RouteFinder {
 
         var filteredRoutes = filterRoutes(potentialRoutes, startLocation, endLocation)
         Log.i("Route Generation", "Filter potential routes: COMPLETE (Stage 8/?)")
-
-        filteredRoutes.forEach { route ->
-            Log.i("Route Option", "" + route.tripID + " " + route.routeStartTime + " " + route.routeEndTime)
-            Log.i("Route Info", "" + route.routeInfo.size)
-            Log.i("Route Info", "" + route.routeInfo.toString())
-        }
-        Log.i("# of generated routes", "" + filteredRoutes.size)
+        Log.i("# of filtered routes", "" + filteredRoutes.size)
     }
 
     fun generatePotentialRoutes(
