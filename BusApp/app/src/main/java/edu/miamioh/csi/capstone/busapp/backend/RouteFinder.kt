@@ -60,7 +60,7 @@ object RouteFinder {
         endLocation: Place,
         selectedTime: String,
         validAgencyIDs: Set<Int>
-    ) {
+    ): List<GeneratedRoute> {
         var validTripIDs = findAllValidTripIDs(validAgencyIDs)
         Log.i("Route Generation", "Valid TripIDs found: COMPLETE (Stage 1/?)")
         Log.i("# of valid TripIDs", "" + validTripIDs.size)
@@ -92,6 +92,8 @@ object RouteFinder {
         var filteredRoutes = filterRoutes(potentialRoutes, startLocation, endLocation)
         Log.i("Route Generation", "Filter potential routes: COMPLETE (Stage 8/?)")
         Log.i("# of filtered routes", "" + filteredRoutes.size)
+
+        return filteredRoutes
     }
 
     fun generatePotentialRoutes(
