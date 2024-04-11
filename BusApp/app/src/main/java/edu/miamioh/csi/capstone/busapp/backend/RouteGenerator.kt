@@ -474,7 +474,7 @@ object RouteGenerator {
          * as needed. NOTE: Increasing this distance means that the start/end nodes can be quite far
          * from the actual intended destination. Take care to avoid making this number too high.
          */
-        var maxDistance = 0.2
+        var maxDistance = 0.6
 
         val allNodesWithDistances = nodes.map { node ->
             node to calculateSphericalDistance(location.lat, location.lon, node.stopLat, node.stopLon)

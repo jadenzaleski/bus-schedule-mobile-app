@@ -1,6 +1,6 @@
 package edu.miamioh.csi.capstone.busapp.backend
 
-import android.util.Log
+import edu.miamioh.csi.capstone.busapp.views.Place
 
 object RouteFinderTester {
     fun runTests() {
@@ -14,10 +14,10 @@ object RouteFinderTester {
         // Place agencyIDs you want to test in this Set.
         val selectedAgencyIds = mutableSetOf(33)
 
-        var validTripIDs = RouteFinder.findAllValidTripIDs(selectedAgencyIds, routes, trips)
-        Log.i("# of Trips from Agency", "" + validTripIDs.size)
+        var start = Place("Domus Hotel", 39.352986978817455, 16.240970535302434, "", "")
+        var end = Place("University", 39.36197761102033, 16.226076505252237, "", "")
+        var selectedTime = "12:00"
 
-        var tripRecords = RouteFinder.generateTripRecords(validTripIDs)
-        Log.i("# of TripRecords", "" + tripRecords.size)
+        RouteFinder.routeWorkhorse(start, end, selectedTime, selectedAgencyIds)
     }
 }
