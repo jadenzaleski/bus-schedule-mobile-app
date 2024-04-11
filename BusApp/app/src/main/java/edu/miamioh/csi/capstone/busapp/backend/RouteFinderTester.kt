@@ -16,8 +16,9 @@ object RouteFinderTester {
 
         var start = Place("Domus Hotel", 39.352986978817455, 16.240970535302434, "", "")
         var end = Place("University", 39.36197761102033, 16.226076505252237, "", "")
-        var selectedTime = "12:00"
+        var selectedTime = "13:45"
 
-        RouteFinder.routeWorkhorse(start, end, selectedTime, selectedAgencyIds)
+        var potentialRoutes = RouteFinder.routeWorkhorse(start, end, selectedTime, selectedAgencyIds)
+
     }
 }

@@ -28,11 +28,13 @@ data class StopOnRoute(
     val stopLat: Double,
     val stopLon: Double,
     val arrivalTime: LocalTime,
-    val departureTime: LocalTime
+    val departureTime: LocalTime,
+    val stopSequence: Int
 )
 
 data class GeneratedRoute(
     val tripID: Int,
+    val routeShortName: String,
     val routeInfo: List<StopOnRoute>,
     val routeStartTime: LocalTime,
     val routeEndTime: LocalTime
@@ -82,7 +84,110 @@ object RouteFinder {
         var endStopIDs = findNearbyStopIDs(endLocation, validStopIDs)
         Log.i("Route Generation", "Ending StopIDs found: COMPLETE (Stage 6/?)")
         Log.i("# of end StopIDs", "" + startStopIDs.size)
+
+        var potentialRoutes = generatePotentialRoutes(filteredTripRecords, startStopIDs, endStopIDs, selectedTime)
+        Log.i("Route Generation", "Generate potential routes: COMPLETE (Stage 7/?)")
+        Log.i("# of generated routes", "" + potentialRoutes.size)
+
+        var filteredRoutes = filterRoutes(potentialRoutes, startLocation, endLocation)
+        Log.i("Route Generation", "Filter potential routes: COMPLETE (Stage 8/?)")
+
+        filteredRoutes.forEach { route ->
+            Log.i("Route Option", "" + route.tripID + " " + route.routeStartTime + " " + route.routeEndTime)
+            Log.i("Route Info", "" + route.routeInfo.size)
+            Log.i("Route Info", "" + route.routeInfo.toString())
+        }
+        Log.i("# of generated routes", "" + filteredRoutes.size)
     }
+
+    fun generatePotentialRoutes(
+        filteredTripRecords: Set<TripRecord>,
+        startStopIDs: Set<Int>,
+        endStopIDs: Set<Int>,
+        selectedTime: String
+    ): List<GeneratedRoute> {
+        val generatedRoutes = mutableListOf<GeneratedRoute>()
+        val stopsMap = stops.associateBy { it.stopID } // Map for quick stop info lookup
+        val timeBoundary = parseStringToLocalTime("$selectedTime:00")
+        val timeBoundaryPlus30Minutes = timeBoundary.plusHours(1)
+
+        filteredTripRecords.forEach { tripRecord ->
+            val stopsList = tripRecord.stopsList
+
+            // Iterate through stopsList to find all valid start-end combinations
+            stopsList.forEachIndexed { startIndex, startStop ->
+                if (startStop.stopID in startStopIDs) {
+                    // For each valid start, look for a valid end that comes after it
+                    stopsList.subList(startIndex + 1, stopsList.size).forEach { endStop ->
+                        if (endStop.stopID in endStopIDs && endStop.stopSequence > startStop.stopSequence) {
+                            // Generate route info from startIndex to the index of endStop
+                            val routeInfo = stopsList.subList(startIndex, stopsList.indexOf(endStop) + 1).mapNotNull { stopInfo ->
+                                stopsMap[stopInfo.stopID]?.let {
+                                    StopOnRoute(
+                                        stopID = it.stopID,
+                                        stopName = it.stopName,
+                                        stopLat = it.stopLat,
+                                        stopLon = it.stopLon,
+                                        arrivalTime = stopInfo.arrivalTime,
+                                        departureTime = stopInfo.departureTime,
+                                        stopSequence = stopInfo.stopSequence
+                                    )
+                                }
+                            }
+                            // Create the route only if the routeStartTime is within the specified time window
+                            if (routeInfo.isNotEmpty() && routeInfo.first().arrivalTime.isAfter(timeBoundary) &&
+                                routeInfo.first().arrivalTime.isBefore(timeBoundaryPlus30Minutes)) {
+                                val route = GeneratedRoute(
+                                    tripID = tripRecord.tripID,
+                                    routeShortName = tripRecord.routeShortName,
+                                    routeInfo = routeInfo,
+                                    routeStartTime = routeInfo.first().arrivalTime,
+                                    routeEndTime = routeInfo.last().departureTime
+                                )
+                                generatedRoutes.add(route)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return generatedRoutes
+    }
+
+    fun filterRoutes(
+        generatedRoutes: List<GeneratedRoute>,
+        startLocation: Place,
+        endLocation: Place
+    ): List<GeneratedRoute> {
+        // Early return if there are no generated routes
+        if (generatedRoutes.isEmpty()) return emptyList()
+
+        // Step 1: Sort by route start time, then by duration
+        val sortedRoutes = generatedRoutes
+            .sortedWith(compareBy<GeneratedRoute> { it.routeStartTime }
+                .thenBy { java.time.Duration.between(it.routeStartTime, it.routeEndTime).toMinutes() })
+
+        // Step 2: Filter for unique tripIDs with preference to least sum distance for start and end stops
+        val uniqueRoutes = sortedRoutes
+            .groupBy { it.tripID }
+            .mapValues { (_, routes) ->
+                if (routes.size > 1) {
+                    routes.minByOrNull { route ->
+                        val startStop = route.routeInfo.first()
+                        val endStop = route.routeInfo.last()
+                        calculateSphericalDistance(startLocation.lat, startLocation.lon, startStop.stopLat, startStop.stopLon) +
+                                calculateSphericalDistance(endLocation.lat, endLocation.lon, endStop.stopLat, endStop.stopLon)
+                    }
+                } else {
+                    routes.first()
+                }
+            }.values.toList()
+
+        return uniqueRoutes.filterNotNull()
+    }
+
+
 
     fun findAllValidTripIDs(validAgencyIDs: Set<Int>): Set<Int> {
         // Directly access routes from the pre-computed map, eliminating the need to filter the entire routes list
@@ -129,7 +234,7 @@ object RouteFinder {
         }.toSet()
     }
 
-    private fun filterTripRecordsByTime(tripRecords: Set<TripRecord>, selectedTime: String): Set<TripRecord> {
+    fun filterTripRecordsByTime(tripRecords: Set<TripRecord>, selectedTime: String): Set<TripRecord> {
         val timeBoundary = parseStringToLocalTime("$selectedTime:00")
         return tripRecords.filter { it.routeStartTime.isAfter(timeBoundary) }.toSet()
     }
@@ -150,27 +255,29 @@ object RouteFinder {
         }.toSet()
     }
 
-    fun findNearbyStopIDs(location: Place, validStopIDs: Set<Int>): List<Int> {
+    fun findNearbyStopIDs(location: Place, validStopIDs: Set<Int>): Set<Int> {
         // Pre-filter stops to include only validStopIDs to minimize distance calculations.
         val validStops = stops.filter { it.stopID in validStopIDs }
 
-        // Priority queue to store the closest stops, ordered by distance.
-        val closestStops = PriorityQueue<Pair<Int, Double>>(compareBy { it.second })
+        // Use a priority queue to store the closest stops, ordered by distance.
+        // Note: We need to invert the comparison for the priority queue to behave as a min-heap.
+        val closestStops = PriorityQueue<Pair<Int, Double>>(compareByDescending { it.second })
 
         validStops.forEach { stop ->
             val distance = calculateSphericalDistance(location.lat, location.lon, stop.stopLat, stop.stopLon)
+            // Always add the new stop to the priority queue.
             closestStops.add(stop.stopID to distance)
 
-            // Keep only the three closest stops in the queue.
+            // Ensure the priority queue never holds more than 3 elements.
             if (closestStops.size > 5) {
-                closestStops.poll() // Removes the farthest stop if more than 3 are stored.
+                closestStops.poll() // This removes the stop with the largest distance.
             }
         }
 
-        // Return stop IDs from the priority queue, sorted by distance.
-        return closestStops.map { it.first }.sortedBy { stopId ->
-            closestStops.find { it.first == stopId }?.second ?: Double.MAX_VALUE
-        }
+        // Extract and return the stop IDs from the priority queue as a set.
+        // The conversion to a set here is technically redundant in terms of ensuring uniqueness,
+        // since the stop IDs would already be unique. However, it's required to match the return type.
+        return closestStops.map { it.first }.toSet()
     }
 
     /**
