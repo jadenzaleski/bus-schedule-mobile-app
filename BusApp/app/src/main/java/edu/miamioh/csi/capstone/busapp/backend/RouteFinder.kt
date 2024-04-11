@@ -6,6 +6,13 @@ import edu.miamioh.csi.capstone.busapp.views.calculateSphericalDistance
 import java.time.LocalTime
 import java.util.PriorityQueue
 
+/**
+ * A data class that contains a TripRecord object for each tripID found in the CORe data.
+ * - stopsList is a list of all the stops (each represented by a StopInfo object) in that specific
+ *   trip
+ * - routeStartTime is the departureTime value of the first stop in stopsList
+ * - routeEndTime is the arrivalTime value of the last stop in stopsList
+ */
 data class TripRecord(
     val tripID: Int,
     val routeID: Int,
@@ -15,6 +22,9 @@ data class TripRecord(
     val routeEndTime: LocalTime
 )
 
+/**
+ * A data class that holds all the necessary information for each stop that's a part of a trip.
+ */
 data class StopInfo(
     val stopID: Int,
     val arrivalTime: LocalTime,
@@ -73,6 +83,20 @@ object RouteFinder {
     private val tripByTripID = trips.associateBy { it.tripID }
     private val stopTimesByTripID = stopTimes.groupBy { it.tripID }
 
+    /**
+     * A workhorse function that calls the other functions in the RouteFinder object to find
+     * and return a list of optimized potential routes to use. The list of routes is sorted under
+     * certain criterion (which can be adjusted in the individual  themselves).
+     *
+     * @param startLocation - The starting location specified by the user
+     * @param endLocation - The ending location specified by the user
+     * @param selectedTime - The earliest time the user wants the route to start at, in HH:MM
+     *                       format
+     * @param validAgencyIDs - The set of AgencyIDs picked by the user, whose stops can be used to
+     *                         generate the route
+     * @return a list of GeneratedRoute objects representing potential routes the user can choose
+     *         from
+     */
     fun routeWorkhorse(
         startLocation: Place,
         endLocation: Place,
@@ -80,35 +104,35 @@ object RouteFinder {
         validAgencyIDs: Set<Int>
     ): List<GeneratedRoute> {
         val validTripIDs = findAllValidTripIDs(validAgencyIDs)
-        Log.i("Route Generation", "Valid TripIDs found: COMPLETE (Stage 1/?)")
+        Log.i("Route Generation", "Valid TripIDs found: COMPLETE (Stage 1/8)")
         Log.i("# of valid TripIDs", "" + validTripIDs.size)
 
         val tripRecords = generateTripRecords(validTripIDs)
-        Log.i("Route Generation", "Trip Records generated: COMPLETE (Stage 2/?)")
+        Log.i("Route Generation", "Trip Records generated: COMPLETE (Stage 2/8)")
         Log.i("# of Trip Records", "" + tripRecords.size)
 
         val filteredTripRecords = filterTripRecordsByTime(tripRecords, selectedTime)
-        Log.i("Route Generation", "Trip records filtered by time: COMPLETE (Stage 3/?)")
+        Log.i("Route Generation", "Trip records filtered by time: COMPLETE (Stage 3/8)")
         Log.i("# of Filtered Trip Records", "" + filteredTripRecords.size)
 
         val validStopIDs = findAllValidStopIDs(validAgencyIDs)
-        Log.i("Route Generation", "Valid StopIDs found: COMPLETE (Stage 4/?)")
+        Log.i("Route Generation", "Valid StopIDs found: COMPLETE (Stage 4/8)")
         Log.i("# of valid StopIDs", "" + validStopIDs.size)
 
         val startStopIDs = findNearbyStopIDs(startLocation, validStopIDs)
-        Log.i("Route Generation", "Starting StopIDs found: COMPLETE (Stage 5/?)")
+        Log.i("Route Generation", "Starting StopIDs found: COMPLETE (Stage 5/8)")
         Log.i("# of start StopIDs", "" + startStopIDs.size)
 
         val endStopIDs = findNearbyStopIDs(endLocation, validStopIDs)
-        Log.i("Route Generation", "Ending StopIDs found: COMPLETE (Stage 6/?)")
+        Log.i("Route Generation", "Ending StopIDs found: COMPLETE (Stage 6/8)")
         Log.i("# of end StopIDs", "" + startStopIDs.size)
 
         val potentialRoutes = generatePotentialRoutes(filteredTripRecords, startStopIDs, endStopIDs, selectedTime)
-        Log.i("Route Generation", "Generate potential routes: COMPLETE (Stage 7/?)")
+        Log.i("Route Generation", "Generate potential routes: COMPLETE (Stage 7/8)")
         Log.i("# of generated routes", "" + potentialRoutes.size)
 
         val filteredRoutes = filterRoutes(potentialRoutes, startLocation, endLocation)
-        Log.i("Route Generation", "Filter potential routes: COMPLETE (Stage 8/?)")
+        Log.i("Route Generation", "Filter potential routes: COMPLETE (Stage 8/8)")
         Log.i("# of filtered routes", "" + filteredRoutes.size)
 
         return filteredRoutes
