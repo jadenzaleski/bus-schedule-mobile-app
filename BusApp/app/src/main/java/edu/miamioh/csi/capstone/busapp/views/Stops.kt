@@ -103,8 +103,8 @@ import kotlin.math.sqrt
 
 @Composable
 fun StopsView(navController: NavHostController) {
-    //StopsWorkhorse(navController)
-    RouteFinderTester.runTests()
+    StopsWorkhorse(navController)
+//    RouteFinderTester.runTests()
 }
 
 /**

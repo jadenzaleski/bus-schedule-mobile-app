@@ -77,7 +77,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
-import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.rememberNavController
 import coil.compose.AsyncImage
 import com.google.android.gms.location.FusedLocationProviderClient
@@ -98,7 +97,9 @@ import edu.miamioh.csi.capstone.busapp.MainViewModel
 import edu.miamioh.csi.capstone.busapp.R
 import edu.miamioh.csi.capstone.busapp.backend.CSVHandler
 import edu.miamioh.csi.capstone.busapp.backend.FinalRoutePoint
-import edu.miamioh.csi.capstone.busapp.navigation.Screens
+import edu.miamioh.csi.capstone.busapp.backend.GeneratedRoute
+import edu.miamioh.csi.capstone.busapp.backend.RouteFinder
+import edu.miamioh.csi.capstone.busapp.backend.StopOnRoute
 import edu.miamioh.csi.capstone.busapp.ui.theme.Black
 import edu.miamioh.csi.capstone.busapp.ui.theme.Blue
 import edu.miamioh.csi.capstone.busapp.ui.theme.Gray300
@@ -118,6 +119,7 @@ import java.io.InputStreamReader
 import java.net.URL
 import java.net.URLDecoder
 import java.text.SimpleDateFormat
+import java.time.LocalTime
 import java.util.Calendar
 import java.util.Locale
 import kotlin.math.atan2
@@ -142,7 +144,8 @@ data class SnappedPoint(val latitude: Double, val longitude: Double)
 var userLon = 0.0
 var userLat = 0.0
 
-var currentRoute = mutableListOf(FinalRoutePoint(-1, "", 0.0, 0.0))
+val blank: List<StopOnRoute> = emptyList();
+var currentRoute = GeneratedRoute(-1, "", blank, LocalTime.MIDNIGHT, LocalTime.MIDNIGHT);
 val snappedPointsList = mutableListOf<SnappedPoint>()
 
 @Composable
@@ -343,7 +346,7 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
         }
 
         @OptIn(DelicateCoroutinesApi::class)
-        fun googleSnapToRoads(places: List<FinalRoutePoint>) {
+        fun googleSnapToRoads(places: List<StopOnRoute>) {
             snappedPointsList.clear()
             GlobalScope.launch(Dispatchers.IO) {
                 val apiKey = "AIzaSyArxmzr9k53luII5xTXHT98rCV2dWEZU_E"
@@ -351,7 +354,7 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
                 val maxDistance = 0.2
 
                 // Step 1: Pre-process places to insert midpoints where necessary
-                val processedPlaces = mutableListOf<FinalRoutePoint>()
+                val processedPlaces = mutableListOf<StopOnRoute>()
                 for (i in places.indices) {
                     processedPlaces.add(places[i])
                     if (i < places.size - 1) {
@@ -470,9 +473,9 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
                         color = Blue
                     )
                     Log.i("SNAPPED", "Snapped a total of ${snappedPointsList.size} points.")
-                    for (i in currentRoute.indices) {
-                        val stop = currentRoute[i]
-                        if (i == 0 || (i == currentRoute.size - 1)) {
+                    for (i in currentRoute.routeInfo.indices) {
+                        val stop = currentRoute.routeInfo[i]
+                        if (i == 0 || (i == currentRoute.routeInfo.size - 1)) {
                             MarkerInfoWindowContent(
                                 state = MarkerState(position = LatLng(stop.stopLat, stop.stopLon)),
                                 icon = if (i == 0) {
@@ -541,8 +544,8 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
                             CameraUpdateFactory.newCameraPosition(
                                 CameraPosition(
                                     LatLng(
-                                        currentRoute.first().stopLat,
-                                        currentRoute.first().stopLon
+                                        currentRoute.routeInfo.first().stopLat,
+                                        currentRoute.routeInfo.first().stopLon
                                     ),
                                     14f, // Zoom level
                                     0f,  // Tilt angle
@@ -969,19 +972,14 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
                                 time = selectedTime,
                                 allowedAgencies = selectedAgencyIds
                             )
-                            print(currentRoute.size)
-                            if (currentRoute.size == 0) {
+                            print(currentRoute.routeInfo.size)
+                            if (currentRoute.routeInfo.isEmpty()) {
                                 // no route
                                 dialogType.intValue = 0
                                 openAlertDialog.value = true
-                            } else if (currentRoute.size == 1) {
-                                // faster to walk
-                                dialogType.intValue = 1
-                                openAlertDialog.value = true
-
                             } else {
                                 // valid
-                                googleSnapToRoads(currentRoute)
+                                googleSnapToRoads(currentRoute.routeInfo)
                                 showForm.value = !showForm.value
                             }
 
@@ -1010,7 +1008,7 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
                         .background(Light), verticalArrangement = Arrangement.SpaceEvenly
                 ) {
                     Text(
-                        text = "${currentRoute.size} Stops on route",
+                        text = "${currentRoute.routeInfo.size} Stops on route",
                         style = TextStyle(
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
@@ -1027,7 +1025,7 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
                             )
                         )
                         Text(
-                            text = currentRoute.first().stopName, style = TextStyle(
+                            text = currentRoute.routeInfo.first().stopName, style = TextStyle(
                                 fontSize = 18.sp,
                                 fontStyle = FontStyle.Italic
                             )
@@ -1043,15 +1041,15 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
                             )
                         )
                         Text(
-                            text = currentRoute.last().stopName, style = TextStyle(
+                            text = currentRoute.routeInfo.last().stopName, style = TextStyle(
                                 fontSize = 18.sp,
                                 fontStyle = FontStyle.Italic
                             )
                         )
                     }
-                    if (currentRoute.size >= 3) {
+                    if (currentRoute.routeInfo.size >= 3) {
                         Text(
-                            text = "(After ${currentRoute[currentRoute.size - 2].stopName})",
+                            text = "(After ${currentRoute.routeInfo[currentRoute.routeInfo.size - 2].stopName})",
                             style = TextStyle(
                                 fontSize = 18.sp,
                                 fontStyle = FontStyle.Italic,
@@ -1162,23 +1160,18 @@ private fun getLastLocation(fusedLocationClient: FusedLocationProviderClient) {
 
 // Route is calculated here
 fun calcRoute(start: Place, end: Place, time: String, allowedAgencies: Set<Int>) {
-    val Cstart = Place("4490", 39.331681, 16.184743, "", "")
-    val Cend = Place("4365", 39.333011, 16.202143, "", "")
-    val CallowedAgencies = mutableSetOf(
-        33, 34, 8, 9, 10, 11, 12, 13, 7, 27, 28, 29, 30, 35,
-        32, 19, 21, 22, 24, 25, 26, 14, 15, 16, 17, 18
-    )
     val logMessage = "Start: ${start.name}, Lat: ${start.lat}, Lon: ${start.lon}, " +
             "Stop: ${end.name}, Lat: ${end.lat}, Lon: ${end.lon}, " +
             "Time: $time, Allowed Agencies: $allowedAgencies"
     Log.i("calcRoute", logMessage)
 
     //currentRoute = RouteGenerator.routeWorkhorse(start, end, time, allowedAgencies).toMutableList()
+    currentRoute = RouteFinder.routeWorkhorse(start, end, time, allowedAgencies).first()
 
 }
 
 // Function to calculate the midpoint between two points
-fun midpoint(lat1: Double, lon1: Double, lat2: Double, lon2: Double): FinalRoutePoint {
+fun midpoint(lat1: Double, lon1: Double, lat2: Double, lon2: Double): StopOnRoute {
     val dLon = Math.toRadians(lon2 - lon1)
 
     // Convert to radians
@@ -1193,7 +1186,7 @@ fun midpoint(lat1: Double, lon1: Double, lat2: Double, lon2: Double): FinalRoute
     val lonMid = rlon1 + atan2(by, cos(rlat1) + bx)
 
     // Convert back to degrees
-    return FinalRoutePoint(-1, "DUMMY", Math.toDegrees(latMid), Math.toDegrees(lonMid))
+    return StopOnRoute(-1, "DUMMY", Math.toDegrees(latMid), Math.toDegrees(lonMid), LocalTime.MIDNIGHT, LocalTime.MIDNIGHT, -1)
 }
 
 @Composable
