@@ -22,6 +22,31 @@ data class StopInfo(
     val stopSequence: Int
 )
 
+/**
+ * A data class representing a potential route that was generated under time constraints and a
+ * specified start and end location.
+ * - tripID is a unique identifier and likely will not be displayed
+ * - routeShortName is meant to be the visualizer that tells the user what bus to board
+ * - routeInfo is a List containing all the stops that are a part of the route
+ * - routeStartTime denotes when the route begins in reference to the start location
+ * - routeEndTime denotes when the route ends in reference to the end location
+ * The times above do not factor in walking times.
+ */
+data class GeneratedRoute(
+    val tripID: Int,
+    val routeShortName: String,
+    val routeInfo: List<StopOnRoute>,
+    val routeStartTime: LocalTime,
+    val routeEndTime: LocalTime
+)
+
+/**
+ * A data class representing individual stops that, when put together, form a route which helps get
+ * the user from a designated start to end location. This was designed with what information needed
+ * to be displayed on the UI in mind. You can easily add more fields to this class depending on what
+ * you need to be able to access and/or display. Consult the CSVHandler Class Diagram in the wiki
+ * to see the full available list of fields.
+ */
 data class StopOnRoute(
     val stopID: Int,
     val stopName: String,
@@ -32,13 +57,6 @@ data class StopOnRoute(
     val stopSequence: Int
 )
 
-data class GeneratedRoute(
-    val tripID: Int,
-    val routeShortName: String,
-    val routeInfo: List<StopOnRoute>,
-    val routeStartTime: LocalTime,
-    val routeEndTime: LocalTime
-)
 
 object RouteFinder {
     private val agencies = CSVHandler.getAgencies()
@@ -61,42 +79,42 @@ object RouteFinder {
         selectedTime: String,
         validAgencyIDs: Set<Int>
     ): List<GeneratedRoute> {
-        var validTripIDs = findAllValidTripIDs(validAgencyIDs)
+        val validTripIDs = findAllValidTripIDs(validAgencyIDs)
         Log.i("Route Generation", "Valid TripIDs found: COMPLETE (Stage 1/?)")
         Log.i("# of valid TripIDs", "" + validTripIDs.size)
 
-        var tripRecords = generateTripRecords(validTripIDs)
+        val tripRecords = generateTripRecords(validTripIDs)
         Log.i("Route Generation", "Trip Records generated: COMPLETE (Stage 2/?)")
         Log.i("# of Trip Records", "" + tripRecords.size)
 
-        var filteredTripRecords = filterTripRecordsByTime(tripRecords, selectedTime)
+        val filteredTripRecords = filterTripRecordsByTime(tripRecords, selectedTime)
         Log.i("Route Generation", "Trip records filtered by time: COMPLETE (Stage 3/?)")
         Log.i("# of Filtered Trip Records", "" + filteredTripRecords.size)
 
-        var validStopIDs = findAllValidStopIDs(validAgencyIDs)
+        val validStopIDs = findAllValidStopIDs(validAgencyIDs)
         Log.i("Route Generation", "Valid StopIDs found: COMPLETE (Stage 4/?)")
         Log.i("# of valid StopIDs", "" + validStopIDs.size)
 
-        var startStopIDs = findNearbyStopIDs(startLocation, validStopIDs)
+        val startStopIDs = findNearbyStopIDs(startLocation, validStopIDs)
         Log.i("Route Generation", "Starting StopIDs found: COMPLETE (Stage 5/?)")
         Log.i("# of start StopIDs", "" + startStopIDs.size)
 
-        var endStopIDs = findNearbyStopIDs(endLocation, validStopIDs)
+        val endStopIDs = findNearbyStopIDs(endLocation, validStopIDs)
         Log.i("Route Generation", "Ending StopIDs found: COMPLETE (Stage 6/?)")
         Log.i("# of end StopIDs", "" + startStopIDs.size)
 
-        var potentialRoutes = generatePotentialRoutes(filteredTripRecords, startStopIDs, endStopIDs, selectedTime)
+        val potentialRoutes = generatePotentialRoutes(filteredTripRecords, startStopIDs, endStopIDs, selectedTime)
         Log.i("Route Generation", "Generate potential routes: COMPLETE (Stage 7/?)")
         Log.i("# of generated routes", "" + potentialRoutes.size)
 
-        var filteredRoutes = filterRoutes(potentialRoutes, startLocation, endLocation)
+        val filteredRoutes = filterRoutes(potentialRoutes, startLocation, endLocation)
         Log.i("Route Generation", "Filter potential routes: COMPLETE (Stage 8/?)")
         Log.i("# of filtered routes", "" + filteredRoutes.size)
 
         return filteredRoutes
     }
 
-    fun generatePotentialRoutes(
+    private fun generatePotentialRoutes(
         filteredTripRecords: Set<TripRecord>,
         startStopIDs: Set<Int>,
         endStopIDs: Set<Int>,
@@ -151,7 +169,7 @@ object RouteFinder {
         return generatedRoutes
     }
 
-    fun filterRoutes(
+    private fun filterRoutes(
         generatedRoutes: List<GeneratedRoute>,
         startLocation: Place,
         endLocation: Place
@@ -183,9 +201,7 @@ object RouteFinder {
         return uniqueRoutes.filterNotNull()
     }
 
-
-
-    fun findAllValidTripIDs(validAgencyIDs: Set<Int>): Set<Int> {
+    private fun findAllValidTripIDs(validAgencyIDs: Set<Int>): Set<Int> {
         // Directly access routes from the pre-computed map, eliminating the need to filter the entire routes list
         val validRoutes = routeByRouteID.values.filter { it.agencyID in validAgencyIDs }
         val validRouteIDs = validRoutes.map { it.routeID }.toSet()
@@ -197,7 +213,7 @@ object RouteFinder {
         }.toSet()
     }
 
-    fun generateTripRecords(validTripIDs: Set<Int>): Set<TripRecord> {
+    private fun generateTripRecords(validTripIDs: Set<Int>): Set<TripRecord> {
         return validTripIDs.mapNotNull { tripID ->
             tripByTripID[tripID]?.let { trip ->
                 routeByRouteID[trip.routeID]?.let { route ->
@@ -230,12 +246,12 @@ object RouteFinder {
         }.toSet()
     }
 
-    fun filterTripRecordsByTime(tripRecords: Set<TripRecord>, selectedTime: String): Set<TripRecord> {
+    private fun filterTripRecordsByTime(tripRecords: Set<TripRecord>, selectedTime: String): Set<TripRecord> {
         val timeBoundary = parseStringToLocalTime("$selectedTime:00")
         return tripRecords.filter { it.routeStartTime.isAfter(timeBoundary) }.toSet()
     }
 
-    fun findAllValidStopIDs(validAgencyIDs: Set<Int>): Set<Int> {
+    private fun findAllValidStopIDs(validAgencyIDs: Set<Int>): Set<Int> {
         // Leverage the pre-computed map to directly access routes by agencyID
         val validRouteIDs = routes.filter { it.agencyID in validAgencyIDs }.map { it.routeID }.toSet()
 
@@ -251,7 +267,7 @@ object RouteFinder {
         }.toSet()
     }
 
-    fun findNearbyStopIDs(location: Place, validStopIDs: Set<Int>): Set<Int> {
+    private fun findNearbyStopIDs(location: Place, validStopIDs: Set<Int>): Set<Int> {
         // Pre-filter stops to include only validStopIDs to minimize distance calculations.
         val validStops = stops.filter { it.stopID in validStopIDs }
 
