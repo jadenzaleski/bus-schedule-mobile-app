@@ -32,7 +32,6 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonColors
@@ -77,7 +76,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
-import androidx.navigation.compose.rememberNavController
 import coil.compose.AsyncImage
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
@@ -96,7 +94,6 @@ import com.google.maps.android.compose.rememberCameraPositionState
 import edu.miamioh.csi.capstone.busapp.MainViewModel
 import edu.miamioh.csi.capstone.busapp.R
 import edu.miamioh.csi.capstone.busapp.backend.CSVHandler
-import edu.miamioh.csi.capstone.busapp.backend.FinalRoutePoint
 import edu.miamioh.csi.capstone.busapp.backend.GeneratedRoute
 import edu.miamioh.csi.capstone.busapp.backend.RouteFinder
 import edu.miamioh.csi.capstone.busapp.backend.StopOnRoute
@@ -144,8 +141,9 @@ data class SnappedPoint(val latitude: Double, val longitude: Double)
 var userLon = 0.0
 var userLat = 0.0
 
-val blank: List<StopOnRoute> = emptyList();
-var currentRoute = GeneratedRoute(-1, "", blank, LocalTime.MIDNIGHT, LocalTime.MIDNIGHT);
+val blank: List<StopOnRoute> = emptyList()
+var currentRoute = GeneratedRoute(-1, "", blank, LocalTime.MIDNIGHT, LocalTime.MIDNIGHT)
+var listOfRoutes: List<GeneratedRoute> = emptyList()
 val snappedPointsList = mutableListOf<SnappedPoint>()
 
 @Composable
@@ -159,8 +157,6 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
         val trips = CSVHandler.getTrips()
         val stopTimes = CSVHandler.getStopTimes()
         val agencies = CSVHandler.getAgencies()
-        val navController = rememberNavController()
-
 
         // Check if location permission is granted
         var isLocationPermissionGranted by remember {
@@ -176,7 +172,7 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
         if (isLocationPermissionGranted)
             getLastLocation(fusedLocationClient)
 
-        var currentZoomLevel by remember { mutableStateOf(9f) } // Initial zoom level
+        val currentZoomLevel by remember { mutableStateOf(9f) } // Initial zoom level
 
 
         LaunchedEffect(key1 = context) {
@@ -191,7 +187,7 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
          * The initial starting coordinates to center upon when the map is first loaded
          * The initial zoom level of the map
          */
-        var initialPosition = LatLng(39.2, 16.25) // Cosenza
+        val initialPosition = LatLng(39.2, 16.25) // Cosenza
         var mapCenter by remember { mutableStateOf(initialPosition) }
 
 
@@ -275,7 +271,7 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
         var dialogType = remember { mutableIntStateOf(-1) }
         when {
             openAlertDialog.value -> {
-                AlertDialogExample(dialogType.intValue,
+                CustomAlert(dialogType.intValue,
                     onConfirmation = { openAlertDialog.value = false },
                     onDismissRequest = { openAlertDialog.value = false })
             }
@@ -972,9 +968,9 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
                                 time = selectedTime,
                                 allowedAgencies = selectedAgencyIds
                             )
-                            print(currentRoute.routeInfo.size)
-                            if (currentRoute.routeInfo.isEmpty()) {
+                            if (listOfRoutes.isEmpty() || currentRoute.routeInfo.isEmpty()) {
                                 // no route
+                                Log.e("ROUTE", "Attempt to display route failed because the routeInfo is empty or the listOfRoutes is empty.")
                                 dialogType.intValue = 0
                                 openAlertDialog.value = true
                             } else {
@@ -1166,7 +1162,9 @@ fun calcRoute(start: Place, end: Place, time: String, allowedAgencies: Set<Int>)
     Log.i("calcRoute", logMessage)
 
     //currentRoute = RouteGenerator.routeWorkhorse(start, end, time, allowedAgencies).toMutableList()
-    currentRoute = RouteFinder.routeWorkhorse(start, end, time, allowedAgencies).first()
+    listOfRoutes = RouteFinder.routeWorkhorse(start, end, time, allowedAgencies)
+    if (listOfRoutes.isNotEmpty())
+        currentRoute = RouteFinder.routeWorkhorse(start, end, time, allowedAgencies).first()
 
 }
 
@@ -1190,7 +1188,9 @@ fun midpoint(lat1: Double, lon1: Double, lat2: Double, lon2: Double): StopOnRout
 }
 
 @Composable
-fun AlertDialogExample(size: Int, onDismissRequest: () -> Unit, onConfirmation: () -> Unit) {
+fun CustomAlert(size: Int, onDismissRequest: () -> Unit, onConfirmation: () -> Unit) {
+    // Could add more conditions to this composable to make it easier to call more dialogs
+    // but for now we only have one.
     if (size == 0) {
         // no Route
         AlertDialog(
@@ -1203,35 +1203,10 @@ fun AlertDialogExample(size: Int, onDismissRequest: () -> Unit, onConfirmation: 
             dismissButton = {},
             icon = { Icon(Icons.Default.Clear, "", tint = Red) },
             title = { Text(text = "No Available Route") },
-            text = { Text(text = "There is no available bus route from your selected start and end point.") },
-        )
-    } else if (size == 1) {
-        // faster to walk
-        AlertDialog(
-            confirmButton = {
-                TextButton(onClick = { onConfirmation() }) {
-                    Text(text = "Okay", color = Blue)
-                }
-            },
-            onDismissRequest = { onDismissRequest() },
-            dismissButton = {},
-            icon = { Icon(Icons.Default.Info, "") },
-            title = { Text(text = "Faster to walk") },
-            text = { Text(text = "Walking is faster from your starting point to your destination.") },
-        )
-    } else {
-        // too big
-        AlertDialog(
-            confirmButton = {
-                TextButton(onClick = { onConfirmation() }) {
-                    Text(text = "Okay", color = Blue)
-                }
-            },
-            onDismissRequest = { onDismissRequest() },
-            dismissButton = {},
-            icon = { Icon(Icons.Default.Clear, "", tint = Red) },
-            title = { Text(text = "No Available Route") },
-            text = { Text(text = "There is no available bus route from your selected start and end point.") },
+            text = { Text(text = "A route can not be generated due to one of the following:\n\n" +
+                    "- Your start and end points are the same.\n" +
+                    "- There is no route for your desired starting and ending point.\n" +
+                    "- It is faster to walk to your destination.") },
         )
     }
 }

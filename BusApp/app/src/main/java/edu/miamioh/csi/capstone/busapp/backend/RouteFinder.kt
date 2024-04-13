@@ -103,6 +103,13 @@ object RouteFinder {
         selectedTime: String,
         validAgencyIDs: Set<Int>
     ): List<GeneratedRoute> {
+        // If the starting and ending locations are the same don't even bother calculating
+        // the route and just return a blank list.
+        if (startLocation.lat == endLocation.lat && startLocation.lon == endLocation.lon) {
+            Log.e("Route Generation", "Error: start and end location have the same coords.")
+            return emptyList()
+        }
+
         val validTripIDs = findAllValidTripIDs(validAgencyIDs)
         Log.i("Route Generation", "Valid TripIDs found: COMPLETE (Stage 1/8)")
         Log.i("# of valid TripIDs", "" + validTripIDs.size)
