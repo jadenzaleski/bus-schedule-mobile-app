@@ -270,38 +270,12 @@ fun StopsWorkhorse(navController: NavHostController) {
     }) }) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Start,
+            horizontalArrangement = Arrangement.SpaceBetween,
             modifier = Modifier
                 .background(Light)
                 .padding(8.dp)
                 .fillMaxWidth(),
         ) {
-
-            // Creates a button that, when pressed, activates the dropdown menu full of agencies.
-            OutlinedButton(
-                onClick = {
-                    expanded = !expanded
-                    focusManager.clearFocus()
-                },
-                colors = ButtonColors(
-                    containerColor = Color.Transparent,
-                    contentColor = Green,
-                    disabledContainerColor = Color.Gray,
-                    disabledContentColor = Color.Gray
-                ),
-                border = BorderStroke(2.dp, Green),
-                modifier = Modifier
-                    .padding(start = 5.dp)
-                    .height(50.dp),
-                shape = RoundedCornerShape(20)
-            ) {
-                Icon(
-                    painterResource(id = R.drawable.baseline_filter_list_24),
-                    contentDescription = null,
-                    modifier = Modifier.padding(end = 6.dp)
-                )
-                Text(text = "${selectedAgencyNames.size}")
-            }
 
             // Activate Location Button
             ActivateLocationButton(
