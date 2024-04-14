@@ -129,6 +129,7 @@ import java.time.LocalTime
 import java.util.Calendar
 import java.util.Locale
 import kotlin.math.abs
+import kotlin.math.absoluteValue
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.min
@@ -157,7 +158,6 @@ val blank: List<StopOnRoute> = emptyList()
 var currentRoute = GeneratedRoute(-1, "", blank, LocalTime.MIDNIGHT, LocalTime.MIDNIGHT)
 var listOfRoutes: List<GeneratedRoute> = emptyList()
 val snappedPointsList = mutableListOf<SnappedPoint>()
-
 
 /*
 Main Route Composable that hold the map and modular form below it.
@@ -277,9 +277,7 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
         }
 
         // this doesn't work but it does not make the app unusable
-        val hasRun = remember { mutableStateOf(false) }
         LaunchedEffect(key1 = option) {
-            if (!hasRun.value) {
                 // set the passed in params to the correct vars
                 when (option) {
                     "start" -> {
@@ -291,8 +289,6 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
                         selectedEndPlace.value = Place(URLDecoder.decode(name, "UTF-8"), lat, lon, "", "")
                     }
                 }
-                hasRun.value = true
-            }
         }
 
         // boolean to make sure the the starting and ending places arent blank
@@ -1019,6 +1015,28 @@ fun midpoint(lat1: Double, lon1: Double, lat2: Double, lon2: Double): StopOnRout
     )
 }
 
+fun getTimeUntil(startTime: LocalTime): String {
+    val now = LocalTime.now()
+
+    // Check if the startTime has already passed today
+    if (startTime.isBefore(now)) {
+        // Calculate duration to midnight plus duration from midnight to startTime
+        val durationToMidnight = Duration.between(now, LocalTime.MAX)
+        val durationFromMidnightToStartTime = Duration.between(LocalTime.MIN, startTime)
+        val totalDuration = durationToMidnight.plus(durationFromMidnightToStartTime)
+
+        val hours = totalDuration.toHours()
+        val minutes = totalDuration.toMinutes() % 60
+        return "${hours}h ${minutes}m"
+    } else {
+        // StartTime is still upcoming today
+        val duration = Duration.between(now, startTime)
+        val hours = duration.toHours()
+        val minutes = duration.toMinutes() % 60
+        return "${hours}h ${minutes}m"
+    }
+}
+
 // a custom alert dialog
 @Composable
 fun CustomAlert(size: Int, onDismissRequest: () -> Unit, onConfirmation: () -> Unit) {
@@ -1233,13 +1251,10 @@ fun ListItem(route: GeneratedRoute, showList: MutableState<Boolean>) {
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.padding(start = 3.dp)
             ) {
+                // leaves in
                 Text(text = "Leaves in: ", fontSize = 16.sp)
-                val duration = Duration.between(route.routeStartTime, LocalTime.now())
-                val hours = abs(duration.toHours())
-                val minutes = abs(duration.toMinutes() % 60)
-                val formattedTime = "${hours}h ${minutes}m"
                 Text(
-                    text = formattedTime,
+                    text = getTimeUntil(route.routeStartTime),
                     fontSize = 16.sp,
                     color = Blue,
                     fontWeight = FontWeight.Bold
@@ -1327,11 +1342,7 @@ fun SpecificRouteView(route: GeneratedRoute, showList: MutableState<Boolean>) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(text = "Leaves in: ", fontSize = 18.sp)
-            val duration = Duration.between(route.routeStartTime, LocalTime.now())
-            val hours = abs(duration.toHours())
-            val minutes = abs(duration.toMinutes() % 60)
-            val formattedTime = "${hours}h ${minutes}m"
-            Text(text = formattedTime, fontSize = 18.sp, color = Blue, fontWeight = FontWeight.Bold)
+            Text(text = getTimeUntil(route.routeStartTime), fontSize = 18.sp, color = Blue, fontWeight = FontWeight.Bold)
             // TODO: DAN verify is this the correct calculation? or close enough? thanks
             val distance = calculateSphericalDistance(
                 route.routeInfo.first().stopLat,
