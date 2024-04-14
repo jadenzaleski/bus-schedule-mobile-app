@@ -1,6 +1,5 @@
 package edu.miamioh.csi.capstone.busapp.views
 
-
 import android.Manifest
 import android.annotation.SuppressLint
 import android.app.TimePickerDialog
@@ -27,8 +26,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.DateRange
@@ -36,14 +38,15 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonColors
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.FabPosition
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextFieldDefaults
@@ -61,6 +64,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.FocusManager
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
@@ -73,6 +77,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
@@ -99,15 +104,18 @@ import edu.miamioh.csi.capstone.busapp.backend.RouteFinder
 import edu.miamioh.csi.capstone.busapp.backend.StopOnRoute
 import edu.miamioh.csi.capstone.busapp.ui.theme.Black
 import edu.miamioh.csi.capstone.busapp.ui.theme.Blue
+import edu.miamioh.csi.capstone.busapp.ui.theme.Gray200
 import edu.miamioh.csi.capstone.busapp.ui.theme.Gray300
 import edu.miamioh.csi.capstone.busapp.ui.theme.Gray700
 import edu.miamioh.csi.capstone.busapp.ui.theme.Green
 import edu.miamioh.csi.capstone.busapp.ui.theme.Light
 import edu.miamioh.csi.capstone.busapp.ui.theme.Red
+import edu.miamioh.csi.capstone.busapp.ui.theme.White
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.json.JSONException
 import org.json.JSONObject
 import java.io.BufferedReader
@@ -116,17 +124,17 @@ import java.io.InputStreamReader
 import java.net.URL
 import java.net.URLDecoder
 import java.text.SimpleDateFormat
+import java.time.Duration
 import java.time.LocalTime
 import java.util.Calendar
 import java.util.Locale
 import kotlin.math.atan2
 import kotlin.math.cos
-import kotlin.math.min
 import kotlin.math.sin
 import kotlin.math.sqrt
 
 
-// struct for places that we get from api
+// A Generic struct for places on the map
 data class Place(
     var name: String,
     var lat: Double,
@@ -135,29 +143,37 @@ data class Place(
     var iconURL: String
 )
 
+// a point that is used by googles api Snap to Roads
 data class SnappedPoint(val latitude: Double, val longitude: Double)
 
 // user location
 var userLon = 0.0
 var userLat = 0.0
 
+// global variables to store the route information
 val blank: List<StopOnRoute> = emptyList()
 var currentRoute = GeneratedRoute(-1, "", blank, LocalTime.MIDNIGHT, LocalTime.MIDNIGHT)
 var listOfRoutes: List<GeneratedRoute> = emptyList()
 val snappedPointsList = mutableListOf<SnappedPoint>()
 
+/*
+Main Route Composable that hold the map and modular form below it.
+This also gets passed in variables from the routes page.
+ */
 @Composable
 fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Double, lon: Double) {
+    val snappedPointsReady = remember { mutableStateOf(false) }
+    // before we can load the screen the app needs to have the updated data, so we check for that
     val isDataInitialized by viewModel.isDataInitialized.collectAsState()
+    // if the data is ready to go show everything
     if (isDataInitialized) {
         val context = LocalContext.current
-        // csv
+        // csv variables
         val stops = CSVHandler.getStops()
         val routes = CSVHandler.getRoutes()
         val trips = CSVHandler.getTrips()
         val stopTimes = CSVHandler.getStopTimes()
         val agencies = CSVHandler.getAgencies()
-
         // Check if location permission is granted
         var isLocationPermissionGranted by remember {
             mutableStateOf(
@@ -166,87 +182,56 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
                 ) == PackageManager.PERMISSION_GRANTED
             )
         }
-
-        val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
-
+        // A client for location services.
+        val fusedLocationClient =
+            remember { LocationServices.getFusedLocationProviderClient(context) }
+        // if the location is granted lets run our function to set the global variables right away
         if (isLocationPermissionGranted)
             getLastLocation(fusedLocationClient)
-
-        val currentZoomLevel by remember { mutableStateOf(9f) } // Initial zoom level
-
-
+        // run this when the page is launched,
+        // we are checking again for permissions
         LaunchedEffect(key1 = context) {
             isLocationPermissionGranted = ContextCompat.checkSelfPermission(
                 context, Manifest.permission.ACCESS_FINE_LOCATION
             ) == PackageManager.PERMISSION_GRANTED
         }
-
         /*
          * Sets up initial map settings for when user first loads up the Routes page upon opening app.
          * This includes:
          * The initial starting coordinates to center upon when the map is first loaded
          * The initial zoom level of the map
+         * The center of the map
          */
         val initialPosition = LatLng(39.2, 16.25) // Cosenza
         var mapCenter by remember { mutableStateOf(initialPosition) }
-
-
-        var cameraPositionState = rememberCameraPositionState {
+        val currentZoomLevel by remember { mutableStateOf(9f) }
+        // define where we want the camera to be
+        val cameraPositionState = rememberCameraPositionState {
             position = CameraPosition.fromLatLngZoom(initialPosition, currentZoomLevel)
         }
-        // Agencies
+        // Agencies, which we ended up not needing
         val defaultAgencyName = agencies.firstOrNull()?.agencyName ?: ""
         val selectedAgencyNames = remember { mutableStateListOf(defaultAgencyName) }
-        var filterAgenciesExpanded by remember { mutableStateOf(false) }
         // Prepare the mapping of stop IDs to agency IDs
         val stopIdToAgencyIdMap = remember {
             CSVHandler.getStopIdToAgencyIdMap(stops, routes, trips, stopTimes)
         }
         // List of selected agencies
-        var selectedAgencyIds = remember {
+        val selectedAgencyIds = remember {
             derivedStateOf {
                 agencies.filter { it.agencyName in selectedAgencyNames }.map { it.agencyID }.toSet()
             }
         }.value
-
-
-        // Max stops to show on the Map, this will be constant for routes. for now.
-        var maxStops by remember { mutableIntStateOf(150) }
-
-
         // Map interaction tracking
-        trackMapInteraction(cameraPositionState) { zoomLevel, center ->
+        trackMapInteraction(cameraPositionState) { _, center ->
             mapCenter = center
         }
-
-
-        // Dynamically calculate filtered stops based on current criteria
-        val filteredStops = remember(mapCenter, selectedAgencyIds, maxStops) {
-            stops.filter { stop ->
-                val agencyIdsForStop = stopIdToAgencyIdMap[stop.stopID]
-                //Log.i("All Agencies Associated with Stops", "" + stopIdToAgencyIdMap[stop.stopId])
-                //Log.i("All Agencies Selected by User", "" + selectedAgencyIds)
-                agencyIdsForStop != null && agencyIdsForStop.any { it in selectedAgencyIds } &&
-                        calculateSphericalDistance(
-                            mapCenter.latitude,
-                            mapCenter.longitude,
-                            stop.stopLat,
-                            stop.stopLon
-                        ) <= 60
-            }.sortedBy {
-                calculateSphericalDistance(
-                    mapCenter.latitude,
-                    mapCenter.longitude,
-                    it.stopLat,
-                    it.stopLon
-                )
-            }.take(min(maxStops, 150))
-        }
-
-
         // Allow for clearing of keyboard
         val focusManager = LocalFocusManager.current
-        var showForm = remember { mutableStateOf(true) }
+        // boolean for weather or not we show the form
+        val showForm = remember { mutableStateOf(true) }
+        // boolean for weather or not we show the list which is after the form
+        val showList = remember { mutableStateOf(false) }
 
         // +++ FORM +++
         // set initial date in form to current time
@@ -258,17 +243,29 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
                 ).format(Calendar.getInstance().time)
             )
         }
-        var startIsCurrentLocation = remember { mutableStateOf(false) }
-        var endIsCurrentLocation = remember { mutableStateOf(false) }
+        // has the user selected there location as the starting point?
+        val startIsCurrentLocation = remember { mutableStateOf(false) }
+        // has the user selected there location as the ending point?
+        val endIsCurrentLocation = remember { mutableStateOf(false) }
+        // start string to search for
         var startSearchString by rememberSaveable { mutableStateOf("") }
+        // end string to search for
         var endSearchString by rememberSaveable { mutableStateOf("") }
+        // boolean to show the dropdown for results of start
         var startSearchResultsExpanded by remember { mutableStateOf(false) }
+        // boolean to show the dropdown for results of end
         var endSearchResultsExpanded by remember { mutableStateOf(false) }
-        var searchResults = remember { mutableStateListOf(Place("", 0.0, 0.0, "", "")) }
-        var selectedStartPlace = remember { mutableStateOf(Place("", 0.0, 0.0, "", "")) }
+        // list of places that was found by the API call
+        val searchResults = remember { mutableStateListOf(Place("", 0.0, 0.0, "", "")) }
+        // our place we selected to start at
+        val selectedStartPlace = remember { mutableStateOf(Place("", 0.0, 0.0, "", "")) }
+        // our place we selected to end at
         var selectedEndPlace = remember { mutableStateOf(Place("", 0.0, 0.0, "", "")) }
+        // boolen to show an alert
         val openAlertDialog = remember { mutableStateOf(false) }
+        // what type of alert are we showing, for now there is only one type, 0
         var dialogType = remember { mutableIntStateOf(-1) }
+        // when openAlertDialog = true, show the custom alert
         when {
             openAlertDialog.value -> {
                 CustomAlert(dialogType.intValue,
@@ -276,80 +273,50 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
                     onDismissRequest = { openAlertDialog.value = false })
             }
         }
-        // set the passed in params to the correct vars
-        if (option == "start") {
-            startSearchString = URLDecoder.decode(name, "UTF-8")
-            selectedStartPlace.value = Place(URLDecoder.decode(name, "UTF-8"), lat, lon, "", "");
-        } else if (option == "end") {
-            endSearchString = URLDecoder.decode(name, "UTF-8")
-            selectedEndPlace.value = Place(URLDecoder.decode(name, "UTF-8"), lat, lon, "", "");
-        }
 
-
-        // Search function calls google API to find 20 results that match the users query.
-        @OptIn(DelicateCoroutinesApi::class)
-        fun googleSearch(query: String) {
-            GlobalScope.launch(Dispatchers.IO) {
-                try {
-                    val key = "&key=AIzaSyArxmzr9k53luII5xTXHT98rCV2dWEZU_E"
-                    val location = "&location=" + mapCenter.latitude + "%2C" + mapCenter.longitude
-                    val url =
-                        "https://maps.googleapis.com/maps/api/place/textsearch/json?query=" + query + location + key + "&rankby=distance"
-                    val connection = URL(url).openConnection()
-                    val reader = BufferedReader(InputStreamReader(connection.getInputStream()))
-                    val jsonData = StringBuilder()
-
-
-                    var line: String?
-                    while (reader.readLine().also { line = it } != null) {
-                        jsonData.append(line)
+        // this doesn't work but it does not make the app unusable
+        LaunchedEffect(key1 = option) {
+                // set the passed in params to the correct vars
+                when (option) {
+                    "start" -> {
+                        startSearchString = URLDecoder.decode(name, "UTF-8")
+                        selectedStartPlace.value = Place(URLDecoder.decode(name, "UTF-8"), lat, lon, "", "")
                     }
-                    reader.close()
-
-
-                    val jsonObject = JSONObject(jsonData.toString())
-
-
-                    // Log.i("JSON", jsonObject.toString())
-                    // and them to an array and go through the json pulling out the necessary values
-                    // then adding them to a list Compose can use.
-                    val resultsArray = jsonObject.getJSONArray("results")
-                    searchResults.clear()
-                    for (i in 0 until resultsArray.length()) {
-                        val resultObj = resultsArray.getJSONObject(i)
-                        val name = resultObj.getString("name")
-                        val formattedAddress = resultObj.getString("formatted_address")
-                        val iconURL = resultObj.getString("icon")
-                        val geometryObj = resultObj.getJSONObject("geometry")
-                        val locationObj = geometryObj.getJSONObject("location")
-                        val lat = locationObj.getDouble("lat")
-                        val lon = locationObj.getDouble("lng")
-//                    Log.i("PlaceInfo", "Name: $name, Address: $formattedAddress, Latitude: $lat, Longitude: $lon, Icon: $iconURL")
-                        searchResults.add(Place(name, lat, lon, formattedAddress, iconURL))
-                        // sort by distance from the user
-                        searchResults.sortBy { x ->
-                            calculateSphericalDistance(userLat, userLon, x.lat, x.lon)
-                        }
-
-
+                    "end" -> {
+                        endSearchString = URLDecoder.decode(name, "UTF-8")
+                        selectedEndPlace.value = Place(URLDecoder.decode(name, "UTF-8"), lat, lon, "", "")
                     }
-                } catch (e: IOException) {
-                    Log.i("Error", "Error occurred: ${e.message}")
-                } catch (e: JSONException) {
-                    Log.i("Error", "Error occurred while parsing JSON: ${e.message}")
                 }
-            }
         }
 
+        // boolean to make sure the the starting and ending places arent blank
+        val valid =
+            (startIsCurrentLocation.value || (selectedStartPlace.value.lat > 0 && selectedStartPlace.value.lon > 0))
+                    &&
+                    (endIsCurrentLocation.value || (selectedEndPlace.value.lat > 0 && selectedEndPlace.value.lon > 0))
+                    &&
+                    selectedAgencyIds.isNotEmpty()
+
+
+        // this function take in the points on the route and does its best to return a list
+// of points that we can draw a polyline with.
         @OptIn(DelicateCoroutinesApi::class)
         fun googleSnapToRoads(places: List<StopOnRoute>) {
+            // clear the list
             snappedPointsList.clear()
-            GlobalScope.launch(Dispatchers.IO) {
-                val apiKey = "AIzaSyArxmzr9k53luII5xTXHT98rCV2dWEZU_E"
-                val maxPoints = 100
-                val maxDistance = 0.2
+            snappedPointsReady.value = false
 
+            GlobalScope.launch(Dispatchers.IO) {
+                // TODO: AYO api key also here
+                val apiKey = "AIzaSyArxmzr9k53luII5xTXHT98rCV2dWEZU_E"
+                // max points allowed for the api
+                val maxPoints = 100
+                // maximum distance between each point
+                val maxDistance = 0.2
                 // Step 1: Pre-process places to insert midpoints where necessary
+                // This adds midpoints to a list when the distance between two points is greater then the
+                // defined max distance. we have to do this because google does not snap well when points are
+                // farther then 0.3 km.
                 val processedPlaces = mutableListOf<StopOnRoute>()
                 for (i in places.indices) {
                     processedPlaces.add(places[i])
@@ -382,6 +349,8 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
                 }
 
                 // Step 2: Divide the processed list into batches and process each batch
+                // for each batch of maxpoints we call Snap to Roads API and add all the return coords to a list
+                // that list will then be used by the Polyline in the GoogleMaps Composable to create the route line.
                 processedPlaces.chunked(maxPoints).forEach { batch ->
                     try {
                         val path = batch.joinToString("|") { "${it.stopLat},${it.stopLon}" }
@@ -403,6 +372,60 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
                         e.printStackTrace()
                     }
                 }
+
+                withContext(Dispatchers.Main) {
+                    snappedPointsReady.value = true  // Set ready state to true after loading
+                }
+            }
+        }
+
+        // Search function calls google API to find 20 results that match the users query.
+        @OptIn(DelicateCoroutinesApi::class)
+        fun googleSearch(query: String) {
+            GlobalScope.launch(Dispatchers.IO) {
+                try {
+                    //TODO: AYO we need to move the key out of this file, should be in local.properties
+                    val key = "&key=AIzaSyArxmzr9k53luII5xTXHT98rCV2dWEZU_E"
+                    // Search from the center of the map
+                    val location = "&location=" + mapCenter.latitude + "%2C" + mapCenter.longitude
+                    val url =
+                        "https://maps.googleapis.com/maps/api/place/textsearch/json?query=" + query + location + key + "&rankby=distance"
+                    // attempt to open a connection
+                    val connection = URL(url).openConnection()
+                    // read it all and put it into json
+                    val reader = BufferedReader(InputStreamReader(connection.getInputStream()))
+                    val jsonData = StringBuilder()
+                    var line: String?
+                    while (reader.readLine().also { line = it } != null) {
+                        jsonData.append(line)
+                    }
+                    reader.close()
+                    val jsonObject = JSONObject(jsonData.toString())
+                    // and them to an array and go through the json pulling out the necessary values
+                    // then adding them to a list Compose can use.
+                    val resultsArray = jsonObject.getJSONArray("results")
+                    // before we write to the array we must clear it from the previous time
+                    searchResults.clear()
+                    for (i in 0 until resultsArray.length()) {
+                        val resultObj = resultsArray.getJSONObject(i)
+                        val name = resultObj.getString("name")
+                        val formattedAddress = resultObj.getString("formatted_address")
+                        val iconURL = resultObj.getString("icon")
+                        val geometryObj = resultObj.getJSONObject("geometry")
+                        val locationObj = geometryObj.getJSONObject("location")
+                        val lat = locationObj.getDouble("lat")
+                        val lon = locationObj.getDouble("lng")
+                        searchResults.add(Place(name, lat, lon, formattedAddress, iconURL))
+                        // sort by distance from the user
+                        searchResults.sortBy { x ->
+                            calculateSphericalDistance(userLat, userLon, x.lat, x.lon)
+                        }
+                    }
+                } catch (e: IOException) {
+                    Log.i("Error", "Error occurred: ${e.message}")
+                } catch (e: JSONException) {
+                    Log.i("Error", "Error occurred while parsing JSON: ${e.message}")
+                }
             }
         }
 
@@ -414,10 +437,9 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
                     focusManager.clearFocus()
                 })
             }) {
-
-
+            // main google map composable
             GoogleMap(
-                modifier = Modifier.fillMaxHeight(if (showForm.value) 0.6f else 0.75f),
+                modifier = Modifier.fillMaxHeight(if (showForm.value) 0.72f else if (showList.value) 0.55f else 0.6f),
                 cameraPositionState = cameraPositionState,
                 uiSettings = MapUiSettings(
                     myLocationButtonEnabled = isLocationPermissionGranted,
@@ -427,48 +449,17 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
                     isMyLocationEnabled = isLocationPermissionGranted,
                     minZoomPreference = 5.0f
                 )
-            )
-
-            {
-                if (showForm.value) {
-                    filteredStops.forEach { stop ->
-                        // Using the custom MarkerInfoWindowContent instead of the standard Marker
-                        MarkerInfoWindowContent(
-                            state = MarkerState(position = LatLng(stop.stopLat, stop.stopLon))
-                        ) {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                modifier = Modifier.fillMaxWidth(0.8f)
-                            ) {
-                                Text(
-                                    text = stop.stopName,
-                                    modifier = Modifier.padding(top = 5.dp),
-                                    style = TextStyle(
-                                        fontSize = 16.sp,
-                                        fontWeight = FontWeight.Bold,
-                                    )
-                                )
-                                HorizontalDivider(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(vertical = 5.dp)
-                                )
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text(text = "Lat: ${stop.stopLat}")
-                                    Spacer(modifier = Modifier.width(5.dp)) // Replaced VerticalDivider with Spacer for simplicity
-                                    Text(text = "Lon: ${stop.stopLon}")
-                                }
-                                Text(text = "Stop ID: ${stop.stopID}")
-                            }
-                        }
-                    }
-                } else {
+            ) {
+                // if the user has tapped through the form and list draw a line of points created
+                // by Snap to Roads to create the line of the specific route.
+                if (!showForm.value && !showList.value && snappedPointsReady.value) {
                     Polyline(
                         points = snappedPointsList.map { LatLng(it.latitude, it.longitude) },
                         width = 15f,
                         color = Blue
                     )
                     Log.i("SNAPPED", "Snapped a total of ${snappedPointsList.size} points.")
+                    // for all stops plot a marker
                     for (i in currentRoute.routeInfo.indices) {
                         val stop = currentRoute.routeInfo[i]
                         if (i == 0 || (i == currentRoute.routeInfo.size - 1)) {
@@ -534,7 +525,7 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
                             )
                         }
                     }
-
+                    // next lets move the camera to the starting stop
                     LaunchedEffect(key1 = snappedPointsList) {
                         cameraPositionState.animate(
                             CameraUpdateFactory.newCameraPosition(
@@ -552,7 +543,7 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
                     }
                 }
             }
-
+            // we start by showing the form for the user to enter
             if (showForm.value) {
                 // Column to hold the Form.
                 Column(
@@ -562,76 +553,6 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
                         .background(Light), verticalArrangement = Arrangement.SpaceEvenly
                 ) {
 
-
-                    // Row that holds the agencies button and time button
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        OutlinedButton(
-                            onClick = {
-                                filterAgenciesExpanded = !filterAgenciesExpanded
-                                focusManager.clearFocus()
-                            },
-                            colors = ButtonColors(
-                                containerColor = Color.Transparent,
-                                contentColor = Green,
-                                disabledContainerColor = Color.Gray,
-                                disabledContentColor = Color.Gray
-                            ),
-                            border = BorderStroke(1.dp, Green),
-                            modifier = Modifier
-                                .height(50.dp),
-                            shape = RoundedCornerShape(20)
-                        ) {
-                            Icon(
-                                painterResource(id = R.drawable.baseline_filter_list_24),
-                                contentDescription = null,
-                                modifier = Modifier.padding(end = 6.dp)
-                            )
-                            Text(text = "${selectedAgencyNames.size}")
-                        }
-
-
-                        OutlinedButton(
-                            colors = ButtonColors(
-                                containerColor = Color.Transparent,
-                                contentColor = Green,
-                                disabledContainerColor = Color.Gray,
-                                disabledContentColor = Color.Gray
-                            ),
-                            onClick = {
-                                val calendar = Calendar.getInstance()
-                                TimePickerDialog(
-                                    context, { _, hour, minute ->
-                                        val time = Calendar.getInstance().apply {
-                                            set(Calendar.HOUR_OF_DAY, hour)
-                                            set(Calendar.MINUTE, minute)
-                                        }
-                                        selectedTime = SimpleDateFormat(
-                                            "HH:mm",
-                                            Locale.getDefault()
-                                        ).format(time.time)
-                                    },
-                                    calendar.get(Calendar.HOUR_OF_DAY),
-                                    calendar.get(Calendar.MINUTE),
-                                    true
-                                ).show()
-                            },
-                            border = BorderStroke(1.dp, Green),
-                            modifier = Modifier
-                                .height(50.dp),
-                            shape = RoundedCornerShape(20)
-                        ) {
-                            Icon(
-                                Icons.Filled.DateRange,
-                                contentDescription = null,
-                                modifier = Modifier.padding(end = 6.dp)
-                            )
-                            Text(text = selectedTime)
-                        }
-                    }
                     // Row that holds the FROM: location button and text-field
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -654,6 +575,7 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
                             },
                             onLocationDisabled = {
                                 // Define what happens when location is disabled.
+                                // nothing
                             }
                         )
                         // search box for start
@@ -721,9 +643,8 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
                                         modifier = Modifier
                                     )
                                 }
-                            },
+                            }
                         )
-
 
                         //Dropdown menu for start search results
                         DropdownMenu(
@@ -733,10 +654,9 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
                             },
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .fillMaxHeight(0.5f),
-
-
-                            ) {
+                                .fillMaxHeight(0.5f)
+                        ) {
+                            // for all the search results
                             searchResults.forEach { result ->
                                 DropdownMenuItem(
                                     modifier = Modifier.padding(vertical = 8.dp),
@@ -776,10 +696,10 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
                                                 setToSaturation(0f) // grayscale
                                             })
                                         )
-                                    })
+                                    }
+                                )
                             }
                         }
-
 
                     }
                     // Row that holds the TO: location button and text-field
@@ -805,6 +725,7 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
                             },
                             onLocationDisabled = {
                                 // Define what happens when location is disabled.
+                                // nothing
                             }
                         )
                         // search text box
@@ -874,7 +795,7 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
                         )
 
 
-                        //Dropdown menu for search Results
+                        //Dropdown menu for end search Results
                         DropdownMenu(
                             expanded = endSearchResultsExpanded,
                             onDismissRequest = {
@@ -882,10 +803,9 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
                             },
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .fillMaxHeight(0.5f),
-
-
+                                .fillMaxHeight(0.5f)
                             ) {
+                            // for all the search results
                             searchResults.forEach { result ->
                                 DropdownMenuItem(
                                     modifier = Modifier.padding(vertical = 8.dp),
@@ -925,218 +845,125 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
                                                 setToSaturation(0f) // grayscale
                                             })
                                         )
-                                    })
+                                    }
+                                )
                             }
                         }
                     }
-
-
-                    // make sure at least one thing from each row is checked and one agency
-                    var valid =
-                        (startIsCurrentLocation.value || (selectedStartPlace.value.lat > 0 && selectedStartPlace.value.lon > 0))
-                                &&
-                                (endIsCurrentLocation.value || (selectedEndPlace.value.lat > 0 && selectedEndPlace.value.lon > 0))
-                                &&
-                                selectedAgencyIds.isNotEmpty()
-
-
-                    // EXECUTE button
-                    OutlinedButton(
-                        enabled = if (valid) true else false,
-                        onClick = {
-                            // update last location if
-                            if (isLocationPermissionGranted)
-                                getLastLocation(fusedLocationClient);
-                            // get the start and stop place object if its current location
-                            val start: Place = if (startIsCurrentLocation.value) {
-                                Place("Current Location", userLat, userLon, "", "")
-                            } else {
-                                selectedStartPlace.value
-                            }
-
-
-                            val stop: Place = if (endIsCurrentLocation.value) {
-                                Place("Current Location", userLat, userLon, "", "")
-                            } else {
-                                selectedEndPlace.value
-                            }
-
-                            // CALCULATE ROUTE!
-                            calcRoute(
-                                start = start,
-                                end = stop,
-                                time = selectedTime,
-                                allowedAgencies = selectedAgencyIds
-                            )
-                            if (listOfRoutes.isEmpty() || currentRoute.routeInfo.isEmpty()) {
-                                // no route
-                                Log.e("ROUTE", "Attempt to display route failed because the routeInfo is empty or the listOfRoutes is empty.")
-                                dialogType.intValue = 0
-                                openAlertDialog.value = true
-                            } else {
-                                // valid
-                                googleSnapToRoads(currentRoute.routeInfo)
-                                showForm.value = !showForm.value
-                            }
-
-
-                        },
-                        colors = ButtonColors(
-                            containerColor = Color.Transparent,
-                            contentColor = Green,
-                            disabledContainerColor = Gray300,
-                            disabledContentColor = Color.Gray
-                        ),
-                        border = BorderStroke(2.dp, if (valid) Green else Color.Gray),
-                        modifier = Modifier
-                            .height(50.dp)
-                            .fillMaxWidth(),
-                        shape = RoundedCornerShape(20)
+                    // this row hold the time selector and GO button
+                    Row(
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        modifier = Modifier.fillMaxWidth(),
                     ) {
-                        Text(text = "Go")
+                        // time selector
+                        OutlinedButton(
+                            colors = ButtonColors(
+                                containerColor = Color.Transparent,
+                                contentColor = Green,
+                                disabledContainerColor = Color.Gray,
+                                disabledContentColor = Color.Gray
+                            ),
+                            onClick = {
+                                val calendar = Calendar.getInstance()
+                                TimePickerDialog(
+                                    context, { _, hour, minute ->
+                                        val time = Calendar.getInstance().apply {
+                                            set(Calendar.HOUR_OF_DAY, hour)
+                                            set(Calendar.MINUTE, minute)
+                                        }
+                                        selectedTime = SimpleDateFormat(
+                                            "HH:mm",
+                                            Locale.getDefault()
+                                        ).format(time.time)
+                                    },
+                                    calendar.get(Calendar.HOUR_OF_DAY),
+                                    calendar.get(Calendar.MINUTE),
+                                    true
+                                ).show()
+                            },
+                            border = BorderStroke(2.dp, Green),
+                            modifier = Modifier
+                                .height(50.dp)
+                                .width(120.dp),
+                            shape = RoundedCornerShape(20)
+                        ) {
+                            Icon(
+                                Icons.Filled.DateRange,
+                                contentDescription = null,
+                                modifier = Modifier.padding(end = 6.dp)
+                            )
+                            Text(text = selectedTime)
+                        }
+
+                        // GO button
+                        OutlinedButton(
+                            enabled = if (valid) true else false,
+                            onClick = {
+                                // update last location if
+                                if (isLocationPermissionGranted)
+                                    getLastLocation(fusedLocationClient);
+                                // get the start and stop place object if its current location
+                                val start: Place = if (startIsCurrentLocation.value) {
+                                    Place("Current Location", userLat, userLon, "", "")
+                                } else {
+                                    selectedStartPlace.value
+                                }
+                                val stop: Place = if (endIsCurrentLocation.value) {
+                                    Place("Current Location", userLat, userLon, "", "")
+                                } else {
+                                    selectedEndPlace.value
+                                }
+
+                                // CALCULATE ROUTE!
+                                calcRoute(
+                                    start = start,
+                                    end = stop,
+                                    time = selectedTime,
+                                    allowedAgencies = selectedAgencyIds
+                                )
+                                if (listOfRoutes.isEmpty()) {
+                                    // no route
+                                    Log.e(
+                                        "ROUTE",
+                                        "Attempt to display route failed because the routeInfo is empty or the listOfRoutes is empty."
+                                    )
+                                    dialogType.intValue = 0
+                                    openAlertDialog.value = true
+                                } else {
+                                    // valid route
+                                    showForm.value = false
+                                    showList.value = true
+                                }
+                            },
+                            colors = ButtonColors(
+                                containerColor = Color.Transparent,
+                                contentColor = Green,
+                                disabledContainerColor = Gray300,
+                                disabledContentColor = Color.Gray
+                            ),
+                            border = BorderStroke(2.dp, if (valid) Green else Color.Gray),
+                            modifier = Modifier
+                                .height(50.dp)
+                                .fillMaxWidth()
+                                .padding(start = 10.dp),
+                            shape = RoundedCornerShape(20)
+                        ) {
+                            Text(text = "Go")
+                        }
                     }
                 }
+            } else if (showList.value) {
+                // show the list of routes in this custom composable
+                RoutesListView(showForm, showList, snappedPointsReady, { info -> googleSnapToRoads(info) })
             } else {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 15.dp)
-                        .background(Light), verticalArrangement = Arrangement.SpaceEvenly
-                ) {
-                    Text(
-                        text = "${currentRoute.routeInfo.size} Stops on route",
-                        style = TextStyle(
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-
-                            )
-                    )
-
-                    Row {
-                        Text(
-                            text = "Get On: ", style = TextStyle(
-                                fontSize = 18.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Green
-                            )
-                        )
-                        Text(
-                            text = currentRoute.routeInfo.first().stopName, style = TextStyle(
-                                fontSize = 18.sp,
-                                fontStyle = FontStyle.Italic
-                            )
-                        )
-                    }
-
-                    Row {
-                        Text(
-                            text = "Get Off: ", style = TextStyle(
-                                fontSize = 18.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Red
-                            )
-                        )
-                        Text(
-                            text = currentRoute.routeInfo.last().stopName, style = TextStyle(
-                                fontSize = 18.sp,
-                                fontStyle = FontStyle.Italic
-                            )
-                        )
-                    }
-                    if (currentRoute.routeInfo.size >= 3) {
-                        Text(
-                            text = "(After ${currentRoute.routeInfo[currentRoute.routeInfo.size - 2].stopName})",
-                            style = TextStyle(
-                                fontSize = 18.sp,
-                                fontStyle = FontStyle.Italic,
-                                color = Gray700
-                            )
-                        )
-                    }
-                    OutlinedButton(
-                        onClick = {
-                            // get the start and stop place object if its current location
-                            val start: Place = if (startIsCurrentLocation.value) {
-                                Place("Current Location", userLat, userLon, "", "")
-                            } else {
-                                selectedStartPlace.value
-                            }
-
-
-                            val stop: Place = if (startIsCurrentLocation.value) {
-                                Place("Current Location", userLat, userLon, "", "")
-                            } else {
-                                selectedEndPlace.value
-                            }
-                            showForm.value = !showForm.value
-
-                        },
-                        colors = ButtonColors(
-                            containerColor = Color.Transparent,
-                            contentColor = Red,
-                            disabledContainerColor = Gray300,
-                            disabledContentColor = Color.Gray
-                        ),
-                        border = BorderStroke(2.dp, Red),
-                        modifier = Modifier
-                            .height(50.dp)
-                            .fillMaxWidth(),
-                        shape = RoundedCornerShape(20)
-                    ) {
-                        Text(text = "Cancel")
-                    }
-                }
-            }
-        }
-
-
-        // Dropdown menu for list of agencies
-        DropdownMenu(
-            expanded = filterAgenciesExpanded,
-            onDismissRequest = { filterAgenciesExpanded = !filterAgenciesExpanded },
-            modifier = Modifier.fillMaxWidth(0.65F),
-
-
-            ) {
-            // clear all button
-            DropdownMenuItem(
-                text = { Text("Clear All") },
-                onClick = {
-                    selectedAgencyNames.clear()
-                },
-                leadingIcon = {
-                    Icon(Icons.Filled.Clear, contentDescription = "Clear")
-                }
-            )
-
-
-            agencies.forEach { agency ->
-                val isSelected = agency.agencyName in selectedAgencyNames
-                DropdownMenuItem(
-                    text = { Text(agency.agencyName) },
-                    onClick = {
-                        if (isSelected) {
-                            selectedAgencyNames.remove(agency.agencyName)
-                        } else {
-                            selectedAgencyNames.add(agency.agencyName)
-                        }
-
-
-                    },
-                    leadingIcon = {
-                        Checkbox(
-                            checked = isSelected,
-                            onCheckedChange = null, // Interaction handled by the item's onClick
-                            colors = CheckboxDefaults.colors(checkedColor = Green)
-                        )
-                    }
-                )
+                // if both of the booleans are false we show the detailed view of the current route
+                SpecificRouteView(currentRoute, showList)
             }
         }
     }
 }
 
-
+// this function gets the last location and saves it to the two global vars
 @SuppressLint("MissingPermission")
 private fun getLastLocation(fusedLocationClient: FusedLocationProviderClient) {
     fusedLocationClient.lastLocation
@@ -1160,12 +987,8 @@ fun calcRoute(start: Place, end: Place, time: String, allowedAgencies: Set<Int>)
             "Stop: ${end.name}, Lat: ${end.lat}, Lon: ${end.lon}, " +
             "Time: $time, Allowed Agencies: $allowedAgencies"
     Log.i("calcRoute", logMessage)
-
-    //currentRoute = RouteGenerator.routeWorkhorse(start, end, time, allowedAgencies).toMutableList()
+    // create the list of routes generate by the route workhorse
     listOfRoutes = RouteFinder.routeWorkhorse(start, end, time, allowedAgencies)
-    if (listOfRoutes.isNotEmpty())
-        currentRoute = RouteFinder.routeWorkhorse(start, end, time, allowedAgencies).first()
-
 }
 
 // Function to calculate the midpoint between two points
@@ -1184,9 +1007,40 @@ fun midpoint(lat1: Double, lon1: Double, lat2: Double, lon2: Double): StopOnRout
     val lonMid = rlon1 + atan2(by, cos(rlat1) + bx)
 
     // Convert back to degrees
-    return StopOnRoute(-1, "DUMMY", Math.toDegrees(latMid), Math.toDegrees(lonMid), LocalTime.MIDNIGHT, LocalTime.MIDNIGHT, -1)
+    return StopOnRoute(
+        -1,
+        "DUMMY",
+        Math.toDegrees(latMid),
+        Math.toDegrees(lonMid),
+        LocalTime.MIDNIGHT,
+        LocalTime.MIDNIGHT,
+        -1
+    )
 }
 
+fun getTimeUntil(startTime: LocalTime): String {
+    val now = LocalTime.now()
+
+    // Check if the startTime has already passed today
+    if (startTime.isBefore(now)) {
+        // Calculate duration to midnight plus duration from midnight to startTime
+        val durationToMidnight = Duration.between(now, LocalTime.MAX)
+        val durationFromMidnightToStartTime = Duration.between(LocalTime.MIN, startTime)
+        val totalDuration = durationToMidnight.plus(durationFromMidnightToStartTime)
+
+        val hours = totalDuration.toHours()
+        val minutes = totalDuration.toMinutes() % 60
+        return "${hours}h ${minutes}m"
+    } else {
+        // StartTime is still upcoming today
+        val duration = Duration.between(now, startTime)
+        val hours = duration.toHours()
+        val minutes = duration.toMinutes() % 60
+        return "${hours}h ${minutes}m"
+    }
+}
+
+// a custom alert dialog
 @Composable
 fun CustomAlert(size: Int, onDismissRequest: () -> Unit, onConfirmation: () -> Unit) {
     // Could add more conditions to this composable to make it easier to call more dialogs
@@ -1203,14 +1057,19 @@ fun CustomAlert(size: Int, onDismissRequest: () -> Unit, onConfirmation: () -> U
             dismissButton = {},
             icon = { Icon(Icons.Default.Clear, "", tint = Red) },
             title = { Text(text = "No Available Route") },
-            text = { Text(text = "A route can not be generated due to one of the following:\n\n" +
-                    "- Your start and end points are the same.\n" +
-                    "- There is no route for your desired starting and ending point.\n" +
-                    "- It is faster to walk to your destination.") },
+            text = {
+                Text(
+                    text = "A route can not be generated due to one of the following:\n\n" +
+                            "- Your start and end points are the same.\n" +
+                            "- There is no upcoming route for your desired starting and ending point.\n" +
+                            "- It is faster to walk to your destination."
+                )
+            },
         )
     }
 }
 
+// custom button for the current location buttons on the form
 @Composable
 fun CurrentLocationButton(
     isCurrentLocation: MutableState<Boolean>,
@@ -1220,7 +1079,6 @@ fun CurrentLocationButton(
     onLocationDisabled: () -> Unit  // Callback when location is deselected
 ) {
     var showPermissionDeniedDialog by remember { mutableStateOf(false) }
-
     // Permission launcher
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -1233,7 +1091,6 @@ fun CurrentLocationButton(
             showPermissionDeniedDialog = true
         }
     }
-
     // Check permission status
     val isLocationPermissionGranted = remember {
         ContextCompat.checkSelfPermission(
@@ -1294,6 +1151,286 @@ fun CurrentLocationButton(
                 }
             }
         )
+    }
+}
+
+// The list view of routes after you tap go
+@Composable
+fun RoutesListView(
+    showForm: MutableState<Boolean>,
+    showList: MutableState<Boolean>,
+    snappedPointsReady: MutableState<Boolean>,
+    googleSnapToRoads: (List<StopOnRoute>) -> Unit
+) {
+    Log.i("LV", "${listOfRoutes.size}" + " routes to display.")
+    // Scaffold is an easy way to add a header and floating button
+    Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        topBar = {
+            // header
+            Column(verticalArrangement = Arrangement.Center) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        modifier = Modifier
+                            .height(28.dp)
+                            .fillMaxWidth()
+                            .background(Gray200),
+                        textAlign = TextAlign.Center,
+                        text = " ${listOfRoutes.size} possible route(s)",
+                        style = TextStyle(
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontStyle = FontStyle.Italic,
+                        )
+                    )
+                }
+            }
+        },
+        floatingActionButton = {
+            // close button
+            FloatingActionButton(
+                modifier = Modifier.padding(0.dp),
+                shape = CircleShape,
+                contentColor = Red,
+                containerColor = Gray200,
+                onClick = {
+                    showForm.value = true
+                    showList.value = false
+                }) {
+                Icon(Icons.Default.Clear, contentDescription = "Clear")
+            }
+        },
+        // Change this to move the X around
+        floatingActionButtonPosition = FabPosition.Center
+    ) { innerPadding ->
+        // our list of possible routes to tap on
+        Column(
+            modifier = Modifier
+                .verticalScroll(rememberScrollState())
+                .fillMaxHeight(0.8f)
+                .padding(innerPadding)
+        ) {
+            listOfRoutes.forEach { route ->
+                ListItem(
+                    route = route,
+                    showList = showList,
+                    snappedPointsReady = snappedPointsReady,
+                    googleSnapToRoads = { routeInfo -> googleSnapToRoads(routeInfo) }
+                )
+                HorizontalDivider(
+                    thickness = 3.dp,
+                    modifier = Modifier.padding(vertical = 3.dp),
+                    color = Gray200
+                )
+            }
+        }
+    }
+}
+
+// Each of the Routes in the List has a ListItem
+// this is all just simple text formatting and composable layouts.
+@Composable
+fun ListItem(
+    route: GeneratedRoute,
+    showList: MutableState<Boolean>,
+    snappedPointsReady: MutableState<Boolean>,
+    googleSnapToRoads: (List<StopOnRoute>) -> Unit  // passing the function as a parameter
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(end = 20.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .padding(3.dp)
+                .background(Light),
+            verticalArrangement = Arrangement.SpaceEvenly
+        ) {
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    painter = painterResource(id = R.drawable.baseline_directions_bus_24),
+                    contentDescription = "Bus icon"
+                )
+                Text(
+                    text = route.routeShortName + ", ${route.routeStartTime}" + ", ${route.routeInfo.size} stop(s)",
+                    style = TextStyle(
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+
+                        )
+                )
+            }
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(start = 3.dp)
+            ) {
+                // leaves in
+                Text(text = "Leaves in: ", fontSize = 16.sp)
+                Text(
+                    text = getTimeUntil(route.routeStartTime),
+                    fontSize = 16.sp,
+                    color = Blue,
+                    fontWeight = FontWeight.Bold
+                )
+                // TODO: DAN verify is this the correct calculation? or close enough?
+                val distance = calculateSphericalDistance(
+                    route.routeInfo.first().stopLat,
+                    route.routeInfo.first().stopLon,
+                    userLat,
+                    userLon
+                )
+                Text(text = ", (${String.format("%.3f", distance)}km away)", fontSize = 16.sp)
+            }
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(start = 3.dp)
+            ) {
+                val duration = Duration.between(route.routeStartTime, route.routeEndTime)
+                val hours = duration.toHours()
+                val minutes = duration.toMinutes() % 60
+                val formattedTime = "${hours}h ${minutes}m"
+                Text(
+                    text = formattedTime,
+                    fontSize = 16.sp,
+                    color = Blue,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(" ride, ${route.routeStartTime} - ${route.routeEndTime}", fontSize = 16.sp)
+            }
+        }
+        // green go button
+        OutlinedButton(
+            onClick = {
+                currentRoute = route
+                showList.value = false
+                snappedPointsReady.value = false
+                googleSnapToRoads(route.routeInfo)
+
+            },
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Green,
+                contentColor = White
+            ),
+            border = BorderStroke(1.dp, Green),
+            modifier = Modifier
+                .height(60.dp),
+            shape = RoundedCornerShape(20)
+        ) {
+            Text(text = "GO")
+        }
+    }
+}
+
+// when the user taps go this compoasble shows,
+// again, just simple layouts and text formatting
+@Composable
+fun SpecificRouteView(route: GeneratedRoute, showList: MutableState<Boolean>) {
+
+    Column(
+        modifier = Modifier
+            .padding(5.dp)
+            .fillMaxSize(),
+        verticalArrangement = Arrangement.SpaceEvenly
+    ) {
+
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                modifier = Modifier.scale(1.25f),
+                painter = painterResource(id = R.drawable.baseline_directions_bus_24),
+                contentDescription = "Bus icon"
+            )
+            Text(
+                text = route.routeShortName + ", ${route.routeStartTime}" + ", ${route.routeInfo.size} stop(s)",
+                style = TextStyle(
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.Bold,
+
+                    )
+            )
+        }
+        HorizontalDivider(
+            thickness = 3.dp,
+            modifier = Modifier.padding(vertical = 3.dp),
+            color = Gray200
+        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(text = "Leaves in: ", fontSize = 18.sp)
+            Text(text = getTimeUntil(route.routeStartTime), fontSize = 18.sp, color = Blue, fontWeight = FontWeight.Bold)
+            // TODO: DAN verify is this the correct calculation? or close enough? thanks
+            val distance = calculateSphericalDistance(
+                route.routeInfo.first().stopLat,
+                route.routeInfo.first().stopLon,
+                userLat,
+                userLon
+            )
+            Text(text = ", (${String.format("%.3f", distance)}km away)", fontSize = 18.sp)
+        }
+
+        Row {
+            Text(text = "Start: ", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Green)
+            Text(
+                text = route.routeInfo.first().stopName,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+
+        Row {
+            val duration = Duration.between(route.routeStartTime, route.routeEndTime)
+            val hours = duration.toHours()
+            val minutes = duration.toMinutes() % 60
+            val formattedTime = "${hours}h ${minutes}m"
+            Text(text = "Ride for ", fontSize = 18.sp)
+            Text(text = formattedTime, fontSize = 18.sp, color = Blue, fontWeight = FontWeight.Bold)
+            Text(text = ", (${route.routeStartTime} - ${route.routeEndTime})", fontSize = 18.sp)
+        }
+
+        Row {
+            Text(text = "End: ", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Red)
+            Text(
+                text = route.routeInfo.last().stopName,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+        Row {
+            if (route.routeInfo.size >= 3) {
+                Text(
+                    text = "(After ${route.routeInfo[route.routeInfo.size - 2].stopName})",
+
+                    fontSize = 18.sp,
+                    fontStyle = FontStyle.Italic,
+                    color = Gray700
+
+                )
+            }
+        }
+        // cancel button
+        OutlinedButton(
+            onClick = {
+                showList.value = !showList.value
+            },
+            colors = ButtonColors(
+                containerColor = Color.Transparent,
+                contentColor = Red,
+                disabledContainerColor = Gray300,
+                disabledContentColor = Color.Gray
+            ),
+            border = BorderStroke(2.dp, Red),
+            modifier = Modifier
+                .height(50.dp)
+                .fillMaxWidth(),
+            shape = RoundedCornerShape(20)
+        ) {
+            Text(text = "Cancel")
+        }
     }
 }
 
