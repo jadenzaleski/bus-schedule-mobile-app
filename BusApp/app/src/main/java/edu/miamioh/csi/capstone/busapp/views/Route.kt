@@ -88,7 +88,6 @@ import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
-import com.google.maps.android.compose.Circle
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.MapProperties
 import com.google.maps.android.compose.MapUiSettings
@@ -116,6 +115,7 @@ import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.json.JSONException
 import org.json.JSONObject
 import java.io.BufferedReader
@@ -128,11 +128,8 @@ import java.time.Duration
 import java.time.LocalTime
 import java.util.Calendar
 import java.util.Locale
-import kotlin.math.abs
-import kotlin.math.absoluteValue
 import kotlin.math.atan2
 import kotlin.math.cos
-import kotlin.math.min
 import kotlin.math.sin
 import kotlin.math.sqrt
 
@@ -165,6 +162,7 @@ This also gets passed in variables from the routes page.
  */
 @Composable
 fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Double, lon: Double) {
+    val snappedPointsReady = remember { mutableStateOf(false) }
     // before we can load the screen the app needs to have the updated data, so we check for that
     val isDataInitialized by viewModel.isDataInitialized.collectAsState()
     // if the data is ready to go show everything
@@ -306,6 +304,8 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
         fun googleSnapToRoads(places: List<StopOnRoute>) {
             // clear the list
             snappedPointsList.clear()
+            snappedPointsReady.value = false
+
             GlobalScope.launch(Dispatchers.IO) {
                 // TODO: AYO api key also here
                 val apiKey = "AIzaSyArxmzr9k53luII5xTXHT98rCV2dWEZU_E"
@@ -371,6 +371,10 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
                     } catch (e: Exception) {
                         e.printStackTrace()
                     }
+                }
+
+                withContext(Dispatchers.Main) {
+                    snappedPointsReady.value = true  // Set ready state to true after loading
                 }
             }
         }
@@ -448,8 +452,7 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
             ) {
                 // if the user has tapped through the form and list draw a line of points created
                 // by Snap to Roads to create the line of the specific route.
-                if (!showForm.value && !showList.value) {
-                    googleSnapToRoads(currentRoute.routeInfo)
+                if (!showForm.value && !showList.value && snappedPointsReady.value) {
                     Polyline(
                         points = snappedPointsList.map { LatLng(it.latitude, it.longitude) },
                         width = 15f,
@@ -951,7 +954,7 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
                 }
             } else if (showList.value) {
                 // show the list of routes in this custom composable
-                RoutesListView(showForm, showList)
+                RoutesListView(showForm, showList, snappedPointsReady, { info -> googleSnapToRoads(info) })
             } else {
                 // if both of the booleans are false we show the detailed view of the current route
                 SpecificRouteView(currentRoute, showList)
@@ -1153,7 +1156,12 @@ fun CurrentLocationButton(
 
 // The list view of routes after you tap go
 @Composable
-fun RoutesListView(showForm: MutableState<Boolean>, showList: MutableState<Boolean>) {
+fun RoutesListView(
+    showForm: MutableState<Boolean>,
+    showList: MutableState<Boolean>,
+    snappedPointsReady: MutableState<Boolean>,
+    googleSnapToRoads: (List<StopOnRoute>) -> Unit
+) {
     Log.i("LV", "${listOfRoutes.size}" + " routes to display.")
     // Scaffold is an easy way to add a header and floating button
     Scaffold(
@@ -1203,7 +1211,12 @@ fun RoutesListView(showForm: MutableState<Boolean>, showList: MutableState<Boole
                 .padding(innerPadding)
         ) {
             listOfRoutes.forEach { route ->
-                ListItem(route, showList)
+                ListItem(
+                    route = route,
+                    showList = showList,
+                    snappedPointsReady = snappedPointsReady,
+                    googleSnapToRoads = { routeInfo -> googleSnapToRoads(routeInfo) }
+                )
                 HorizontalDivider(
                     thickness = 3.dp,
                     modifier = Modifier.padding(vertical = 3.dp),
@@ -1217,7 +1230,12 @@ fun RoutesListView(showForm: MutableState<Boolean>, showList: MutableState<Boole
 // Each of the Routes in the List has a ListItem
 // this is all just simple text formatting and composable layouts.
 @Composable
-fun ListItem(route: GeneratedRoute, showList: MutableState<Boolean>) {
+fun ListItem(
+    route: GeneratedRoute,
+    showList: MutableState<Boolean>,
+    snappedPointsReady: MutableState<Boolean>,
+    googleSnapToRoads: (List<StopOnRoute>) -> Unit  // passing the function as a parameter
+) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -1289,7 +1307,9 @@ fun ListItem(route: GeneratedRoute, showList: MutableState<Boolean>) {
         OutlinedButton(
             onClick = {
                 currentRoute = route
-                showList.value = !showList.value
+                showList.value = false
+                snappedPointsReady.value = false
+                googleSnapToRoads(route.routeInfo)
 
             },
             colors = ButtonDefaults.buttonColors(
