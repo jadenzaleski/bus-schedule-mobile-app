@@ -12,7 +12,6 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.provider.Settings
-import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
@@ -82,7 +81,6 @@ import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
 import edu.miamioh.csi.capstone.busapp.R
 import edu.miamioh.csi.capstone.busapp.backend.CSVHandler
-import edu.miamioh.csi.capstone.busapp.backend.RouteFinderTester
 import edu.miamioh.csi.capstone.busapp.navigation.Screens
 import edu.miamioh.csi.capstone.busapp.ui.theme.Black
 import edu.miamioh.csi.capstone.busapp.ui.theme.Blue
@@ -100,11 +98,10 @@ import kotlin.math.min
 import kotlin.math.sin
 import kotlin.math.sqrt
 
-
+// Top Level Composable
 @Composable
 fun StopsView(navController: NavHostController) {
     StopsWorkhorse(navController)
-//    RouteFinderTester.runTests()
 }
 
 /**
@@ -116,6 +113,7 @@ fun StopsView(navController: NavHostController) {
  */
 @Composable
 fun StopsWorkhorse(navController: NavHostController) {
+    // Pull specific lists and store them into variables from the CSVHandler
     val stops = CSVHandler.getStops()
     val routes = CSVHandler.getRoutes()
     val trips = CSVHandler.getTrips()
@@ -132,8 +130,9 @@ fun StopsWorkhorse(navController: NavHostController) {
             ) == PackageManager.PERMISSION_GRANTED
         )
     }
-    val currentZoomLevel by remember { mutableStateOf(9f) } // Initial zoom level
 
+    // variable that stores zoom level
+    val currentZoomLevel by remember { mutableStateOf(9f) } // Initial zoom level
 
     // Permission dialog states
     var showPermissionDeniedDialog by remember { mutableStateOf(false) }
@@ -154,6 +153,7 @@ fun StopsWorkhorse(navController: NavHostController) {
         }
     )
 
+    // Preliminary check to see if location permissions are granted upon launching the Stops page
     LaunchedEffect(key1 = context) {
         isLocationPermissionGranted = ContextCompat.checkSelfPermission(
             context, Manifest.permission.ACCESS_FINE_LOCATION
@@ -198,8 +198,6 @@ fun StopsWorkhorse(navController: NavHostController) {
         }
     }.value
 
-    Log.i("Valid Agency IDs: ", "" + selectedAgencyIds)
-
     // Sets the initial number of stops displayed when the app is started.
     var maxStopsInput by remember { mutableStateOf("50") }
     var maxStops by remember { mutableIntStateOf(50) }
@@ -215,18 +213,21 @@ fun StopsWorkhorse(navController: NavHostController) {
         maxStopsInput = min(maxStops, 150).toString()
         stops.filter { stop ->
             val agencyIdsForStop = stopIdToAgencyIdMap[stop.stopID]
-            //Log.i("All Agencies Associated with Stops", "" + stopIdToAgencyIdMap[stop.stopId])
-            //Log.i("All Agencies Selected by User", "" + selectedAgencyIds)
             agencyIdsForStop != null && agencyIdsForStop.any { it in selectedAgencyIds } &&
                     calculateSphericalDistance(mapCenter.latitude, mapCenter.longitude, stop.stopLat, stop.stopLon) <= 60
         }.sortedBy { calculateSphericalDistance(mapCenter.latitude, mapCenter.longitude, it.stopLat, it.stopLon) }
             .take(min(maxStops, 150))
     }
 
+    // Retrieve the current focus manager from the local composition
     val focusManager = LocalFocusManager.current
 
+    // Define a mutable state variable to control the visibility of the dialog
     var showDialog by remember { mutableStateOf(false) }
+
+    // Define a mutable state variable to store the currently selected stop
     var selectedStop by remember { mutableStateOf<Place?>(null) }
+
     // called when info marker content is tapped
     fun navigateToRoutes(option: String, stop: Place?, navController: NavHostController) {
         if (stop != null) {
@@ -234,7 +235,11 @@ fun StopsWorkhorse(navController: NavHostController) {
             navController.navigate(route)
         }
     }
-    // show the alert when the info mark content is tapped
+    /*
+    * If the user has tapped to plan a route this dialog comes up
+    * It has two options for either selecting to start from a specific stop or end at a particular stop
+    * Upon selection, the showDialog goes false and the user is redirected to the Routes page
+    */
     if (showDialog) {
         AlertDialog(
             onDismissRequest = { showDialog = false },
@@ -277,7 +282,7 @@ fun StopsWorkhorse(navController: NavHostController) {
                 .fillMaxWidth(),
         ) {
 
-            // Activate Location Button
+            // Code for the Activate Location Button
             ActivateLocationButton(
                 isLocationPermissionGranted = isLocationPermissionGranted,
                 permissionDenied = permissionDenied,
@@ -289,7 +294,8 @@ fun StopsWorkhorse(navController: NavHostController) {
                 onShowLocationActivatedDialog = { showLocationActivatedDialog = true }
             )
 
-            // Permission Denied Dialog
+            // This Dialog Appears when a user denies to access current location. It allows them to go
+            // directly to their in app device settings to change location
             if (showPermissionDeniedDialog) {
                 AlertDialog(
                     onDismissRequest = { showPermissionDeniedDialog = false },
@@ -309,7 +315,7 @@ fun StopsWorkhorse(navController: NavHostController) {
                 )
             }
 
-            // Location Activated Dialog
+            // If location is already activated, this dialog informs the user that location is on
             if (showLocationActivatedDialog) {
                 AlertDialog(
                     onDismissRequest = { showLocationActivatedDialog = false },
@@ -429,6 +435,7 @@ fun StopsWorkhorse(navController: NavHostController) {
                 val nextDepartureTime = CSVHandler.getNextDepartureTimeForStop(stop.stopID) ?: "Unavailable"
                 val currentTime = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date()) // Get current time in 24-hour format
                 // Using the custom MarkerInfoWindowContent instead of the standard Marker
+                // Additionally the MarkerInfoWindowContent is a giant buttton (has an onClick)
                 MarkerInfoWindowContent(
                     state = MarkerState(position = LatLng(stop.stopLat, stop.stopLon)),
                     onInfoWindowClick = {
@@ -440,6 +447,7 @@ fun StopsWorkhorse(navController: NavHostController) {
                         horizontalAlignment = Alignment.CenterHorizontally,
                         modifier = Modifier.fillMaxWidth(0.8f)
                     ) {
+                        // Text for the name of a Stop
                         Text(
                             text = stop.stopName,
                             modifier = Modifier.padding(top = 5.dp),
@@ -453,10 +461,12 @@ fun StopsWorkhorse(navController: NavHostController) {
                                 .fillMaxWidth()
                                 .padding(vertical = 5.dp)
                         )
+                        // Text for next Departure Time
                         Row {
                             Text(text = "Next departure: ", style = TextStyle(fontSize = 16.sp))
                             Text(text = nextDepartureTime, style = TextStyle(fontWeight = FontWeight.Bold, fontSize = 16.sp))
                         }
+                        // Text for Current Time
                         Row {
                             Text(text = "Current Time: ", style = TextStyle(fontSize = 16.sp)) // Added text for current time
                             Text(text = currentTime, style = TextStyle(fontWeight = FontWeight.Bold, fontSize = 16.sp))
@@ -467,8 +477,9 @@ fun StopsWorkhorse(navController: NavHostController) {
                             Spacer(modifier = Modifier.width(5.dp))
                             Text(text = "Lon: ${stop.stopLon}", style = TextStyle(fontSize = 16.sp))
                         }
+                        // Text for StopID
                         Text(text = "Stop ID: ${stop.stopID}", style = TextStyle(fontSize = 16.sp))
-                        // Text for current time:
+                        // Text for Tap to Plan:
                         Text(
                             text = "Tap to plan",
                             modifier = Modifier.padding(top = 10.dp, bottom = 5.dp),
@@ -485,6 +496,17 @@ fun StopsWorkhorse(navController: NavHostController) {
     }
 }
 
+/**
+ * Composable to handle user interactions corresponding with activating/displaying location permissions
+ *
+ * @param isLocationPermissionGranted, a boolean value for if location permissions are granted
+ * @param permissionDenied, a boolean value for if location permissions are denied
+ * @param onPermissionRequest, submit request to activate location settings
+ * @param onShowPermissionsDeniedDialog, show dialog corresponding to denied location permissions
+ * @param onShowLocationActivatedDialog, show dialog corresponding to activated location
+ *
+ * @return A composable button that allows a user to handle their permission settings on the Stops page
+ */
 @Composable
 fun ActivateLocationButton(
     isLocationPermissionGranted: Boolean,
@@ -493,8 +515,17 @@ fun ActivateLocationButton(
     onShowPermissionsDeniedDialog: () -> Unit,
     onShowLocationActivatedDialog: () -> Unit
 ) {
+    // Button text that changes based on if the location permissions are granted
     val buttonText = if (isLocationPermissionGranted) "Location Activated" else "Activate Location"
+
+    // Button color that changes based on if the location permissions are granted
     val buttonColor = if (isLocationPermissionGranted) Green else Red
+
+    // Value that stores the action that takes place based on the state of parameters
+    // Either:
+    // A. Show the locationActivated Dialog
+    // B. Show the locationDenied Dialog
+    // C. Submit a request to get current location from the user in the app
     val onClickAction = {
         when {
             isLocationPermissionGranted -> {
@@ -512,6 +543,7 @@ fun ActivateLocationButton(
         }
     }
 
+    // Format of the button
     OutlinedButton(
         onClick = onClickAction,
         colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent, contentColor = buttonColor),
@@ -548,30 +580,6 @@ fun calculateSphericalDistance(lat1: Double, lon1: Double, lat2: Double, lon2: D
 }
 
 /**
- * Based on the zoom level of the map, decides how many markers (stops) should be displayed on the
- * map. Subject to change depending on client preferences, but these numbers can be easily adjusted
- *
- * @param zoomLevel - The current zoom level of the active map
- * @return How many stops should be displayed on the map presently
- */
-/*
-fun calculateNumberOfMarkers(zoomLevel: Float): Int {
-    // This is a placeholder function. Adjust the logic based on your requirements.
-    if (zoomLevel <= 10.4) {
-        return 0
-    } else if (zoomLevel > 10.4 && zoomLevel <= 12) {
-        return 150
-    } else if (zoomLevel > 12 && zoomLevel <= 13) {
-        return 75
-    } else if (zoomLevel > 13 && zoomLevel <= 14) {
-        return 50
-    } else {
-        return 25
-    }
-}
-*/
-
-/**
  * Detects when there are changes to either the zoom level or central camera position of the map.
  * Handles said changes - primarily by adjusting what markers should be displayed on the map
  *
@@ -592,9 +600,3 @@ fun trackMapInteraction(
         }
     }
 }
-
-//@Composable
-//@Preview
-//fun StopsViewPreview() {
-//    StopsView()
-//}
