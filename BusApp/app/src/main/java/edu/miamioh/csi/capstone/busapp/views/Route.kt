@@ -119,7 +119,6 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
-import kotlin.math.absoluteValue
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.min
@@ -480,14 +479,15 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
                     val dateFirstStop = format.parse(departureTimeFirstStop)
                     val dateLastStop = format.parse(departureTimeLastStop)
                     val currentTime = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
-                    var differenceInMinutes = "Could not calculate estimated travel time."
-
-                    if (dateFirstStop != null && dateLastStop != null) {
-                        // Calculate the difference in minutes
-                        differenceInMinutes = "" + ((dateLastStop.time - dateFirstStop.time) / (1000 * 60)).absoluteValue
-                    } else {
-                        println("Could not calculate estimated travel time.")
-                    }
+//                    var differenceInMinutes = calculateEstimatedTravelTime(currentRoute, currentTime)
+//                    var differenceInMinutes = "Could not calculate estimated travel time."
+//
+//                    if (dateFirstStop != null && dateLastStop != null) {
+//                        // Calculate the difference in minutes
+//                        differenceInMinutes = "" + ((dateLastStop.time - dateFirstStop.time) / (1000 * 60)).absoluteValue
+//                    } else {
+//                        println("Could not calculate estimated travel time.")
+//                    }
 
                     for (i in currentRoute.indices) {
                         val stop = currentRoute[i]
@@ -555,7 +555,7 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
                                     )
                                     Row {
                                         Text(text = "Estimated Travel Time: ", style = TextStyle(fontSize = 16.sp)) // Added text for current time
-                                        Text(text = "$differenceInMinutes minutes", style = TextStyle(fontWeight = FontWeight.Bold, fontSize = 16.sp))
+//                                        Text(text = "$differenceInMinutes minutes", style = TextStyle(fontWeight = FontWeight.Bold, fontSize = 16.sp))
                                     }
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         Text(text = "Lat: ${stop.stopLat}")
@@ -1367,6 +1367,61 @@ fun CurrentLocationButton(
         )
     }
 }
+
+//fun calculateEstimatedTravelTime(currentRoute: MutableList<FinalRoutePoint>, currentTime: String): Int {
+//    var accumulatedTime = 0 // Accumulated time in minutes
+//
+//    val format = SimpleDateFormat("HH:mm", Locale.getDefault())
+//
+//    // Parse the current time and use it as the initial value for previousDepartureTime
+//    var previousDepartureTime: Date? = format.parse(currentTime)
+//
+//    println("INITIAL CURRENT TIME")
+//    println(previousDepartureTime)
+//
+//    // Iterate over the stops in the route
+//    for (i in currentRoute.indices) {
+//        val stop = currentRoute[i]
+//
+//        // Calculate the next departure time based on the accumulated time
+//        val nextDepartureTimeStr = getNextDepartureTimeForStop(stop.stopID, previousDepartureTime)
+//        val nextDepartureTime = format.parse(nextDepartureTimeStr)
+//
+//        // If not the first iteration and both times are not null, accumulate the time difference
+//        if (i > 0 && previousDepartureTime != null && nextDepartureTime != null) {
+//            val timeDifference = ((nextDepartureTime.time - previousDepartureTime.time) / (60 * 1000)).toInt()
+//            accumulatedTime += timeDifference
+//        }
+//
+//        println("-------------------- STOP NUMBER " + (i + 1) + " ------------------")
+//        println("CURRENT STOP")
+//        println(currentRoute[i].stopName)
+//        println(currentRoute[i].stopID)
+//        println("STOP NUMBER " + (i + 1) + "'s Departure Time")
+//        println(previousDepartureTime)
+//        println("NEXT STOP = STOP NUMBER " + (i + 2) + " - Departure Time")
+//        println(nextDepartureTime)
+//        println("TOTAL TIME IN MINUTES SO FAR")
+//        println(accumulatedTime)
+//        println("Next Time used will be Stop " + (i + 2) + "s Departure Time")
+//
+//        if (i != currentRoute.size - 1)
+//            previousDepartureTime = nextDepartureTime // Update the previous departure time
+//        else
+//            println("STOP " + (i + 1) + "s DEPARTURE TIME WAS THE FINAL TIME USED")
+//    }
+//
+//    val currentTimeDate = format.parse(currentTime)
+//
+//    // Calculate the final estimated travel time in minutes
+//    val estimatedTotalTime = if (previousDepartureTime != null && currentTimeDate != null) {
+//        ((previousDepartureTime.time - currentTimeDate.time) / (60 * 1000)).toInt()
+//    } else {
+//        0 // Fallback or error handling
+//    }
+//
+//    return estimatedTotalTime
+//}
 
 /*
 @Composable

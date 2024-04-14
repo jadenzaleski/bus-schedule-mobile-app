@@ -23,6 +23,7 @@ import java.net.URL
 import java.text.ParseException
 import java.text.SimpleDateFormat
 import java.util.Calendar
+import java.util.Date
 import java.util.Locale
 
 
@@ -862,27 +863,70 @@ object CSVHandler {
         return stopIdToAgencyId
     }
 
-    fun getNextDepartureTimeForStop(stopId: Int): String {
+//    fun getNextDepartureTimeForStop(stopId: Int): String {
+//        val format = SimpleDateFormat("HH:mm", Locale.UK) // Use 24-hour format for simplicity.
+//
+//        // Gets time from local Calendar
+//        val nowHelper = Calendar.getInstance().time
+//
+//        // Convert the current time to a string (this needs to happen to ensure the 24-hour format is kept).
+//        val nowString = format.format(nowHelper)
+//
+////        println("CURR TIME")
+////        println(nowString)
+//
+//        // Convert 'nowString' back to a Calendar object for comparison
+//        val now = Calendar.getInstance().apply {
+//            time = format.parse(nowString) ?: return "Could not parse current time"
+//        }
+//
+//        //println(now.time)
+//
+//        // Assuming all departure times are for today and focusing only on the time part.
+//        // Create a list of
+//        val departureTimes = stopTimes.filter { it.stopID == stopId }
+//            .mapNotNull { timeString ->
+//                try {
+//                    format.parse(timeString.departureTime)?.let { date ->
+//                        // Convert the parsed date to a Calendar object to compare only the time part.
+//                        Calendar.getInstance().apply {
+//                            time = date
+//                            // fix the setter
+//                            set(Calendar.YEAR, now.get(Calendar.YEAR))
+//                            set(Calendar.MONTH, now.get(Calendar.MONTH))
+//                            set(Calendar.DAY_OF_MONTH, now.get(Calendar.DAY_OF_MONTH))
+//                        }
+//                    }
+//                } catch (e: ParseException) {
+//                    null // Ignore parse exceptions and proceed to the next item.
+//                }
+//            }.sortedBy { it.time }
+//
+//        // fix this code to convert now to a Calendar time type to be able to be correctly compared with departureTimes
+//        val nextDepartureTime = departureTimes.firstOrNull { it.after(now) } ?: return "No more departures today"
+//        // Format and return the next departure time as a string.
+//        return format.format(nextDepartureTime.time)
+//    }
+
+    fun getNextDepartureTimeForStop(stopId: Int, providedTime: Date? = null): String {
         val format = SimpleDateFormat("HH:mm", Locale.UK) // Use 24-hour format for simplicity.
 
-        // Gets time from local Calendar
-        val nowHelper = Calendar.getInstance().time
+        //        // Gets time from local Calendar
+        var nowHelper = Calendar.getInstance().time
+
+        if (providedTime != null) {
+            nowHelper = providedTime
+        }
 
         // Convert the current time to a string (this needs to happen to ensure the 24-hour format is kept).
         val nowString = format.format(nowHelper)
-
-//        println("CURR TIME")
-//        println(nowString)
 
         // Convert 'nowString' back to a Calendar object for comparison
         val now = Calendar.getInstance().apply {
             time = format.parse(nowString) ?: return "Could not parse current time"
         }
 
-        //println(now.time)
-
         // Assuming all departure times are for today and focusing only on the time part.
-        // Create a list of
         val departureTimes = stopTimes.filter { it.stopID == stopId }
             .mapNotNull { timeString ->
                 try {
@@ -890,7 +934,7 @@ object CSVHandler {
                         // Convert the parsed date to a Calendar object to compare only the time part.
                         Calendar.getInstance().apply {
                             time = date
-                            // fix the setter
+                            // Adjust the date components to match the 'now' calendar's date.
                             set(Calendar.YEAR, now.get(Calendar.YEAR))
                             set(Calendar.MONTH, now.get(Calendar.MONTH))
                             set(Calendar.DAY_OF_MONTH, now.get(Calendar.DAY_OF_MONTH))
@@ -901,10 +945,12 @@ object CSVHandler {
                 }
             }.sortedBy { it.time }
 
-        // fix this code to convert now to a Calendar time type to be able to be correctly compared with departureTimes
+        // Find the next departure time that comes after 'now'
         val nextDepartureTime = departureTimes.firstOrNull { it.after(now) } ?: return "No more departures today"
+
         // Format and return the next departure time as a string.
         return format.format(nextDepartureTime.time)
     }
+
 
 }
