@@ -88,6 +88,7 @@ import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
+import com.google.maps.android.compose.Circle
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.MapProperties
 import com.google.maps.android.compose.MapUiSettings
@@ -274,14 +275,26 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
                     onDismissRequest = { openAlertDialog.value = false })
             }
         }
-        // set the passed in params to the correct vars
-        if (option == "start") {
-            startSearchString = URLDecoder.decode(name, "UTF-8")
-            selectedStartPlace.value = Place(URLDecoder.decode(name, "UTF-8"), lat, lon, "", "");
-        } else if (option == "end") {
-            endSearchString = URLDecoder.decode(name, "UTF-8")
-            selectedEndPlace.value = Place(URLDecoder.decode(name, "UTF-8"), lat, lon, "", "");
+
+        // this doesn't work but it does not make the app unusable
+        val hasRun = remember { mutableStateOf(false) }
+        LaunchedEffect(key1 = option) {
+            if (!hasRun.value) {
+                // set the passed in params to the correct vars
+                when (option) {
+                    "start" -> {
+                        startSearchString = URLDecoder.decode(name, "UTF-8")
+                        selectedStartPlace.value = Place(URLDecoder.decode(name, "UTF-8"), lat, lon, "", "")
+                    }
+                    "end" -> {
+                        endSearchString = URLDecoder.decode(name, "UTF-8")
+                        selectedEndPlace.value = Place(URLDecoder.decode(name, "UTF-8"), lat, lon, "", "")
+                    }
+                }
+                hasRun.value = true
+            }
         }
+
         // boolean to make sure the the starting and ending places arent blank
         val valid =
             (startIsCurrentLocation.value || (selectedStartPlace.value.lat > 0 && selectedStartPlace.value.lon > 0))
@@ -290,6 +303,81 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
                     &&
                     selectedAgencyIds.isNotEmpty()
 
+
+        // this function take in the points on the route and does its best to return a list
+// of points that we can draw a polyline with.
+        @OptIn(DelicateCoroutinesApi::class)
+        fun googleSnapToRoads(places: List<StopOnRoute>) {
+            // clear the list
+            snappedPointsList.clear()
+            GlobalScope.launch(Dispatchers.IO) {
+                // TODO: AYO api key also here
+                val apiKey = "AIzaSyArxmzr9k53luII5xTXHT98rCV2dWEZU_E"
+                // max points allowed for the api
+                val maxPoints = 100
+                // maximum distance between each point
+                val maxDistance = 0.2
+                // Step 1: Pre-process places to insert midpoints where necessary
+                // This adds midpoints to a list when the distance between two points is greater then the
+                // defined max distance. we have to do this because google does not snap well when points are
+                // farther then 0.3 km.
+                val processedPlaces = mutableListOf<StopOnRoute>()
+                for (i in places.indices) {
+                    processedPlaces.add(places[i])
+                    if (i < places.size - 1) {
+                        var current = places[i]
+                        val next = places[i + 1]
+                        var distance = calculateSphericalDistance(
+                            current.stopLat,
+                            current.stopLon,
+                            next.stopLat,
+                            next.stopLon
+                        )
+                        while (distance > maxDistance) {
+                            val midPoint = midpoint(
+                                current.stopLat,
+                                current.stopLon,
+                                next.stopLat,
+                                next.stopLon
+                            )
+                            processedPlaces.add(midPoint)
+                            current = midPoint
+                            distance = calculateSphericalDistance(
+                                current.stopLat,
+                                current.stopLon,
+                                next.stopLat,
+                                next.stopLon
+                            )
+                        }
+                    }
+                }
+
+                // Step 2: Divide the processed list into batches and process each batch
+                // for each batch of maxpoints we call Snap to Roads API and add all the return coords to a list
+                // that list will then be used by the Polyline in the GoogleMaps Composable to create the route line.
+                processedPlaces.chunked(maxPoints).forEach { batch ->
+                    try {
+                        val path = batch.joinToString("|") { "${it.stopLat},${it.stopLon}" }
+                        val url =
+                            "https://roads.googleapis.com/v1/snapToRoads?interpolate=true&path=$path&key=$apiKey"
+                        URL(url).openStream().use { input ->
+                            val response = input.bufferedReader().use(BufferedReader::readText)
+                            val jsonObject = JSONObject(response)
+                            val snappedPoints = jsonObject.getJSONArray("snappedPoints")
+                            for (i in 0 until snappedPoints.length()) {
+                                val location =
+                                    snappedPoints.getJSONObject(i).getJSONObject("location")
+                                val latitude = location.getDouble("latitude")
+                                val longitude = location.getDouble("longitude")
+                                snappedPointsList.add(SnappedPoint(latitude, longitude))
+                            }
+                        }
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                }
+            }
+        }
 
         // Search function calls google API to find 20 results that match the users query.
         @OptIn(DelicateCoroutinesApi::class)
@@ -365,6 +453,7 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
                 // if the user has tapped through the form and list draw a line of points created
                 // by Snap to Roads to create the line of the specific route.
                 if (!showForm.value && !showList.value) {
+                    googleSnapToRoads(currentRoute.routeInfo)
                     Polyline(
                         points = snappedPointsList.map { LatLng(it.latitude, it.longitude) },
                         width = 15f,
@@ -930,81 +1019,6 @@ fun midpoint(lat1: Double, lon1: Double, lat2: Double, lon2: Double): StopOnRout
     )
 }
 
-// this function take in the points on the route and does its best to return a list
-// of points that we can draw a polyline with.
-@OptIn(DelicateCoroutinesApi::class)
-fun googleSnapToRoads(places: List<StopOnRoute>) {
-    // clear the list
-    snappedPointsList.clear()
-    GlobalScope.launch(Dispatchers.IO) {
-        // TODO: AYO api key also here
-        val apiKey = "AIzaSyArxmzr9k53luII5xTXHT98rCV2dWEZU_E"
-        // max points allowed for the api
-        val maxPoints = 100
-        // maximum distance between each point
-        val maxDistance = 0.2
-        // Step 1: Pre-process places to insert midpoints where necessary
-        // This adds midpoints to a list when the distance between two points is greater then the
-        // defined max distance. we have to do this because google does not snap well when points are
-        // farther then 0.3 km.
-        val processedPlaces = mutableListOf<StopOnRoute>()
-        for (i in places.indices) {
-            processedPlaces.add(places[i])
-            if (i < places.size - 1) {
-                var current = places[i]
-                val next = places[i + 1]
-                var distance = calculateSphericalDistance(
-                    current.stopLat,
-                    current.stopLon,
-                    next.stopLat,
-                    next.stopLon
-                )
-                while (distance > maxDistance) {
-                    val midPoint = midpoint(
-                        current.stopLat,
-                        current.stopLon,
-                        next.stopLat,
-                        next.stopLon
-                    )
-                    processedPlaces.add(midPoint)
-                    current = midPoint
-                    distance = calculateSphericalDistance(
-                        current.stopLat,
-                        current.stopLon,
-                        next.stopLat,
-                        next.stopLon
-                    )
-                }
-            }
-        }
-
-        // Step 2: Divide the processed list into batches and process each batch
-        // for each batch of maxpoints we call Snap to Roads API and add all the return coords to a list
-        // that list will then be used by the Polyline in the GoogleMaps Composable to create the route line.
-        processedPlaces.chunked(maxPoints).forEach { batch ->
-            try {
-                val path = batch.joinToString("|") { "${it.stopLat},${it.stopLon}" }
-                val url =
-                    "https://roads.googleapis.com/v1/snapToRoads?interpolate=true&path=$path&key=$apiKey"
-                URL(url).openStream().use { input ->
-                    val response = input.bufferedReader().use(BufferedReader::readText)
-                    val jsonObject = JSONObject(response)
-                    val snappedPoints = jsonObject.getJSONArray("snappedPoints")
-                    for (i in 0 until snappedPoints.length()) {
-                        val location =
-                            snappedPoints.getJSONObject(i).getJSONObject("location")
-                        val latitude = location.getDouble("latitude")
-                        val longitude = location.getDouble("longitude")
-                        snappedPointsList.add(SnappedPoint(latitude, longitude))
-                    }
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-        }
-    }
-}
-
 // a custom alert dialog
 @Composable
 fun CustomAlert(size: Int, onDismissRequest: () -> Unit, onConfirmation: () -> Unit) {
@@ -1259,7 +1273,6 @@ fun ListItem(route: GeneratedRoute, showList: MutableState<Boolean>) {
         // green go button
         OutlinedButton(
             onClick = {
-                googleSnapToRoads(route.routeInfo)
                 currentRoute = route
                 showList.value = !showList.value
 
