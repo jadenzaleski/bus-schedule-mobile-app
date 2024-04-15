@@ -173,14 +173,6 @@ fun SettingScreen() {
          * Link: https://github.com/zhanghai/ComposePreference
          */
         LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(4.dp)) {
-            preference(
-                key = "fontSize",
-                title = { Text(text = "Font Size") },
-                summary = { Text(text = "Change the Settings Page font size" ) },
-                onClick = {
-
-                }
-            )
             // Triggers dialogues related to the "Update Data" functionality.
             preference(
                 key = "updateData",
