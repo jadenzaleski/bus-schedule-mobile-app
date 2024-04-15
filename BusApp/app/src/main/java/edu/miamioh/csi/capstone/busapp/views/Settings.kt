@@ -99,7 +99,7 @@ fun SettingScreen() {
                             updateData(context) {
                                 isUpdating = false // Update completion handler
                                 val dateFormat = SimpleDateFormat("MMM dd, yyyy HH:mm:ss", Locale.getDefault())
-                                lastUpdateTime = "${dateFormat.format(Date())}"
+                                lastUpdateTime = dateFormat.format(Date())
                             }
                         }
                     }
