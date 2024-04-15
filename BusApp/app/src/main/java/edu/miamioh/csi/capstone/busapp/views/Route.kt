@@ -524,11 +524,10 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
                                 }
                             }
                         } else {
-                            // TODO: Remove Marker below when done verifying routes
                             Circle(
                                 center = LatLng(stop.stopLat, stop.stopLon),
                                 fillColor = Color.Red,
-                                radius = 20.0,  // radius in meters
+                                radius = 17.0,  // radius in meters
                                 strokeColor = Color.Black,
                                 strokeWidth = 1f
                             )
@@ -545,6 +544,20 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
                         width = 10f,
                         color = Color.Gray,
                         pattern = listOf(Dot(), Gap(10f))
+                    )
+                    Circle(
+                        center = LatLng(selectedStartPlace.value.lat, selectedStartPlace.value.lon),
+                        fillColor = Color.LightGray,
+                        radius = 30.0,  // radius in meters
+                        strokeColor = Color.Black,
+                        strokeWidth = 2f
+                    )
+                    Circle(
+                        center = LatLng(selectedEndPlace.value.lat, selectedEndPlace.value.lon),
+                        fillColor = Color.LightGray,
+                        radius = 30.0,  // radius in meters
+                        strokeColor = Color.Black,
+                        strokeWidth = 2f
                     )
                     // next lets move the camera to the starting stop
                     LaunchedEffect(key1 = snappedPointsList) {
