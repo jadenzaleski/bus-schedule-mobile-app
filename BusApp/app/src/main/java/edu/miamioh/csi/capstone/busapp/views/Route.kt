@@ -87,11 +87,13 @@ import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.CameraPosition
+import com.google.android.gms.maps.model.Dot
+import com.google.android.gms.maps.model.Gap
 import com.google.android.gms.maps.model.LatLng
+import com.google.maps.android.compose.Circle
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.MapProperties
 import com.google.maps.android.compose.MapUiSettings
-import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerInfoWindowContent
 import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.Polyline
@@ -146,6 +148,8 @@ data class Place(
 // a point that is used by googles api Snap to Roads
 data class SnappedPoint(val latitude: Double, val longitude: Double)
 
+data class WalkingPathPoint(val latitude: Double, val longitude: Double)
+
 // user location
 var userLon = 0.0
 var userLat = 0.0
@@ -163,6 +167,8 @@ This also gets passed in variables from the routes page.
 @Composable
 fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Double, lon: Double) {
     val snappedPointsReady = remember { mutableStateOf(false) }
+    val walkToFirstStopPoints = remember { mutableStateListOf<WalkingPathPoint>() }
+    val walkFromLastStopPoints = remember { mutableStateListOf<WalkingPathPoint>() }
     // before we can load the screen the app needs to have the updated data, so we check for that
     val isDataInitialized by viewModel.isDataInitialized.collectAsState()
     // if the data is ready to go show everything
@@ -519,12 +525,27 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
                             }
                         } else {
                             // TODO: Remove Marker below when done verifying routes
-                            Marker(
-                                state = MarkerState(position = LatLng(stop.stopLat, stop.stopLon)),
-                                title = stop.stopName
+                            Circle(
+                                center = LatLng(stop.stopLat, stop.stopLon),
+                                fillColor = Color.Red,
+                                radius = 20.0,  // radius in meters
+                                strokeColor = Color.Black,
+                                strokeWidth = 1f
                             )
                         }
                     }
+                    Polyline(
+                        points = walkToFirstStopPoints.map { LatLng(it.latitude, it.longitude) },
+                        width = 10f,
+                        color = Color.Gray,
+                        pattern = listOf(Dot(), Gap(10f))
+                    )
+                    Polyline(
+                        points = walkFromLastStopPoints.map { LatLng(it.latitude, it.longitude) },
+                        width = 10f,
+                        color = Color.Gray,
+                        pattern = listOf(Dot(), Gap(10f))
+                    )
                     // next lets move the camera to the starting stop
                     LaunchedEffect(key1 = snappedPointsList) {
                         cameraPositionState.animate(
@@ -919,7 +940,9 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
                                     start = start,
                                     end = stop,
                                     time = selectedTime,
-                                    allowedAgencies = selectedAgencyIds
+                                    allowedAgencies = selectedAgencyIds,
+                                    walkToFirstStopPoints = walkToFirstStopPoints,
+                                    walkFromLastStopPoints = walkFromLastStopPoints
                                 )
                                 if (listOfRoutes.isEmpty()) {
                                     // no route
@@ -982,13 +1005,34 @@ private fun getLastLocation(fusedLocationClient: FusedLocationProviderClient) {
 }
 
 // Route is calculated here
-fun calcRoute(start: Place, end: Place, time: String, allowedAgencies: Set<Int>) {
+fun calcRoute(
+    start: Place,
+    end: Place,
+    time: String,
+    allowedAgencies: Set<Int>,
+    walkToFirstStopPoints: MutableList<WalkingPathPoint>,
+    walkFromLastStopPoints: MutableList<WalkingPathPoint>
+) {
     val logMessage = "Start: ${start.name}, Lat: ${start.lat}, Lon: ${start.lon}, " +
             "Stop: ${end.name}, Lat: ${end.lat}, Lon: ${end.lon}, " +
             "Time: $time, Allowed Agencies: $allowedAgencies"
     Log.i("calcRoute", logMessage)
-    // create the list of routes generate by the route workhorse
+
+    walkToFirstStopPoints.clear()
+    walkFromLastStopPoints.clear()
+
+    // Create the list of routes generate by the route workhorse
     listOfRoutes = RouteFinder.routeWorkhorse(start, end, time, allowedAgencies)
+    calculateWalkingPath(
+        LatLng(start.lat, start.lon),
+        LatLng(listOfRoutes.first().routeInfo.first().stopLat, listOfRoutes.first().routeInfo.first().stopLon),
+        walkToFirstStopPoints
+    )
+    calculateWalkingPath(
+        LatLng(listOfRoutes.last().routeInfo.last().stopLat, listOfRoutes.last().routeInfo.last().stopLon),
+        LatLng(end.lat, end.lon),
+        walkFromLastStopPoints
+    )
 }
 
 // Function to calculate the midpoint between two points
@@ -1431,6 +1475,18 @@ fun SpecificRouteView(route: GeneratedRoute, showList: MutableState<Boolean>) {
         ) {
             Text(text = "Cancel")
         }
+    }
+}
+
+fun calculateWalkingPath(
+    start: LatLng,
+    end: LatLng,
+    pathPoints: MutableList<WalkingPathPoint>
+) {
+    val diffLat = (end.latitude - start.latitude) / 10
+    val diffLng = (end.longitude - start.longitude) / 10
+    for (i in 1..10) {
+        pathPoints.add(WalkingPathPoint(start.latitude + diffLat * i, start.longitude + diffLng * i))
     }
 }
 
