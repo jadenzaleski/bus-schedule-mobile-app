@@ -1,10 +1,3 @@
-/**
- * Contributors: Jaden Zaleski, Daniel Tai, Ayo Obisesan
- * Last Modified: 3/27/2024
- * Description: Contains all the front-end and some back-end code for the Stops page. See individual
- *              method documentation for further details
- */
-
 package edu.miamioh.csi.capstone.busapp.views
 
 import android.Manifest

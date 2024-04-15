@@ -1,9 +1,7 @@
 /**
- * Contributors: Daniel Tai
- * Last Modified: 4/9/2024
- * Description: Contains the back-end code for creating a route based on the CORe website
- *              information and some user input taken from our UI. Creates a Graph, and using
- *              the A* algorithm, generates an optimal route under certain criteria.
+ * With the introduction of the RouteFinder.kt file, this code is now obsolete and does not get
+ * used. However, some or all of its intended functionality may be used down in the future. To help
+ * reduce future workload, the file has been kept (but again, is not currently being referenced).
  */
 
 package edu.miamioh.csi.capstone.busapp.backend
