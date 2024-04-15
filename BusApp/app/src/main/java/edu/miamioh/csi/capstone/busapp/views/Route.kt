@@ -670,7 +670,7 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
                                         Column {
                                             Text(result.name)
                                             Text(
-                                                "${String.format("%.3f", dist)}km",,
+                                                "${String.format("%.3f", dist)}km",
                                                 fontSize = 12.sp
                                             )
                                             Text(
@@ -819,7 +819,7 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
                                         Column {
                                             Text(result.name)
                                             Text(
-                                                "${String.format("%.3f", dist)}km",,
+                                                "${String.format("%.3f", dist)}km",
                                                 fontSize = 12.sp
                                             )
                                             Text(

@@ -117,6 +117,14 @@ fun SettingScreen() {
         )
     }
 
+    var showAboutDialog by remember { mutableStateOf(false) }  // State for About dialog
+
+    // About dialog
+    if (showAboutDialog) {
+        AboutDialog { showAboutDialog = false }
+    }
+
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -171,8 +179,9 @@ fun SettingScreen() {
             preference(
                 key = "about",
                 title = { Text(text = "About/App Info") },
-                summary = { Text(text = "Learn more about this app") }
-            ) {}
+                summary = { Text(text = "Learn more about this application") },
+                onClick = { showAboutDialog = true }  // Toggle About dialog visibility
+            )
             preference(
                 key = "help",
                 title = { Text(text = "Help") },
@@ -307,6 +316,31 @@ suspend fun updateData(context: Context, onComplete: () -> Unit) {
     } finally {
         onComplete() // Invoke the completion handler
     }
+}
+
+@Composable
+fun AboutDialog(onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("About This App") },
+        text = {
+            Text("Bus Scheduling Mobile App Capstone Project\n\nMembers:\nAyo Obisesan, Daniel" +
+                    " Tai, Jaden Zaleski, Neal Wolfrant\n\nThis custom mobile application was" +
+                    " designed to enable reliable usage of the city of Cosenza's bus transit" +
+                    " system. It utilizes up-to-date data from CORe, a parent company which " +
+                    " manages over 20 different Italian bus agencies.\n\nUsers can expect a" +
+                    " variety of features, including route generation and basic navigation, a" +
+                    " dynamic interface that displays the closest bus stops based on the map" +
+                    " position, and the ability to change certain application settings.\n\n" +
+                    "Technologies Used: Java, Kotlin, Jetpack Compose for Android Development," +
+                    "Google for Developers: Google Maps Platform, and others.")
+        },
+        confirmButton = {
+            Button(onClick = onDismiss) {
+                Text("Close")
+            }
+        }
+    )
 }
 
 @Composable
