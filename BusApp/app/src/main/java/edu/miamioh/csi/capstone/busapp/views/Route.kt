@@ -1284,7 +1284,7 @@ fun ListItem(
                     userLat,
                     userLon
                 )
-                Text(text = ", (${String.format("%.3f", distance)}km away)", fontSize = 16.sp)
+                Text(text = ", (${String.format("%.3f", distance)} km away)", fontSize = 16.sp)
             }
             Row(
                 verticalAlignment = Alignment.CenterVertically,
