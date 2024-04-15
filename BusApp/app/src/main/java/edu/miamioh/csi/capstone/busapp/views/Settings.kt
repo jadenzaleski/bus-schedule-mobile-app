@@ -2,6 +2,7 @@ package edu.miamioh.csi.capstone.busapp.views
 
 import android.app.Activity
 import android.content.Context
+import android.content.Intent
 import android.graphics.drawable.ColorDrawable
 import android.os.Build
 import android.util.Log
@@ -13,8 +14,10 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
@@ -23,6 +26,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
@@ -40,6 +44,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
@@ -49,9 +54,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import me.zhanghai.compose.preference.ProvidePreferenceLocals
-import me.zhanghai.compose.preference.footerPreference
 import me.zhanghai.compose.preference.preference
-import me.zhanghai.compose.preference.sliderPreference
 import java.io.File
 import java.io.FileInputStream
 import java.text.SimpleDateFormat
@@ -124,6 +127,19 @@ fun SettingScreen() {
         AboutDialog { showAboutDialog = false }
     }
 
+    var showEmailDialog by remember { mutableStateOf(false) }
+    var email by remember { mutableStateOf("") }
+    var message by remember { mutableStateOf("") }
+
+    if (showEmailDialog) {
+        EmailDialog(email, message, onEmailChange = { email = it }, onMessageChange = { message = it },
+            onSend = {
+                sendEmail(context, email, message)
+                showEmailDialog = false
+            },
+            onClose = { showEmailDialog = false })
+    }
+
 
     Column(
         modifier = Modifier
@@ -150,21 +166,12 @@ fun SettingScreen() {
             )
         }
         LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(4.dp)) {
-            sliderPreference(
+            preference(
                 key = "fontSize",
-                defaultValue = 1f,
                 title = { Text(text = "Font Size") },
-                valueRange = 0f..2f,
-                valueSteps = 1,
-                //summary = { Text(text = "Slide to adjust") },
-                valueText = {
-                    if (it == 0f) {
-                        Text(text = "Small")
-                    } else if (it == 1f) {
-                        Text(text = "Medium")
-                    } else {
-                        Text(text = "Large")
-                    }
+                summary = { Text(text = "Change the Settings Page font size" ) },
+                onClick = {
+
                 }
             )
             preference(
@@ -180,17 +187,23 @@ fun SettingScreen() {
                 key = "about",
                 title = { Text(text = "About/App Info") },
                 summary = { Text(text = "Learn more about this application") },
-                onClick = { showAboutDialog = true }  // Toggle About dialog visibility
+                onClick = {
+                    showAboutDialog = true
+                }
             )
             preference(
-                key = "help",
-                title = { Text(text = "Help") },
-                summary = { Text(text = "Basic Troubleshooting / Frequently-Asked Questions") }
-            ) {}
-            footerPreference(
-                key = "footer_preference",
-                summary = { Text(text = "Bus App Capstone Project - All rights reserved.") }
+                key = "reportIssue",
+                title = { Text("Report an Issue") },
+                summary = { Text(text = "Submit a service ticket here") },
+                onClick = {
+                    showEmailDialog = true
+                }
             )
+            preference(
+                key = "footer",
+                title = { Text(text = "") },
+                summary = { Text(text = "Bus App Capstone Project - All rights reserved.") }
+            ) {}
         }
     }
 }
@@ -324,9 +337,9 @@ fun AboutDialog(onDismiss: () -> Unit) {
         onDismissRequest = onDismiss,
         title = { Text("About This App") },
         text = {
-            Text("Bus Scheduling Mobile App Capstone Project\n\nMembers:\nAyo Obisesan, Daniel" +
-                    " Tai, Jaden Zaleski, Neal Wolfrant\n\nThis custom mobile application was" +
-                    " designed to enable reliable usage of the city of Cosenza's bus transit" +
+            Text("Bus Scheduling Mobile App Capstone Project\n\nMembers:\nAyo Obisesan," +
+                    " Daniel Tai, Jaden Zaleski, Neal Wolfrant\n\nThis custom mobile application" +
+                    " was designed to enable reliable usage of the city of Cosenza's bus transit" +
                     " system. It utilizes up-to-date data from CORe, a parent company which " +
                     " manages over 20 different Italian bus agencies.\n\nUsers can expect a" +
                     " variety of features, including route generation and basic navigation, a" +
@@ -341,6 +354,64 @@ fun AboutDialog(onDismiss: () -> Unit) {
             }
         }
     )
+}
+
+@Composable
+fun EmailDialog(
+    email: String,
+    message: String,
+    onEmailChange: (String) -> Unit,
+    onMessageChange: (String) -> Unit,
+    onSend: () -> Unit,
+    onClose: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onClose,
+        title = { Text("Report an Issue") },
+        text = {
+            Column {
+                TextField(
+                    value = email,
+                    onValueChange = {
+                        onEmailChange(it)
+                        Log.d("EmailInput", "Email updated to: $it")  // Log the email input for debugging
+                    },
+                    label = { Text("Email Address") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
+                )
+                TextField(
+                    value = message,
+                    onValueChange = onMessageChange,
+                    label = { Text("Describe Your Issue") },
+                    modifier = Modifier.height(150.dp)
+                )
+            }
+        },
+        confirmButton = {
+            Button(onClick = onSend) { Text("Send") }
+        },
+        dismissButton = {
+            Button(onClick = onClose) { Text("Close") }
+        }
+    )
+}
+
+fun sendEmail(context: Context, recipient: String, content: String) {
+    Log.d("EmailIntent", "Preparing to send email...")
+    val intent = Intent(Intent.ACTION_SEND).apply {
+        type = "message/rfc822"  // MIME type for email
+        putExtra(Intent.EXTRA_EMAIL, arrayOf(recipient))
+        putExtra(Intent.EXTRA_SUBJECT, "Issue Report")
+        putExtra(Intent.EXTRA_TEXT, content)
+    }
+    Log.d("EmailIntent", "Intent extras set - recipient: $recipient, content: $content")
+
+    if (intent.resolveActivity(context.packageManager) != null) {
+        Log.d("EmailIntent", "Email client found, launching intent.")
+        context.startActivity(intent)
+    } else {
+        Log.e("EmailIntent", "No email client available.")
+    }
 }
 
 @Composable
