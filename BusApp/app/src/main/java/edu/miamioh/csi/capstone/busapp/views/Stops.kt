@@ -1,13 +1,7 @@
-/**
- * Contributors: Jaden Zaleski, Daniel Tai, Ayo Obisesan
- * Last Modified: 3/27/2024
- * Description: Contains all the front-end and some back-end code for the Stops page. See individual
- *              method documentation for further details
- */
-
 package edu.miamioh.csi.capstone.busapp.views
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -111,6 +105,7 @@ fun StopsView(navController: NavHostController) {
  * 3) Displays all markers on the map
  * 4) Calls the "trackMapInteraction" function to detect changes via user gestures
  */
+@SuppressLint("UnrememberedMutableState")
 @Composable
 fun StopsWorkhorse(navController: NavHostController) {
     // Pull specific lists and store them into variables from the CSVHandler
@@ -208,14 +203,17 @@ fun StopsWorkhorse(navController: NavHostController) {
         mapCenter = center
     }
 
-    // Dynamically calculate filtered stops based on all relevant criteria
-    val filteredStops = remember(mapCenter, selectedAgencyIds, maxStops) {
+    val stopDistances = remember(mapCenter) {
+        stops.associate { it to calculateSphericalDistance(mapCenter.latitude, mapCenter.longitude,
+            it.stopLat, it.stopLon) }
+    }
+
+    val filteredStops by derivedStateOf {
         maxStopsInput = min(maxStops, 150).toString()
         stops.filter { stop ->
             val agencyIdsForStop = stopIdToAgencyIdMap[stop.stopID]
-            agencyIdsForStop != null && agencyIdsForStop.any { it in selectedAgencyIds } &&
-                    calculateSphericalDistance(mapCenter.latitude, mapCenter.longitude, stop.stopLat, stop.stopLon) <= 60
-        }.sortedBy { calculateSphericalDistance(mapCenter.latitude, mapCenter.longitude, it.stopLat, it.stopLon) }
+            agencyIdsForStop != null && agencyIdsForStop.any { it in selectedAgencyIds }
+        }.sortedBy { stopDistances[it] }
             .take(min(maxStops, 150))
     }
 
@@ -435,7 +433,7 @@ fun StopsWorkhorse(navController: NavHostController) {
                 val nextDepartureTime = CSVHandler.getNextDepartureTimeForStop(stop.stopID) ?: "Unavailable"
                 val currentTime = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date()) // Get current time in 24-hour format
                 // Using the custom MarkerInfoWindowContent instead of the standard Marker
-                // Additionally the MarkerInfoWindowContent is a giant buttton (has an onClick)
+                // Additionally the MarkerInfoWindowContent is a giant button (has an onClick)
                 MarkerInfoWindowContent(
                     state = MarkerState(position = LatLng(stop.stopLat, stop.stopLon)),
                     onInfoWindowClick = {

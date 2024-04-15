@@ -1277,14 +1277,13 @@ fun ListItem(
                     color = Blue,
                     fontWeight = FontWeight.Bold
                 )
-                // TODO: DAN verify is this the correct calculation? or close enough?
                 val distance = calculateSphericalDistance(
                     route.routeInfo.first().stopLat,
                     route.routeInfo.first().stopLon,
                     userLat,
                     userLon
                 )
-                Text(text = ", (${String.format("%.3f", distance)}km away)", fontSize = 16.sp)
+                Text(text = ", (${String.format("%.3f", distance)} km away)", fontSize = 16.sp)
             }
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -1370,7 +1369,7 @@ fun SpecificRouteView(route: GeneratedRoute, showList: MutableState<Boolean>) {
                 userLat,
                 userLon
             )
-            Text(text = ", (${String.format("%.3f", distance)}km away)", fontSize = 18.sp)
+            Text(text = ", (${String.format("%.3f", distance)} km away)", fontSize = 18.sp)
         }
 
         Row {
