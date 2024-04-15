@@ -25,7 +25,6 @@ data class Node(
     var routeRecords: List<RouteRecord>,
 )
 
-
 /**
  * A data class that holds information unique to each route record which will be associated with
  * a node (stop). Note that stops can be associated with multiple routes and/or trips. For this
