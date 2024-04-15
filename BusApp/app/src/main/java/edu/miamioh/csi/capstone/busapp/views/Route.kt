@@ -102,7 +102,6 @@ import edu.miamioh.csi.capstone.busapp.backend.CSVHandler
 import edu.miamioh.csi.capstone.busapp.backend.GeneratedRoute
 import edu.miamioh.csi.capstone.busapp.backend.RouteFinder
 import edu.miamioh.csi.capstone.busapp.backend.StopOnRoute
-import edu.miamioh.csi.capstone.busapp.backend.UnitConverter
 import edu.miamioh.csi.capstone.busapp.ui.theme.Black
 import edu.miamioh.csi.capstone.busapp.ui.theme.Blue
 import edu.miamioh.csi.capstone.busapp.ui.theme.Gray200
@@ -671,7 +670,7 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
                                         Column {
                                             Text(result.name)
                                             Text(
-                                                UnitConverter.formatDistance(dist),
+                                                "${String.format("%.3f", dist)}km",,
                                                 fontSize = 12.sp
                                             )
                                             Text(
@@ -820,7 +819,7 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
                                         Column {
                                             Text(result.name)
                                             Text(
-                                                UnitConverter.formatDistance(dist),
+                                                "${String.format("%.3f", dist)}km",,
                                                 fontSize = 12.sp
                                             )
                                             Text(
@@ -1370,7 +1369,7 @@ fun SpecificRouteView(route: GeneratedRoute, showList: MutableState<Boolean>) {
                 userLat,
                 userLon
             )
-            Text(text = ", (${String.format("%.3f", distance)}km away)", fontSize = 18.sp)
+            Text(text = ", (${String.format("%.3f", distance)} km away)", fontSize = 18.sp)
         }
 
         Row {

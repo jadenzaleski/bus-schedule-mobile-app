@@ -52,7 +52,6 @@ import me.zhanghai.compose.preference.ProvidePreferenceLocals
 import me.zhanghai.compose.preference.footerPreference
 import me.zhanghai.compose.preference.preference
 import me.zhanghai.compose.preference.sliderPreference
-import me.zhanghai.compose.preference.switchPreference
 import java.io.File
 import java.io.FileInputStream
 import java.text.SimpleDateFormat
@@ -143,12 +142,6 @@ fun SettingScreen() {
             )
         }
         LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(4.dp)) {
-            switchPreference(
-                key = "measurementUnit",
-                defaultValue = false,
-                title = { Text(text = "Unit of Measurement") },
-                summary = { Text(text = if (it) "Miles" else "Kilometers") }
-            )
             sliderPreference(
                 key = "fontSize",
                 defaultValue = 1f,
