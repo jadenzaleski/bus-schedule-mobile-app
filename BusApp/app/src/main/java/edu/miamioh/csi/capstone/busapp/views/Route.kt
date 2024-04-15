@@ -145,9 +145,10 @@ data class Place(
     var iconURL: String
 )
 
-// a point that is used by googles api Snap to Roads
+// A point that is used by Google's Snap-to-Roads API.
 data class SnappedPoint(val latitude: Double, val longitude: Double)
 
+// A point that is used to visualize walking from a location to the nearest bus stop.
 data class WalkingPathPoint(val latitude: Double, val longitude: Double)
 
 // user location
@@ -280,7 +281,7 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
             }
         }
 
-        // this doesn't work but it does not make the app unusable
+        // This doesn't work but it does not make the app unusable
         LaunchedEffect(key1 = option) {
                 // set the passed in params to the correct vars
                 when (option) {
@@ -305,7 +306,7 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
 
 
         // this function take in the points on the route and does its best to return a list
-// of points that we can draw a polyline with.
+        // of points that we can draw a polyline with.
         @OptIn(DelicateCoroutinesApi::class)
         fun googleSnapToRoads(places: List<StopOnRoute>) {
             // clear the list
@@ -524,6 +525,10 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
                                 }
                             }
                         } else {
+                            /*
+                             * Represents all stops that are not the first or last stop on the
+                             * route.
+                             */
                             Circle(
                                 center = LatLng(stop.stopLat, stop.stopLon),
                                 fillColor = Color.Red,
@@ -533,18 +538,21 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
                             )
                         }
                     }
+                    // Represents the "linear" path from the first stop to the start location.
                     Polyline(
                         points = walkToFirstStopPoints.map { LatLng(it.latitude, it.longitude) },
                         width = 10f,
                         color = Color.Gray,
                         pattern = listOf(Dot(), Gap(10f))
                     )
+                    // Represents the "linear" path from the last stop to the end location.
                     Polyline(
                         points = walkFromLastStopPoints.map { LatLng(it.latitude, it.longitude) },
                         width = 10f,
                         color = Color.Gray,
                         pattern = listOf(Dot(), Gap(10f))
                     )
+                    // Represents the starting location.
                     Circle(
                         center = LatLng(selectedStartPlace.value.lat, selectedStartPlace.value.lon),
                         fillColor = Color.LightGray,
@@ -552,6 +560,7 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
                         strokeColor = Color.Black,
                         strokeWidth = 2f
                     )
+                    // Represents the ending location.
                     Circle(
                         center = LatLng(selectedEndPlace.value.lat, selectedEndPlace.value.lon),
                         fillColor = Color.LightGray,
