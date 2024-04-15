@@ -73,34 +73,34 @@ fun SettingScreen() {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
 
+    // Setup/initializations for app colors based on system theme
     val backgroundColor = MaterialTheme.colorScheme.background
     val onBackgroundColor = MaterialTheme.colorScheme.onBackground
 
-    // State to control the visibility of the update data dialog
+    // Setup for "Update" feature and its associated dialogues
     var showUpdateDataAlert by remember { mutableStateOf(false) }
     var isUpdating by remember { mutableStateOf(false) }
-    var lastUpdateTime by remember { mutableStateOf("No manual updates triggered since last full app refresh") }
-
-    // Show progress dialog based on isUpdating state
+    var lastUpdateTime by remember { mutableStateOf("No manual updates triggered since last " +
+            "full app refresh") }
     UpdateProgressDialog(isVisible = isUpdating)
 
-    // Dialog showing logic
+    // This Alertdialog is for when the update preference is triggered.
     if (showUpdateDataAlert) {
         AlertDialog(
             onDismissRequest = {
-                // Handle the dismiss action here
                 showUpdateDataAlert = false
             },
             confirmButton = {
                 Button(
                     onClick = {
-                        showUpdateDataAlert = false // Close the dialog
-                        isUpdating = true // Begin updating
+                        showUpdateDataAlert = false
+                        isUpdating = true // Update process now begins here
 
                         coroutineScope.launch {
                             updateData(context) {
-                                isUpdating = false // Update completion handler
-                                val dateFormat = SimpleDateFormat("MMM dd, yyyy HH:mm:ss", Locale.getDefault())
+                                isUpdating = false
+                                val dateFormat = SimpleDateFormat("MMM dd, yyyy HH:mm:ss",
+                                    Locale.getDefault())
                                 lastUpdateTime = "${dateFormat.format(Date())}"
                             }
                         }
@@ -120,13 +120,14 @@ fun SettingScreen() {
         )
     }
 
+    // Setup for "About" feature and its associated dialogues
     var showAboutDialog by remember { mutableStateOf(false) }  // State for About dialog
 
-    // About dialog
     if (showAboutDialog) {
         AboutDialog { showAboutDialog = false }
     }
 
+    // Setup for "Email" feature and its associated dialogues
     var showEmailDialog by remember { mutableStateOf(false) }
     var email by remember { mutableStateOf("") }
     var message by remember { mutableStateOf("") }
@@ -165,6 +166,12 @@ fun SettingScreen() {
                 tint = onBackgroundColor
             )
         }
+        /*
+         * Most of the code inside here deals with the utilization of the custom-made preference
+         * library which is included in the imports list. Refer to the GitHub for this external
+         * library for further documentation purposes.
+         * Link: https://github.com/zhanghai/ComposePreference
+         */
         LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(4.dp)) {
             preference(
                 key = "fontSize",
@@ -174,15 +181,16 @@ fun SettingScreen() {
 
                 }
             )
+            // Triggers dialogues related to the "Update Data" functionality.
             preference(
                 key = "updateData",
                 title = { Text(text = "Update Data") },
                 summary = { Text(text = "Last Update: $lastUpdateTime" ) },
                 onClick = {
-                    // When the preference is clicked, show the dialog
                     showUpdateDataAlert = true
                 }
             )
+            // Triggers dialogues related to the "About This App" functionality.
             preference(
                 key = "about",
                 title = { Text(text = "About/App Info") },
@@ -191,6 +199,7 @@ fun SettingScreen() {
                     showAboutDialog = true
                 }
             )
+            // Triggers dialogues related to the "Report an Issue" functionality.
             preference(
                 key = "reportIssue",
                 title = { Text("Report an Issue") },
@@ -199,6 +208,7 @@ fun SettingScreen() {
                     showEmailDialog = true
                 }
             )
+            // A simple footer for the Settings page - doesn't have any functionality.
             preference(
                 key = "footer",
                 title = { Text(text = "") },
@@ -208,6 +218,10 @@ fun SettingScreen() {
     }
 }
 
+/*
+ * Allows for the system theme to interact with and control the theme and appearance of the
+ * Settings page.
+ */
 @Composable
 fun SetTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
@@ -246,6 +260,12 @@ fun SetTheme(
     MaterialTheme(colorScheme = colorScheme, content = content)
 }
 
+/**
+ * A dialog that gets displayed based on certain conditions. It notifies the user that the app is
+ * presently grabbing the most recent CORe bus data, and it disables the app, preventing the user
+ * from accessing it until the data update process is complete.
+ * @param isVisible - A Boolean value designating whether the dialog should be visible or not
+ */
 @Composable
 fun UpdateProgressDialog(isVisible: Boolean) {
     if (isVisible) {
@@ -259,6 +279,11 @@ fun UpdateProgressDialog(isVisible: Boolean) {
     }
 }
 
+/**
+ * Deletes a file directory, and all contents inside of it, if that directory previously existed.
+ * @param directory - the files to be searched for and potentially deleted
+ * @return a Boolean value indicating if the directory was deleted or not
+ */
 fun deleteDirectoryWithContents(directory: File): Boolean {
     if (directory.exists()) {
         val files = directory.listFiles()
@@ -275,30 +300,32 @@ fun deleteDirectoryWithContents(directory: File): Boolean {
     return directory.delete()
 }
 
+/**
+ * Initiates the process where data gets pulled from the CORe website and populates all the
+ * structures which were designated to hold the data. Most of this code was taken from the
+ * CSVHandler.kt file, with some adjustments made in the context of this page's code.
+ * @param context - The current active context
+ * @param onComplete - A lambda function indicting what action should occur when the process is
+ *                     complete
+ */
 suspend fun updateData(context: Context, onComplete: () -> Unit) {
     try {
-        // Perform operations in IO dispatcher
         withContext(Dispatchers.IO) {
             val url = "https://mobilita.regione.calabria.it/gtfs/otp_gtfs.zip"
             val destinationFile = File(context.getExternalFilesDir(null), "otp_gtfs.zip")
 
-            // Ensure the directory for extracted files is clear
             val coreDir = File(context.getExternalFilesDir(null), "core")
             if (deleteDirectoryWithContents(coreDir)) {
                 Log.i("DELETE", "Previous data deleted successfully.")
             }
 
-            // Recreate directories
             if (!coreDir.exists()) {
                 coreDir.mkdirs()
             }
 
-            // Replace this with the actual download logic
             CSVHandler.downloadFile(url, destinationFile)
             Log.i("DOWNLOAD", "Download job is complete (Stage 1).")
 
-            // Add your other operations here
-            // Ensure you replace the placeholder operations with actual implementation
             UnzipUtils.unzip(
                 destinationFile,
                 context.getExternalFilesDir(null)?.absolutePath + "/core/"
@@ -308,7 +335,10 @@ suspend fun updateData(context: Context, onComplete: () -> Unit) {
             CSVHandler.renameToCSV(context.getExternalFilesDir(null)?.absolutePath + "/core")
             Log.i("RENAME", "Rename Job is complete (Stage 3).")
 
-            // Initialize CSVHandler with the correct paths
+            /*
+             * Initialization Process - Tells the CSVHandler where to store the data in the device
+             * files
+             */
             withContext(Dispatchers.IO) {
                 CSVHandler.initialize(
                     FileInputStream("/storage/emulated/0/Android/data/edu.miamioh.csi.capstone.busapp/files/core/agency.csv"),
@@ -327,10 +357,16 @@ suspend fun updateData(context: Context, onComplete: () -> Unit) {
     } catch (e: Exception) {
         Log.e("UpdateError", "Error during update: ${e.message}")
     } finally {
-        onComplete() // Invoke the completion handler
+        onComplete()
     }
 }
 
+/**
+ * A composable function that details the dialog that should be displayed when the user clicks
+ * on the "About Data" preference.
+ * @param onDismiss - A lambda function indicting what action should occur when the dialog is
+ *                    dismissed
+ */
 @Composable
 fun AboutDialog(onDismiss: () -> Unit) {
     AlertDialog(
@@ -356,6 +392,21 @@ fun AboutDialog(onDismiss: () -> Unit) {
     )
 }
 
+/**
+ * A composable function that details the dialog that should be displayed when the user clicks
+ * on the "Report an Issue" preference. Most of the "Log" code here is for debugging purposes, but
+ * it does help even outside of that context.
+ * @param email - The email address the message will be sent to
+ * @param message - The message to be sent to the designated email
+ * @param onEmailChange - A lambda function indicting what action should occur when the inputted
+ *                        email address gets changed in the text field
+ * @param onMessageChange - A lambda function indicting what action should occur when the inputted
+ *                          message gets changed in the text field
+ * @param onSend - A lambda function indicting what action should occur when the "Send" button is
+ *                 clicked, initiating the email sending process
+ * @param onClose - A lambda function indicting what action should occur when the "Close" button is
+ *                  clicked, dismissing the email dialog from visibility
+ */
 @Composable
 fun EmailDialog(
     email: String,
@@ -374,7 +425,7 @@ fun EmailDialog(
                     value = email,
                     onValueChange = {
                         onEmailChange(it)
-                        Log.d("EmailInput", "Email updated to: $it")  // Log the email input for debugging
+                        Log.d("EmailInput", "Email updated to: $it")
                     },
                     label = { Text("Email Address") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
@@ -396,10 +447,20 @@ fun EmailDialog(
     )
 }
 
+/**
+ * A function that initiates a "send email" request. When the "Send" button is clicked, it will
+ * prompt the user to pick an email client/platform from which an email can be typed and sent. It
+ * will save the previously inputted email from the text fields, but essentially provides a second
+ * text editor where the user can make final changes, review their service request, and finally
+ * submit the request.
+ * @param context - The current context
+ * @param recipient - The intended recipient of the email (the email address)
+ * @param content - The message to be delivered to the recipient
+ */
 fun sendEmail(context: Context, recipient: String, content: String) {
     Log.d("EmailIntent", "Preparing to send email...")
     val intent = Intent(Intent.ACTION_SEND).apply {
-        type = "message/rfc822"  // MIME type for email
+        type = "message/rfc822"
         putExtra(Intent.EXTRA_EMAIL, arrayOf(recipient))
         putExtra(Intent.EXTRA_SUBJECT, "Issue Report")
         putExtra(Intent.EXTRA_TEXT, content)
