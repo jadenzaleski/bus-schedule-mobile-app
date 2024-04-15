@@ -102,6 +102,7 @@ import edu.miamioh.csi.capstone.busapp.backend.CSVHandler
 import edu.miamioh.csi.capstone.busapp.backend.GeneratedRoute
 import edu.miamioh.csi.capstone.busapp.backend.RouteFinder
 import edu.miamioh.csi.capstone.busapp.backend.StopOnRoute
+import edu.miamioh.csi.capstone.busapp.backend.UnitConverter
 import edu.miamioh.csi.capstone.busapp.ui.theme.Black
 import edu.miamioh.csi.capstone.busapp.ui.theme.Blue
 import edu.miamioh.csi.capstone.busapp.ui.theme.Gray200
@@ -670,7 +671,7 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
                                         Column {
                                             Text(result.name)
                                             Text(
-                                                "${String.format("%.3f", dist)}km",
+                                                UnitConverter.formatDistance(dist),
                                                 fontSize = 12.sp
                                             )
                                             Text(
@@ -819,7 +820,7 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
                                         Column {
                                             Text(result.name)
                                             Text(
-                                                "${String.format("%.3f", dist)}km",
+                                                UnitConverter.formatDistance(dist),
                                                 fontSize = 12.sp
                                             )
                                             Text(
@@ -1277,7 +1278,6 @@ fun ListItem(
                     color = Blue,
                     fontWeight = FontWeight.Bold
                 )
-                // TODO: DAN verify is this the correct calculation? or close enough?
                 val distance = calculateSphericalDistance(
                     route.routeInfo.first().stopLat,
                     route.routeInfo.first().stopLon,

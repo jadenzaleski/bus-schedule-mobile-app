@@ -147,7 +147,7 @@ fun SettingScreen() {
                 key = "measurementUnit",
                 defaultValue = false,
                 title = { Text(text = "Unit of Measurement") },
-                summary = { Text(text = if (it) "Kilometers" else "Miles") }
+                summary = { Text(text = if (it) "Miles" else "Kilometers") }
             )
             sliderPreference(
                 key = "fontSize",
