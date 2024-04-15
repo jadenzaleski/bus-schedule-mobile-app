@@ -1,14 +1,14 @@
-package edu.miamioh.csi.capstone.busapp
+package edu.miamioh.csi.capstone.busapp.backend
 
 import android.util.Log
-import edu.miamioh.csi.capstone.busapp.CSVHandler.agencies
-import edu.miamioh.csi.capstone.busapp.CSVHandler.calendar
-import edu.miamioh.csi.capstone.busapp.CSVHandler.info
-import edu.miamioh.csi.capstone.busapp.CSVHandler.routes
-import edu.miamioh.csi.capstone.busapp.CSVHandler.serviceDates
-import edu.miamioh.csi.capstone.busapp.CSVHandler.stopTimes
-import edu.miamioh.csi.capstone.busapp.CSVHandler.stops
-import edu.miamioh.csi.capstone.busapp.CSVHandler.trips
+import edu.miamioh.csi.capstone.busapp.backend.CSVHandler.agencies
+import edu.miamioh.csi.capstone.busapp.backend.CSVHandler.calendar
+import edu.miamioh.csi.capstone.busapp.backend.CSVHandler.info
+import edu.miamioh.csi.capstone.busapp.backend.CSVHandler.routes
+import edu.miamioh.csi.capstone.busapp.backend.CSVHandler.serviceDates
+import edu.miamioh.csi.capstone.busapp.backend.CSVHandler.stopTimes
+import edu.miamioh.csi.capstone.busapp.backend.CSVHandler.stops
+import edu.miamioh.csi.capstone.busapp.backend.CSVHandler.trips
 import java.io.BufferedReader
 import java.io.File
 import java.io.FileNotFoundException
@@ -20,6 +20,10 @@ import java.net.HttpURLConnection
 import java.net.MalformedURLException
 import java.net.SocketTimeoutException
 import java.net.URL
+import java.text.ParseException
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Locale
 
 
 /**
@@ -29,8 +33,8 @@ import java.net.URL
 data class Agency(
     val agencyID: Int,
     val agencyName: String,
-    val agencyUrl: String,
-    val agencyTimeZone: String,
+    val agencyURL: String,
+    val agencyTimezone: String,
     val agencyPhone: String
 )
 
@@ -67,7 +71,7 @@ data class ServiceDate(
  */
 data class Info(
     val feedPublisherName: String,
-    val feedPublisherUrl: String,
+    val feedPublisherURL: String,
     val feedLang: String,
     val feedStartDate: String,
     val feedEndDate: String,
@@ -107,7 +111,7 @@ data class StopTime(
  * [CORe](https://mobilita.regione.calabria.it/Informazioni/Informazioni)
  */
 data class Stop(
-    val stopId: Int,
+    val stopID: Int,
     val stopName: String,
     val stopLat: Double,
     val stopLon: Double,
@@ -145,7 +149,7 @@ object CSVHandler {
     private val serviceDates: MutableList<ServiceDate> = mutableListOf()
     private var info: Info = Info(
         feedPublisherName = "",
-        feedPublisherUrl = "",
+        feedPublisherURL = "",
         feedLang = "",
         feedStartDate = "",
         feedEndDate = "",
@@ -213,8 +217,8 @@ object CSVHandler {
                     val agency = Agency(
                         agencyID = parts[0].toInt(),
                         agencyName = parts[1],
-                        agencyUrl = parts[2],
-                        agencyTimeZone = parts[3],
+                        agencyURL = parts[2],
+                        agencyTimezone = parts[3],
                         agencyPhone = parts[5]
                     )
                     // add to main list
@@ -350,7 +354,7 @@ object CSVHandler {
                     // make object
                     info = Info(
                         feedPublisherName = parts[0],
-                        feedPublisherUrl = parts[1],
+                        feedPublisherURL = parts[1],
                         feedLang = parts[2],
                         feedStartDate = parts[3],
                         feedEndDate = parts[4],
@@ -485,7 +489,7 @@ object CSVHandler {
                 if (parts.size == 15) {
                     // make object
                     val s = Stop(
-                        stopId = parts[0].toInt(),
+                        stopID = parts[0].toInt(),
                         stopName = parts[1],
                         stopLat = parts[2].toDouble(),
                         stopLon = parts[3].toDouble(),
@@ -791,6 +795,116 @@ object CSVHandler {
      */
     fun getTrips(): List<Trip> {
         return trips
+    }
+
+    /*
+    fun getAgencyIdToStopsMap(
+        stops: List<Stop>,
+        routes: List<Route>,
+        trips: List<Trip>,
+        stopTimes: List<StopTime>
+    ): Map<Int, List<Stop>> {
+        val agencyIdToRouteIds = this.routes.groupBy { it.agencyID }.mapValues { it.value.map(Route::routeID) }
+        val routeIdToTripIds = this.trips.groupBy { it.routeID }.mapValues { it.value.map(Trip::tripID) }
+        val tripIdToStopIds = this.stopTimes.groupBy { it.tripID }.mapValues { it.value.map(StopTime::stopID).distinct() }
+        val stopIdToStop = this.stops.associateBy { it.stopId }
+
+        val agencyIdToStops = mutableMapOf<Int, MutableList<Stop>>()
+
+        agencyIdToRouteIds.forEach { (agencyId, routeIds) ->
+            routeIds.forEach { routeId ->
+                routeIdToTripIds[routeId]?.forEach { tripId ->
+                    tripIdToStopIds[tripId]?.forEach { stopId ->
+                        stopIdToStop[stopId]?.let { stop ->
+                            agencyIdToStops.getOrPut(agencyId) { mutableListOf() }.add(stop)
+                        }
+                    }
+                }
+            }
+        }
+
+        return agencyIdToStops
+    }
+    */
+
+    fun getStopIdToAgencyIdMap(
+        stops: List<Stop>,
+        routes: List<Route>,
+        trips: List<Trip>,
+        stopTimes: List<StopTime>
+    ): Map<Int, List<Int>> {
+        val routeIdToAgencyId = routes.associate { it.routeID to it.agencyID }
+        val tripIdToRouteId = trips.associate { it.tripID to it.routeID }
+        val stopTimeToTripId = stopTimes.groupBy { it.stopID }.mapValues { entry ->
+            entry.value.map { it.tripID }.distinct()
+        }
+
+        // Since stops can be associated with multiple agencies, we will store all the associated
+        // agencies in a list.
+        val stopIdToAgencyId = mutableMapOf<Int, MutableList<Int>>()
+
+        stopTimeToTripId.forEach { (stopId, tripIds) ->
+            tripIds.forEach { tripId ->
+                val routeId = tripIdToRouteId[tripId]
+                val agencyId = routeId?.let { routeIdToAgencyId[it] }
+                if (agencyId != null) {
+                    // Initialize the list for this stopId if it doesn't exist
+                    if (stopIdToAgencyId[stopId] == null) {
+                        stopIdToAgencyId[stopId] = mutableListOf()
+                    }
+                    // Add the agencyId if it's not already in the list for this stopId
+                    if (agencyId !in stopIdToAgencyId[stopId]!!) {
+                        stopIdToAgencyId[stopId]!!.add(agencyId)
+                    }
+                }
+            }
+        }
+        return stopIdToAgencyId
+    }
+
+    fun getNextDepartureTimeForStop(stopId: Int): String {
+        val format = SimpleDateFormat("HH:mm", Locale.UK) // Use 24-hour format for simplicity.
+
+        // Gets time from local Calendar
+        val nowHelper = Calendar.getInstance().time
+
+        // Convert the current time to a string (this needs to happen to ensure the 24-hour format is kept).
+        val nowString = format.format(nowHelper)
+
+//        println("CURR TIME")
+//        println(nowString)
+
+        // Convert 'nowString' back to a Calendar object for comparison
+        val now = Calendar.getInstance().apply {
+            time = format.parse(nowString) ?: return "Could not parse current time"
+        }
+
+        //println(now.time)
+
+        // Assuming all departure times are for today and focusing only on the time part.
+        // Create a list of
+        val departureTimes = stopTimes.filter { it.stopID == stopId }
+            .mapNotNull { timeString ->
+                try {
+                    format.parse(timeString.departureTime)?.let { date ->
+                        // Convert the parsed date to a Calendar object to compare only the time part.
+                        Calendar.getInstance().apply {
+                            time = date
+                            // fix the setter
+                            set(Calendar.YEAR, now.get(Calendar.YEAR))
+                            set(Calendar.MONTH, now.get(Calendar.MONTH))
+                            set(Calendar.DAY_OF_MONTH, now.get(Calendar.DAY_OF_MONTH))
+                        }
+                    }
+                } catch (e: ParseException) {
+                    null // Ignore parse exceptions and proceed to the next item.
+                }
+            }.sortedBy { it.time }
+
+        // fix this code to convert now to a Calendar time type to be able to be correctly compared with departureTimes
+        val nextDepartureTime = departureTimes.firstOrNull { it.after(now) } ?: return "No more departures today"
+        // Format and return the next departure time as a string.
+        return format.format(nextDepartureTime.time)
     }
 
 }

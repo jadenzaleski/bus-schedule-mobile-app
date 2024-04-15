@@ -2,8 +2,27 @@
 <project version="4">
   <component name="deploymentTargetDropDown">
     <value>
+      <entry key="CSE 448 - Senior Design.bus-schedule-mobile-app.BusApp.app">
+        <State />
+      </entry>
       <entry key="app">
         <State />
+      </entry>
+      <entry key="bus-schedule-mobile-app.BusApp.app">
+        <State>
+          <runningDeviceTargetSelectedWithDropDown>
+            <Target>
+              <type value="RUNNING_DEVICE_TARGET" />
+              <deviceKey>
+                <Key>
+                  <type value="SERIAL_NUMBER" />
+                  <value value="83a2d76b" />
+                </Key>
+              </deviceKey>
+            </Target>
+          </runningDeviceTargetSelectedWithDropDown>
+          <timeTargetWasSelectedWithDropDown value="2024-04-15T05:24:00.788073700Z" />
+        </State>
       </entry>
     </value>
   </component>
