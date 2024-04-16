@@ -71,6 +71,7 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
@@ -78,6 +79,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
@@ -135,6 +137,9 @@ import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sqrt
 
+val TextUnit.nonScaledSp
+    @Composable
+    get() = (this.value / LocalDensity.current.fontScale).sp
 
 // A Generic struct for places on the map
 data class Place(
@@ -283,17 +288,20 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
 
         // This doesn't work but it does not make the app unusable
         LaunchedEffect(key1 = option) {
-                // set the passed in params to the correct vars
-                when (option) {
-                    "start" -> {
-                        startSearchString = URLDecoder.decode(name, "UTF-8")
-                        selectedStartPlace.value = Place(URLDecoder.decode(name, "UTF-8"), lat, lon, "", "")
-                    }
-                    "end" -> {
-                        endSearchString = URLDecoder.decode(name, "UTF-8")
-                        selectedEndPlace.value = Place(URLDecoder.decode(name, "UTF-8"), lat, lon, "", "")
-                    }
+            // set the passed in params to the correct vars
+            when (option) {
+                "start" -> {
+                    startSearchString = URLDecoder.decode(name, "UTF-8")
+                    selectedStartPlace.value =
+                        Place(URLDecoder.decode(name, "UTF-8"), lat, lon, "", "")
                 }
+
+                "end" -> {
+                    endSearchString = URLDecoder.decode(name, "UTF-8")
+                    selectedEndPlace.value =
+                        Place(URLDecoder.decode(name, "UTF-8"), lat, lon, "", "")
+                }
+            }
         }
 
         // boolean to make sure the the starting and ending places arent blank
@@ -487,7 +495,7 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
                                             text = "Start",
                                             modifier = Modifier.padding(top = 5.dp),
                                             style = TextStyle(
-                                                fontSize = 20.sp,
+                                                fontSize = 20.sp.nonScaledSp,
                                                 fontWeight = FontWeight.Bold,
                                                 color = Green
                                             )
@@ -497,7 +505,7 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
                                             text = "End",
                                             modifier = Modifier.padding(top = 5.dp),
                                             style = TextStyle(
-                                                fontSize = 20.sp,
+                                                fontSize = 20.sp.nonScaledSp,
                                                 fontWeight = FontWeight.Bold,
                                                 color = Red
                                             )
@@ -507,7 +515,7 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
                                         text = stop.stopName,
                                         modifier = Modifier.padding(top = 5.dp),
                                         style = TextStyle(
-                                            fontSize = 16.sp,
+                                            fontSize = 16.sp.nonScaledSp,
                                             fontWeight = FontWeight.Bold,
                                         )
                                     )
@@ -604,7 +612,10 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
                     ) {
                         Text(
                             text = "From:",
-                            style = TextStyle(fontSize = 20.sp, fontFamily = FontFamily.Monospace),
+                            style = TextStyle(
+                                fontSize = 20.sp.nonScaledSp,
+                                fontFamily = FontFamily.Monospace
+                            ),
                             modifier = Modifier.padding(end = 10.dp)
                         )
                         // Using the custom CurrentLocationButton
@@ -624,6 +635,7 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
                         // search box for start
                         OutlinedTextField(
                             value = startSearchString,
+                            textStyle = TextStyle(fontSize = 15.sp.nonScaledSp),
                             enabled = startIsCurrentLocation.value.not(),
                             onValueChange = { startSearchString = it },
                             keyboardActions = KeyboardActions(
@@ -638,8 +650,8 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
                             placeholder = {
                                 Text(
                                     text = if (startIsCurrentLocation.value.not()) "Search Anything..." else "Current Location.",
-                                    fontSize = 15.sp,
-                                    lineHeight = 20.sp,
+                                    fontSize = 15.sp.nonScaledSp,
+                                    lineHeight = 20.sp.nonScaledSp,
                                     color = Color.Gray
                                 )
                             },
@@ -714,12 +726,12 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
                                             Text(result.name)
                                             Text(
                                                 "${String.format("%.3f", dist)}km",
-                                                fontSize = 12.sp
+                                                fontSize = 12.sp.nonScaledSp
                                             )
                                             Text(
                                                 result.address,
                                                 fontWeight = FontWeight.Light,
-                                                fontSize = 12.sp
+                                                fontSize = 12.sp.nonScaledSp
                                             )
                                         }
                                     },
@@ -753,7 +765,10 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
                     ) {
                         Text(
                             text = "To:  ",
-                            style = TextStyle(fontSize = 20.sp, fontFamily = FontFamily.Monospace),
+                            style = TextStyle(
+                                fontSize = 20.sp.nonScaledSp,
+                                fontFamily = FontFamily.Monospace
+                            ),
                             modifier = Modifier.padding(end = 10.dp)
                         )
                         // current location button
@@ -774,6 +789,7 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
                         // search text box
                         OutlinedTextField(
                             value = endSearchString,
+                            textStyle = TextStyle(fontSize = 15.sp.nonScaledSp),
                             onValueChange = { endSearchString = it },
                             enabled = endIsCurrentLocation.value.not(),
                             keyboardActions = KeyboardActions(
@@ -786,8 +802,8 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
                             placeholder = {
                                 Text(
                                     text = if (endIsCurrentLocation.value.not()) "Search Anything..." else "Current Location.",
-                                    fontSize = 15.sp,
-                                    lineHeight = 20.sp,
+                                    fontSize = 15.sp.nonScaledSp,
+                                    lineHeight = 20.sp.nonScaledSp,
                                     color = Color.Gray
                                 )
                             },
@@ -847,7 +863,7 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .fillMaxHeight(0.5f)
-                            ) {
+                        ) {
                             // for all the search results
                             searchResults.forEach { result ->
                                 DropdownMenuItem(
@@ -860,15 +876,21 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
                                             result.lon
                                         )
                                         Column {
-                                            Text(result.name)
+                                            Text(
+                                                result.name,
+                                                fontSize = 16.sp.nonScaledSp,
+                                                lineHeight = 18.sp.nonScaledSp
+                                            )
                                             Text(
                                                 "${String.format("%.3f", dist)}km",
-                                                fontSize = 12.sp
+                                                fontSize = 12.sp.nonScaledSp,
+                                                lineHeight = 18.sp.nonScaledSp
                                             )
                                             Text(
                                                 result.address,
                                                 fontWeight = FontWeight.Light,
-                                                fontSize = 12.sp
+                                                fontSize = 12.sp.nonScaledSp,
+                                                lineHeight = 18.sp.nonScaledSp
                                             )
                                         }
                                     },
@@ -928,14 +950,15 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
                             modifier = Modifier
                                 .height(50.dp)
                                 .width(120.dp),
-                            shape = RoundedCornerShape(20)
+                            shape = RoundedCornerShape(20),
+                            contentPadding = PaddingValues(0.dp)
                         ) {
                             Icon(
                                 Icons.Filled.DateRange,
                                 contentDescription = null,
-                                modifier = Modifier.padding(end = 6.dp)
+                                modifier = Modifier.padding(end = 3.dp)
                             )
-                            Text(text = selectedTime)
+                            Text(text = selectedTime, fontSize = 14.sp.nonScaledSp)
                         }
 
                         // GO button
@@ -993,13 +1016,17 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
                                 .padding(start = 10.dp),
                             shape = RoundedCornerShape(20)
                         ) {
-                            Text(text = "Go")
+                            Text(text = "Go", fontSize = 16.sp.nonScaledSp)
                         }
                     }
                 }
             } else if (showList.value) {
                 // show the list of routes in this custom composable
-                RoutesListView(showForm, showList, snappedPointsReady, { info -> googleSnapToRoads(info) })
+                RoutesListView(
+                    showForm,
+                    showList,
+                    snappedPointsReady,
+                    { info -> googleSnapToRoads(info) })
             } else {
                 // if both of the booleans are false we show the detailed view of the current route
                 SpecificRouteView(currentRoute, showList)
@@ -1045,16 +1072,24 @@ fun calcRoute(
 
     // Create the list of routes generate by the route workhorse
     listOfRoutes = RouteFinder.routeWorkhorse(start, end, time, allowedAgencies)
-    calculateWalkingPath(
-        LatLng(start.lat, start.lon),
-        LatLng(listOfRoutes.first().routeInfo.first().stopLat, listOfRoutes.first().routeInfo.first().stopLon),
-        walkToFirstStopPoints
-    )
-    calculateWalkingPath(
-        LatLng(listOfRoutes.last().routeInfo.last().stopLat, listOfRoutes.last().routeInfo.last().stopLon),
-        LatLng(end.lat, end.lon),
-        walkFromLastStopPoints
-    )
+    if (listOfRoutes.isNotEmpty()) {
+        calculateWalkingPath(
+            LatLng(start.lat, start.lon),
+            LatLng(
+                listOfRoutes.first().routeInfo.first().stopLat,
+                listOfRoutes.first().routeInfo.first().stopLon
+            ),
+            walkToFirstStopPoints
+        )
+        calculateWalkingPath(
+            LatLng(
+                listOfRoutes.last().routeInfo.last().stopLat,
+                listOfRoutes.last().routeInfo.last().stopLon
+            ),
+            LatLng(end.lat, end.lon),
+            walkFromLastStopPoints
+        )
+    }
 }
 
 // Function to calculate the midpoint between two points
@@ -1116,19 +1151,32 @@ fun CustomAlert(size: Int, onDismissRequest: () -> Unit, onConfirmation: () -> U
         AlertDialog(
             confirmButton = {
                 TextButton(onClick = { onConfirmation() }) {
-                    Text(text = "Okay", color = Blue)
+                    Text(
+                        text = "Okay",
+                        color = Blue,
+                        lineHeight = 15.sp.nonScaledSp,
+                        fontSize = 15.sp.nonScaledSp
+                    )
                 }
             },
             onDismissRequest = { onDismissRequest() },
             dismissButton = {},
             icon = { Icon(Icons.Default.Clear, "", tint = Red) },
-            title = { Text(text = "No Available Route") },
+            title = {
+                Text(
+                    text = "No Available Route",
+                    lineHeight = 18.sp.nonScaledSp,
+                    fontSize = 18.sp.nonScaledSp
+                )
+            },
             text = {
                 Text(
                     text = "A route can not be generated due to one of the following:\n\n" +
                             "- Your start and end points are the same.\n" +
                             "- There is no upcoming route for your desired starting and ending point.\n" +
-                            "- It is faster to walk to your destination."
+                            "- It is faster to walk to your destination.",
+                    lineHeight = 15.sp.nonScaledSp,
+                    fontSize = 15.sp.nonScaledSp
                 )
             },
         )
@@ -1203,8 +1251,20 @@ fun CurrentLocationButton(
     if (showPermissionDeniedDialog) {
         AlertDialog(
             onDismissRequest = { showPermissionDeniedDialog = false },
-            title = { Text("Location Permission Denied") },
-            text = { Text("You need to enable location permissions in app settings.") },
+            title = {
+                Text(
+                    "Location Permission Denied",
+                    lineHeight = 18.sp.nonScaledSp,
+                    fontSize = 18.sp.nonScaledSp
+                )
+            },
+            text = {
+                Text(
+                    "You need to enable location permissions in app settings.",
+                    lineHeight = 15.sp.nonScaledSp,
+                    fontSize = 15.sp.nonScaledSp
+                )
+            },
             confirmButton = {
                 TextButton(onClick = {
                     showPermissionDeniedDialog = false
@@ -1213,7 +1273,11 @@ fun CurrentLocationButton(
                     }
                     context.startActivity(intent)
                 }) {
-                    Text("Open Settings")
+                    Text(
+                        "Open Settings",
+                        lineHeight = 15.sp.nonScaledSp,
+                        fontSize = 15.sp.nonScaledSp
+                    )
                 }
             }
         )
@@ -1244,7 +1308,7 @@ fun RoutesListView(
                         textAlign = TextAlign.Center,
                         text = " ${listOfRoutes.size} possible route(s)",
                         style = TextStyle(
-                            fontSize = 18.sp,
+                            fontSize = 18.sp.nonScaledSp,
                             fontWeight = FontWeight.Bold,
                             fontStyle = FontStyle.Italic,
                         )
@@ -1285,7 +1349,7 @@ fun RoutesListView(
                 )
                 HorizontalDivider(
                     thickness = 3.dp,
-                    modifier = Modifier.padding(vertical = 3.dp),
+                    modifier = Modifier.padding(vertical = 5.dp),
                     color = Gray200
                 )
             }
@@ -1324,7 +1388,7 @@ fun ListItem(
                 Text(
                     text = route.routeShortName + ", ${route.routeStartTime}" + ", ${route.routeInfo.size} stop(s)",
                     style = TextStyle(
-                        fontSize = 18.sp,
+                        fontSize = 18.sp.nonScaledSp,
                         fontWeight = FontWeight.Bold,
 
                         )
@@ -1336,21 +1400,25 @@ fun ListItem(
                 modifier = Modifier.padding(start = 3.dp)
             ) {
                 // leaves in
-                Text(text = "Leaves in: ", fontSize = 16.sp)
+                Text(text = "Leaves in: ", fontSize = 16.sp.nonScaledSp)
                 Text(
                     text = getTimeUntil(route.routeStartTime),
-                    fontSize = 16.sp,
+                    fontSize = 16.sp.nonScaledSp,
                     color = Blue,
                     fontWeight = FontWeight.Bold
                 )
-                val distance = calculateSphericalDistance(
-                    route.routeInfo.first().stopLat,
-                    route.routeInfo.first().stopLon,
-                    userLat,
-                    userLon
-                )
-                Text(text = ", (${String.format("%.3f", distance)} km away)", fontSize = 16.sp)
             }
+            val distance = calculateSphericalDistance(
+                route.routeInfo.first().stopLat,
+                route.routeInfo.first().stopLon,
+                userLat,
+                userLon
+            )
+            Text(
+                text = "(${String.format("%.3f", distance)} km away)",
+                fontSize = 16.sp.nonScaledSp
+            )
+
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.padding(start = 3.dp)
@@ -1361,11 +1429,14 @@ fun ListItem(
                 val formattedTime = "${hours}h ${minutes}m"
                 Text(
                     text = formattedTime,
-                    fontSize = 16.sp,
+                    fontSize = 16.sp.nonScaledSp,
                     color = Blue,
                     fontWeight = FontWeight.Bold
                 )
-                Text(" ride, ${route.routeStartTime} - ${route.routeEndTime}", fontSize = 16.sp)
+                Text(
+                    " ride, ${route.routeStartTime} - ${route.routeEndTime}",
+                    fontSize = 16.sp.nonScaledSp
+                )
             }
         }
         // green go button
@@ -1386,7 +1457,7 @@ fun ListItem(
                 .height(60.dp),
             shape = RoundedCornerShape(20)
         ) {
-            Text(text = "GO")
+            Text(text = "GO", fontSize = 18.sp.nonScaledSp)
         }
     }
 }
@@ -1412,7 +1483,7 @@ fun SpecificRouteView(route: GeneratedRoute, showList: MutableState<Boolean>) {
             Text(
                 text = route.routeShortName + ", ${route.routeStartTime}" + ", ${route.routeInfo.size} stop(s)",
                 style = TextStyle(
-                    fontSize = 22.sp,
+                    fontSize = 22.sp.nonScaledSp,
                     fontWeight = FontWeight.Bold,
 
                     )
@@ -1426,23 +1497,35 @@ fun SpecificRouteView(route: GeneratedRoute, showList: MutableState<Boolean>) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(text = "Leaves in: ", fontSize = 18.sp)
-            Text(text = getTimeUntil(route.routeStartTime), fontSize = 18.sp, color = Blue, fontWeight = FontWeight.Bold)
-            // TODO: DAN verify is this the correct calculation? or close enough? thanks
+            Text(text = "Leaves in: ", fontSize = 18.sp.nonScaledSp)
+            Text(
+                text = getTimeUntil(route.routeStartTime),
+                fontSize = 18.sp.nonScaledSp,
+                color = Blue,
+                fontWeight = FontWeight.Bold
+            )
             val distance = calculateSphericalDistance(
                 route.routeInfo.first().stopLat,
                 route.routeInfo.first().stopLon,
                 userLat,
                 userLon
             )
-            Text(text = ", (${String.format("%.3f", distance)} km away)", fontSize = 18.sp)
+            Text(
+                text = ", (${String.format("%.3f", distance)} km away)",
+                fontSize = 18.sp.nonScaledSp
+            )
         }
 
         Row {
-            Text(text = "Start: ", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Green)
+            Text(
+                text = "Start: ",
+                fontSize = 18.sp.nonScaledSp,
+                fontWeight = FontWeight.Bold,
+                color = Green
+            )
             Text(
                 text = route.routeInfo.first().stopName,
-                fontSize = 18.sp,
+                fontSize = 18.sp.nonScaledSp,
                 fontWeight = FontWeight.Bold
             )
         }
@@ -1452,16 +1535,29 @@ fun SpecificRouteView(route: GeneratedRoute, showList: MutableState<Boolean>) {
             val hours = duration.toHours()
             val minutes = duration.toMinutes() % 60
             val formattedTime = "${hours}h ${minutes}m"
-            Text(text = "Ride for ", fontSize = 18.sp)
-            Text(text = formattedTime, fontSize = 18.sp, color = Blue, fontWeight = FontWeight.Bold)
-            Text(text = ", (${route.routeStartTime} - ${route.routeEndTime})", fontSize = 18.sp)
+            Text(text = "Ride for ", fontSize = 18.sp.nonScaledSp)
+            Text(
+                text = formattedTime,
+                fontSize = 18.sp.nonScaledSp,
+                color = Blue,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = ", (${route.routeStartTime} - ${route.routeEndTime})",
+                fontSize = 18.sp.nonScaledSp
+            )
         }
 
         Row {
-            Text(text = "End: ", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Red)
+            Text(
+                text = "End: ",
+                fontSize = 18.sp.nonScaledSp,
+                fontWeight = FontWeight.Bold,
+                color = Red
+            )
             Text(
                 text = route.routeInfo.last().stopName,
-                fontSize = 18.sp,
+                fontSize = 18.sp.nonScaledSp,
                 fontWeight = FontWeight.Bold
             )
         }
@@ -1470,7 +1566,7 @@ fun SpecificRouteView(route: GeneratedRoute, showList: MutableState<Boolean>) {
                 Text(
                     text = "(After ${route.routeInfo[route.routeInfo.size - 2].stopName})",
 
-                    fontSize = 18.sp,
+                    fontSize = 18.sp.nonScaledSp,
                     fontStyle = FontStyle.Italic,
                     color = Gray700
 
@@ -1494,7 +1590,7 @@ fun SpecificRouteView(route: GeneratedRoute, showList: MutableState<Boolean>) {
                 .fillMaxWidth(),
             shape = RoundedCornerShape(20)
         ) {
-            Text(text = "Cancel")
+            Text(text = "Cancel", lineHeight = 15.sp.nonScaledSp, fontSize = 15.sp.nonScaledSp)
         }
     }
 }
@@ -1507,7 +1603,12 @@ fun calculateWalkingPath(
     val diffLat = (end.latitude - start.latitude) / 10
     val diffLng = (end.longitude - start.longitude) / 10
     for (i in 1..10) {
-        pathPoints.add(WalkingPathPoint(start.latitude + diffLat * i, start.longitude + diffLng * i))
+        pathPoints.add(
+            WalkingPathPoint(
+                start.latitude + diffLat * i,
+                start.longitude + diffLng * i
+            )
+        )
     }
 }
 

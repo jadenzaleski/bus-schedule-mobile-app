@@ -204,8 +204,12 @@ fun StopsWorkhorse(navController: NavHostController) {
     }
 
     val stopDistances = remember(mapCenter) {
-        stops.associate { it to calculateSphericalDistance(mapCenter.latitude, mapCenter.longitude,
-            it.stopLat, it.stopLon) }
+        stops.associate {
+            it to calculateSphericalDistance(
+                mapCenter.latitude, mapCenter.longitude,
+                it.stopLat, it.stopLon
+            )
+        }
     }
 
     val filteredStops by derivedStateOf {
@@ -229,7 +233,12 @@ fun StopsWorkhorse(navController: NavHostController) {
     // called when info marker content is tapped
     fun navigateToRoutes(option: String, stop: Place?, navController: NavHostController) {
         if (stop != null) {
-            val route = "${Screens.RouteScreen.name}?option=${option}&name=${URLEncoder.encode(stop.name, "UTF-8")}&lat=${stop.lat}&lon=${stop.lon}"
+            val route = "${Screens.RouteScreen.name}?option=${option}&name=${
+                URLEncoder.encode(
+                    stop.name,
+                    "UTF-8"
+                )
+            }&lat=${stop.lat}&lon=${stop.lon}"
             navController.navigate(route)
         }
     }
@@ -241,23 +250,53 @@ fun StopsWorkhorse(navController: NavHostController) {
     if (showDialog) {
         AlertDialog(
             onDismissRequest = { showDialog = false },
-            title = { Text("Start or End?") },
-            text = { Text("Would you like to set this stop as your starting or ending point?:") },
+            title = {
+                Text(
+                    "Start or End?",
+                    lineHeight = 18.sp.nonScaledSp,
+                    fontSize = 18.sp.nonScaledSp
+                )
+            },
+            text = {
+                Text(
+                    "Would you like to set this stop as your starting or ending point?",
+                    lineHeight = 16.sp.nonScaledSp,
+                    fontSize = 16.sp.nonScaledSp
+                )
+            },
             confirmButton = {
                 TextButton(
                     onClick = {
                         showDialog = false
                         navigateToRoutes("start", selectedStop, navController)
                     }
-                ) { Text("Start Here", color = Blue) }
+                ) {
+                    Text(
+                        "Start Here",
+                        color = Blue,
+                        lineHeight = 14.sp.nonScaledSp,
+                        fontSize = 14.sp.nonScaledSp
+                    )
+                }
             },
             dismissButton = {
                 TextButton(
                     onClick = {
                         showDialog = false
-                        navigateToRoutes("end", selectedStop, navController) // "from" for start point
+                        navigateToRoutes(
+                            "end",
+                            selectedStop,
+                            navController
+                        ) // "from" for start point
                     }
-                ) { Text("End Here", color = Blue) }
+                ) {
+                    Text(
+                        "End Here",
+                        color = Blue,
+                        lineHeight = 15.sp.nonScaledSp,
+                        fontSize = 15.sp.nonScaledSp
+                    )
+                }
             },
             icon = { Icon(Icons.Default.Place, "") }
         )
@@ -268,9 +307,11 @@ fun StopsWorkhorse(navController: NavHostController) {
      * Code for the top bar of the Stops page. Contains various fields that the user can manipulate
      * (including what agencies are active, and the max number of stops to display).
      */
-    Column(modifier = Modifier.pointerInput(Unit) { detectTapGestures(onTap = {
-        focusManager.clearFocus()
-    }) }) {
+    Column(modifier = Modifier.pointerInput(Unit) {
+        detectTapGestures(onTap = {
+            focusManager.clearFocus()
+        })
+    }) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -302,9 +343,10 @@ fun StopsWorkhorse(navController: NavHostController) {
                     confirmButton = {
                         TextButton(onClick = {
                             showPermissionDeniedDialog = false
-                            val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                                data = Uri.fromParts("package", context.packageName, null)
-                            }
+                            val intent =
+                                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                    data = Uri.fromParts("package", context.packageName, null)
+                                }
                             context.startActivity(intent)
                         }) {
                             Text("Open Settings")
@@ -340,7 +382,7 @@ fun StopsWorkhorse(navController: NavHostController) {
                         }
                     },
                 ),
-
+                textStyle = TextStyle(lineHeight = 14.sp.nonScaledSp, fontSize = 14.sp.nonScaledSp),
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 modifier = Modifier
@@ -386,7 +428,7 @@ fun StopsWorkhorse(navController: NavHostController) {
                 border = BorderStroke(2.dp, Green),
                 shape = RoundedCornerShape(20)
             ) {
-                Text("Set")
+                Text("Set", fontSize = 14.sp.nonScaledSp, lineHeight = 14.sp.nonScaledSp)
             }
         }
 
@@ -426,12 +468,22 @@ fun StopsWorkhorse(navController: NavHostController) {
         GoogleMap(
             modifier = Modifier.fillMaxSize(),
             cameraPositionState = cameraPositionState,
-            uiSettings = MapUiSettings(myLocationButtonEnabled = isLocationPermissionGranted, compassEnabled = true),
-            properties = MapProperties(isMyLocationEnabled = isLocationPermissionGranted, minZoomPreference = 5.0f)
+            uiSettings = MapUiSettings(
+                myLocationButtonEnabled = isLocationPermissionGranted,
+                compassEnabled = true
+            ),
+            properties = MapProperties(
+                isMyLocationEnabled = isLocationPermissionGranted,
+                minZoomPreference = 5.0f
+            )
         ) {
             filteredStops.forEach { stop ->
-                val nextDepartureTime = CSVHandler.getNextDepartureTimeForStop(stop.stopID) ?: "Unavailable"
-                val currentTime = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date()) // Get current time in 24-hour format
+                val nextDepartureTime =
+                    CSVHandler.getNextDepartureTimeForStop(stop.stopID) ?: "Unavailable"
+                val currentTime = SimpleDateFormat(
+                    "HH:mm",
+                    Locale.getDefault()
+                ).format(Date()) // Get current time in 24-hour format
                 // Using the custom MarkerInfoWindowContent instead of the standard Marker
                 // Additionally the MarkerInfoWindowContent is a giant button (has an onClick)
                 MarkerInfoWindowContent(
@@ -450,7 +502,7 @@ fun StopsWorkhorse(navController: NavHostController) {
                             text = stop.stopName,
                             modifier = Modifier.padding(top = 5.dp),
                             style = TextStyle(
-                                fontSize = 16.sp,
+                                fontSize = 16.sp.nonScaledSp,
                                 fontWeight = FontWeight.Bold,
                             )
                         )
@@ -461,28 +513,58 @@ fun StopsWorkhorse(navController: NavHostController) {
                         )
                         // Text for next Departure Time
                         Row {
-                            Text(text = "Next departure: ", style = TextStyle(fontSize = 16.sp))
-                            Text(text = nextDepartureTime, style = TextStyle(fontWeight = FontWeight.Bold, fontSize = 16.sp))
+                            Text(
+                                text = "Next departure: ",
+                                style = TextStyle(fontSize = 16.sp.nonScaledSp)
+                            )
+                            Text(
+                                text = nextDepartureTime,
+                                style = TextStyle(
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 16.sp.nonScaledSp
+                                )
+                            )
                         }
                         // Text for Current Time
                         Row {
-                            Text(text = "Current Time: ", style = TextStyle(fontSize = 16.sp)) // Added text for current time
-                            Text(text = currentTime, style = TextStyle(fontWeight = FontWeight.Bold, fontSize = 16.sp))
+                            Text(
+                                text = "Current Time: ",
+                                style = TextStyle(fontSize = 16.sp.nonScaledSp)
+                            ) // Added text for current time
+                            Text(
+                                text = currentTime,
+                                style = TextStyle(
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 16.sp.nonScaledSp
+                                )
+                            )
                         }
-                        Column(horizontalAlignment = Alignment.Start, modifier = Modifier.padding(top = 5.dp)) {
-                            Text(text = "Lat: ${stop.stopLat}", style = TextStyle(fontSize = 16.sp))
+                        Column(
+                            horizontalAlignment = Alignment.Start,
+                            modifier = Modifier.padding(top = 5.dp)
+                        ) {
+                            Text(
+                                text = "Lat: ${stop.stopLat}",
+                                style = TextStyle(fontSize = 16.sp.nonScaledSp)
+                            )
                             // Replaced VerticalDivider with Spacer for simplicity
                             Spacer(modifier = Modifier.width(5.dp))
-                            Text(text = "Lon: ${stop.stopLon}", style = TextStyle(fontSize = 16.sp))
+                            Text(
+                                text = "Lon: ${stop.stopLon}",
+                                style = TextStyle(fontSize = 16.sp.nonScaledSp)
+                            )
                         }
                         // Text for StopID
-                        Text(text = "Stop ID: ${stop.stopID}", style = TextStyle(fontSize = 16.sp))
+                        Text(
+                            text = "Stop ID: ${stop.stopID}",
+                            style = TextStyle(fontSize = 16.sp.nonScaledSp)
+                        )
                         // Text for Tap to Plan:
                         Text(
                             text = "Tap to plan",
                             modifier = Modifier.padding(top = 10.dp, bottom = 5.dp),
                             style = TextStyle(
-                                fontSize = 16.sp,
+                                fontSize = 16.sp.nonScaledSp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color.Blue
                             )
@@ -530,10 +612,12 @@ fun ActivateLocationButton(
                 // Show dialog indicating location is already activated
                 onShowLocationActivatedDialog()
             }
+
             permissionDenied -> {
                 // Instead of opening app settings directly, show dialog to explain the need to enable permissions in settings
                 onShowPermissionsDeniedDialog()
             }
+
             else -> {
                 // Request permission if not previously denied and not granted
                 onPermissionRequest()
@@ -544,7 +628,10 @@ fun ActivateLocationButton(
     // Format of the button
     OutlinedButton(
         onClick = onClickAction,
-        colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent, contentColor = buttonColor),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = Color.Transparent,
+            contentColor = buttonColor
+        ),
         border = BorderStroke(2.dp, buttonColor),
         modifier = Modifier
             .padding(start = 10.dp, end = 10.dp)
@@ -553,7 +640,13 @@ fun ActivateLocationButton(
         shape = RoundedCornerShape(20),
         contentPadding = PaddingValues(horizontal = 16.dp)
     ) {
-        Text(text = buttonText, color = buttonColor, textAlign = TextAlign.Center)
+        Text(
+            text = buttonText,
+            color = buttonColor,
+            textAlign = TextAlign.Center,
+            fontSize = 14.sp.nonScaledSp,
+            lineHeight = 14.sp.nonScaledSp
+        )
     }
 }
 
