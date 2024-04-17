@@ -213,7 +213,11 @@ fun StopsWorkhorse(navController: NavHostController) {
     }
 
     val filteredStops by derivedStateOf {
-        maxStopsInput = min(maxStops, 150).toString()
+        if (maxStops > 150) {
+            maxStopsInput = "150"
+            maxStops = 150
+        }
+
         stops.filter { stop ->
             val agencyIdsForStop = stopIdToAgencyIdMap[stop.stopID]
             agencyIdsForStop != null && agencyIdsForStop.any { it in selectedAgencyIds }

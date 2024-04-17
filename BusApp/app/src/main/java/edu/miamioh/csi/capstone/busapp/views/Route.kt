@@ -1016,7 +1016,7 @@ fun RouteView(viewModel: MainViewModel, option: String, name: String, lat: Doubl
                                 .padding(start = 10.dp),
                             shape = RoundedCornerShape(20)
                         ) {
-                            Text(text = "Go", fontSize = 16.sp.nonScaledSp)
+                            Text(text = "Go", fontSize = 18.sp.nonScaledSp)
                         }
                     }
                 }
