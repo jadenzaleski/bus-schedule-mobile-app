@@ -9,20 +9,7 @@
         <State />
       </entry>
       <entry key="bus-schedule-mobile-app.BusApp.app">
-        <State>
-          <runningDeviceTargetSelectedWithDropDown>
-            <Target>
-              <type value="RUNNING_DEVICE_TARGET" />
-              <deviceKey>
-                <Key>
-                  <type value="SERIAL_NUMBER" />
-                  <value value="83a2d76b" />
-                </Key>
-              </deviceKey>
-            </Target>
-          </runningDeviceTargetSelectedWithDropDown>
-          <timeTargetWasSelectedWithDropDown value="2024-04-15T05:24:00.788073700Z" />
-        </State>
+        <State />
       </entry>
     </value>
   </component>

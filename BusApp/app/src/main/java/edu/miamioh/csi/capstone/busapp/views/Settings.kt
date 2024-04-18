@@ -194,7 +194,7 @@ fun SettingScreen() {
             // Triggers dialogues related to the "Report an Issue" functionality.
             preference(
                 key = "reportIssue",
-                title = { Text("Report an Issue") },
+                title = { Text("Report An Issue") },
                 summary = { Text(text = "Submit a service ticket here") },
                 onClick = {
                     showEmailDialog = true

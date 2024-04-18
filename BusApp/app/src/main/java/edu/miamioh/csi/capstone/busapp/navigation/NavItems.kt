@@ -28,7 +28,7 @@ val listOfNavItems = listOf(
         route = Screens.StopsScreen.name
     ),
     NavItem(
-        label = "Route",
+        label = "Routes",
         icon = R.drawable.route,
         route = Screens.RouteScreen.name + "?option={option}&name={name}&lat={lat}&lon={lon}"
     ),
