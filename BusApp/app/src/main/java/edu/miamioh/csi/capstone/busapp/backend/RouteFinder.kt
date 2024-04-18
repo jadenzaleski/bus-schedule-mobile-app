@@ -68,6 +68,16 @@ data class StopOnRoute(
 )
 
 
+/**
+ * RouteFinder generates potential transit routes based on user inputs for starting stops, ending stops and available data.
+ * It initializes data structures, fetches transit data, and provides functions for route generation and filtering.
+ *
+ * Key properties include sets for agency IDs and maps for quick access to routes, trips, and stop times.
+ *
+ * The `routeWorkhorse` function finds potential routes based on start and end locations, selected time, and valid agency IDs.
+ *
+ * Additionally, helper functions handle tasks such as generating potential routes, filtering routes, and converting time strings.
+ */
 object RouteFinder {
     private val agencies = CSVHandler.getAgencies()
     private val routes = CSVHandler.getRoutes()
@@ -145,6 +155,16 @@ object RouteFinder {
         return filteredRoutes
     }
 
+    /**
+     * Generates potential transit routes based on filtered trip records, start and end stop IDs,
+     * and a selected time.
+     *
+     * @param filteredTripRecords - Set of trip records filtered based on user criteria
+     * @param startStopIDs - Set of start stop IDs
+     * @param endStopIDs - Set of end stop IDs
+     * @param selectedTime - Selected time in HH:MM format
+     * @return List of GeneratedRoute objects representing potential transit routes
+     */
     private fun generatePotentialRoutes(
         filteredTripRecords: Set<TripRecord>,
         startStopIDs: Set<Int>,
@@ -202,6 +222,14 @@ object RouteFinder {
         return generatedRoutes
     }
 
+    /**
+     * Filters generated transit routes based on start and end locations.
+     *
+     * @param generatedRoutes - List of generated transit routes
+     * @param startLocation - Starting location
+     * @param endLocation - Ending location
+     * @return Filtered list of transit routes
+     */
     private fun filterRoutes(
         generatedRoutes: List<GeneratedRoute>,
         startLocation: Place,
@@ -234,6 +262,12 @@ object RouteFinder {
         return uniqueRoutes.filterNotNull()
     }
 
+    /**
+     * Finds all valid trip IDs based on a set of valid agency IDs.
+     *
+     * @param validAgencyIDs - Set of valid agency IDs
+     * @return Set of valid trip IDs
+     */
     private fun findAllValidTripIDs(validAgencyIDs: Set<Int>): Set<Int> {
         val validRoutes = routeByRouteID.values.filter { it.agencyID in validAgencyIDs }
         val validRouteIDs = validRoutes.map { it.routeID }.toSet()
@@ -243,6 +277,12 @@ object RouteFinder {
         }.toSet()
     }
 
+    /**
+     * Generates trip records based on a set of valid trip IDs.
+     *
+     * @param validTripIDs - Set of valid trip IDs
+     * @return Set of generated trip records
+     */
     private fun generateTripRecords(validTripIDs: Set<Int>): Set<TripRecord> {
         return validTripIDs.mapNotNull { tripID ->
             tripByTripID[tripID]?.let { trip ->
@@ -276,6 +316,13 @@ object RouteFinder {
         }.toSet()
     }
 
+    /**
+     * Filters trip records based on a selected time.
+     *
+     * @param tripRecords - Set of trip records to filter
+     * @param selectedTime - Selected time in HH:MM format
+     * @return Set of filtered trip records
+     */
     private fun filterTripRecordsByTime(
         tripRecords: Set<TripRecord>,
         selectedTime: String
@@ -284,6 +331,12 @@ object RouteFinder {
         return tripRecords.filter { it.routeStartTime.isAfter(timeBoundary) }.toSet()
     }
 
+    /**
+     * Finds all valid stop IDs based on a set of valid agency IDs.
+     *
+     * @param validAgencyIDs - Set of valid agency IDs
+     * @return Set of valid stop IDs
+     */
     private fun findAllValidStopIDs(validAgencyIDs: Set<Int>): Set<Int> {
         val validRouteIDs = routes.filter { it.agencyID in validAgencyIDs }.map { it.routeID }.toSet()
 
@@ -296,6 +349,13 @@ object RouteFinder {
         }.toSet()
     }
 
+    /**
+     * Finds nearby stop IDs based on a location and a set of valid stop IDs.
+     *
+     * @param location - Location to find nearby stops around
+     * @param validStopIDs - Set of valid stop IDs
+     * @return Set of nearby stop IDs
+     */
     private fun findNearbyStopIDs(location: Place, validStopIDs: Set<Int>): Set<Int> {
         val validStops = stops.filter { it.stopID in validStopIDs }
         val closestStops = PriorityQueue<Pair<Int, Double>>(compareByDescending { it.second })
