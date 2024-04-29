@@ -77,14 +77,14 @@ fun SettingScreen() {
     val backgroundColor = MaterialTheme.colorScheme.background
     val onBackgroundColor = MaterialTheme.colorScheme.onBackground
 
-    // Setup for "Update" feature and its associated dialogues
+    // Setup for "Update Data" feature and its associated dialogues
     var showUpdateDataAlert by remember { mutableStateOf(false) }
     var isUpdating by remember { mutableStateOf(false) }
-    var lastUpdateTime by remember { mutableStateOf("No manual updates triggered since last " +
-            "full app refresh") }
+    var lastUpdateTime by remember { mutableStateOf("No manual updates triggered since last" +
+            " full app refresh") }
     UpdateProgressDialog(isVisible = isUpdating)
 
-    // This Alertdialog is for when the update preference is triggered.
+    // Alert Dialog for "Update Data" functionality.
     if (showUpdateDataAlert) {
         AlertDialog(
             onDismissRequest = {
@@ -120,9 +120,10 @@ fun SettingScreen() {
         )
     }
 
-    // Setup for "About" feature and its associated dialogues
+    // Setup for "About App" feature and its associated dialogues
     var showAboutDialog by remember { mutableStateOf(false) }  // State for About dialog
 
+    // Dialog for "About App" functionality.
     if (showAboutDialog) {
         AboutDialog { showAboutDialog = false }
     }
@@ -132,6 +133,7 @@ fun SettingScreen() {
     var email by remember { mutableStateOf("") }
     var message by remember { mutableStateOf("") }
 
+    // Dialog for "Report An Issue" functionality.
     if (showEmailDialog) {
         EmailDialog(email, message, onEmailChange = { email = it }, onMessageChange = { message = it },
             onSend = {
