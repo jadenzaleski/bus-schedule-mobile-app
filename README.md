@@ -1,5 +1,7 @@
 # Miami Bus Schedule Mobile App 2023-2024 Senior Capstone
 The Miami capstone website can be found [here](https://sites.miamioh.edu/cse-senior-design-expo/2024/04/bus-schedule-mobile-app/).
+
+View the poster to see a condensed version of our application [here](https://github.com/jadenzaleski/bus-schedule-mobile-app/blob/master/poster.pdf).
 ## CLIENT
 Dr. Alan Ferrenberg, Assistant Teaching Professor, and Kaylynn Borror, Assistant Lecturer
 Department of Computer Science and Software Engineering
